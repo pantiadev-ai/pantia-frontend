@@ -11,24 +11,20 @@ interface Item {
   category: string;
   shipping_badge: string;
   image_url?: string;
+  image_urls?: string[];
   created_at: string;
 }
 
 export default function MyPage() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState('items');
+  const [activeTab, setActiveTab] = useState('items'); // デフォルトは出品管理
   const [tweetText, setTweetText] = useState('');
   const [tweetList, setTweetList] = useState<string[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-
   const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState<{
-    nickname: string;
-    role: string;
-    email: string;
-    age: string;
-  }>({
+
+  const [userInfo, setUserInfo] = useState({
     nickname: 'めめ',
     role: 'seller',
     email: '',
@@ -37,34 +33,38 @@ export default function MyPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (error || !user) {
-        window.location.href = '/auth';
-        return;
+        if (userError || !user) {
+          window.location.href = '/auth';
+          return;
+        }
+
+        const meta = user.user_metadata || {};
+        setUserInfo({
+          nickname: meta.nickname || 'めめ',
+          role: meta.role || 'seller',
+          email: user.email || '',
+          age: meta.age || '-',
+        });
+
+        // データベースから全商品データを取得
+        const { data: itemData, error: itemError } = await supabase
+          .from('items')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (itemError) {
+          console.error('Data Fetch Error:', itemError.message);
+        } else if (itemData) {
+          setItems(itemData as Item[]);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
       }
-
-      const meta = user.user_metadata || {};
-      setUserInfo({
-        nickname: meta.nickname || 'めめ',
-        role: meta.role || 'seller',
-        email: user.email || '',
-        age: meta.age || '-',
-      });
-
-      // 出品商品を全取得して確実に表示
-      const { data: itemData, error: itemError } = await supabase
-        .from('items')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (itemData) {
-        setItems(itemData as Item[]);
-      } else if (itemError) {
-        console.error('Fetch items error:', itemError.message);
-      }
-
-      setLoading(false);
     };
 
     fetchData();
@@ -83,7 +83,7 @@ export default function MyPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontWeight: 'bold' }}>
         読み込み中...🌸
       </div>
     );
@@ -123,43 +123,17 @@ export default function MyPage() {
           </div>
 
           <div className="side-nav">
-            <a className={`side-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="side-nav-icon">📊</span> ダッシュボード</a>
-            <a className={`side-nav-item ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}><span className="side-nav-icon">📦</span> 出品管理<span className="side-nav-badge">{items.length}</span></a>
-            <a className={`side-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><span className="side-nav-icon">💰</span> 売上・振込</a>
-            <a className={`side-nav-item ${activeTab === 'tweet' ? 'active' : ''}`} onClick={() => setActiveTab('tweet')}><span className="side-nav-icon">💬</span> つぶやき投稿</a>
-            <a className={`side-nav-item ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}><span className="side-nav-icon">✉️</span> メッセージ<span className="side-nav-badge">0</span></a>
-            <a className={`side-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}><span className="side-nav-icon">⚙</span> 設定</a>
+            <div className={`side-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="side-nav-icon">📊</span> ダッシュボード</div>
+            <div className={`side-nav-item ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}><span className="side-nav-icon">📦</span> 出品管理<span className="side-nav-badge">{items.length}</span></div>
+            <div className={`side-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><span className="side-nav-icon">💰</span> 売上・振込</div>
+            <div className={`side-nav-item ${activeTab === 'tweet' ? 'active' : ''}`} onClick={() => setActiveTab('tweet')}><span className="side-nav-icon">💬</span> つぶやき投稿</div>
+            <div className={`side-nav-item ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}><span className="side-nav-icon">✉️</span> メッセージ<span className="side-nav-badge">0</span></div>
+            <div className={`side-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}><span className="side-nav-icon">⚙</span> 設定</div>
           </div>
         </aside>
 
-        <div className="main fade-in visible" style={{ transitionDelay: '0.08s' }}>
-          {activeTab === 'dashboard' && (
-            <div className="panel show">
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-card-label">💰 今月の売上</div>
-                  <div className="stat-card-num pk">¥0</div>
-                  <div className="stat-card-sub"><span className="stat-up">--</span> 先月比</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-label">📦 今月の販売数</div>
-                  <div className="stat-card-num">0件</div>
-                  <div className="stat-card-sub"><span className="stat-up">--</span> 先月比</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-label">👁 出品中の商品</div>
-                  <div className="stat-card-num">{items.length}件</div>
-                  <div className="stat-card-sub">うち即日対応 <strong style={{ color: 'var(--primary)' }}>{items.filter(i => i.shipping_badge === '即日発送').length}件</strong></div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-card-label">⭐ 平均評価</div>
-                  <div className="stat-card-num pk">5.0</div>
-                  <div className="stat-card-sub">0件のレビュー</div>
-                </div>
-              </div>
-            </div>
-          )}
-
+        <div className="main fade-in visible">
+          {/* 出品管理タブ */}
           {activeTab === 'items' && (
             <div className="panel show">
               <div className="items-toolbar">
@@ -171,82 +145,92 @@ export default function MyPage() {
               </div>
 
               {items.length === 0 ? (
-                <div style={{ marginTop: '30px', textAlign: 'center', color: 'var(--text-sub)' }}>
+                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-sub)' }}>
                   まだ出品している商品はありません
                 </div>
               ) : (
-                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {items.map((item) => (
-                    <a
-                      key={item.id}
-                      href={`/items/${item.id}`}
-                      style={{ textDecoration: 'none', color: 'inherit' }}
-                    >
-                      <div style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
-                        {item.image_url ? (
-                          <img src={item.image_url} alt={item.title} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📦</div>
-                        )}
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 800, fontSize: '15px' }}>{item.title}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px' }}>
-                            ¥{item.price.toLocaleString()} ・ {item.category} ・ <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.shipping_badge}</span>
+                <div className="my-items-list">
+                  {items.map((item) => {
+                    const displayImg = (item.image_urls && item.image_urls.length > 0)
+                      ? item.image_urls[0]
+                      : item.image_url;
+
+                    return (
+                      <a
+                        key={item.id}
+                        href={`/items/${item.id}`}
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="my-item">
+                          <div className="my-item-thumb">
+                            {displayImg ? (
+                              <img src={displayImg} alt={item.title} className="my-img" />
+                            ) : (
+                              '📦'
+                            )}
+                          </div>
+                          <div className="my-item-info">
+                            <div className="my-item-name">{item.title}</div>
+                            <div className="my-item-meta">
+                              <span>{item.category}</span>
+                              <span>・</span>
+                              <span style={{ color: 'var(--primary)' }}>{item.shipping_badge || '通常発送'}</span>
+                              <span>・</span>
+                              <span>{new Date(item.created_at).toLocaleDateString('ja-JP')}</span>
+                            </div>
+                          </div>
+                          <div className="my-item-price">
+                            ¥{item.price ? item.price.toLocaleString() : 0}
                           </div>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {new Date(item.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </a>
-                  ))}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === 'sales' && (
+          {/* ダッシュボードタブ */}
+          {activeTab === 'dashboard' && (
             <div className="panel show">
-              <div className="sales-summary">
-                <div className="ss-card"><div className="ss-label">今月の売上</div><div className="ss-num">¥0</div></div>
-                <div className="ss-card"><div className="ss-label">累計売上</div><div className="ss-num">¥0</div></div>
-                <div className="ss-card"><div className="ss-label">振込申請可能額</div><div className="ss-num">¥0</div></div>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <div className="stat-card-label">💰 今月の売上</div>
+                  <div className="stat-card-num pk">¥0</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-label">📦 今月の販売数</div>
+                  <div className="stat-card-num">0件</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-label">👁 出品中の商品</div>
+                  <div className="stat-card-num">{items.length}件</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-label">⭐ 平均評価</div>
+                  <div className="stat-card-num pk">5.0</div>
+                </div>
               </div>
             </div>
           )}
 
+          {/* つぶやきタブ */}
           {activeTab === 'tweet' && (
             <div className="panel show">
-              <div style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: 'var(--r)', padding: '20px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '14px' }}>✏️ 新しいつぶやき</div>
+              <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--r)' }}>
                 <textarea
-                  style={{ width: '100%', minHeight: '90px', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 75, 145, 0.2)', color: 'black' }}
+                  style={{ width: '100%', minHeight: '90px', padding: '12px', borderRadius: '12px', color: '#000' }}
                   placeholder="つぶやきを入力してください"
                   value={tweetText}
                   onChange={(e) => setTweetText(e.target.value)}
                 />
                 <button
                   onClick={handlePostTweet}
-                  style={{ marginTop: '10px', padding: '8px 20px', borderRadius: '999px', background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800 }}
+                  style={{ marginTop: '10px', padding: '8px 20px', borderRadius: '999px', background: 'var(--primary)', color: '#fff', border: 'none', fontWeight: 800 }}
                 >
                   つぶやく
                 </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="panel show">
-              <div className="settings-section">
-                <div className="settings-title"><span className="icon-pill">👤</span> アカウント情報</div>
-                <div className="setting-row">
-                  <div className="setting-info"><div className="setting-name">ニックネーム</div></div>
-                  <div className="setting-val">{userInfo.nickname}</div>
-                </div>
-                <div className="setting-row">
-                  <div className="setting-info"><div className="setting-name">メールアドレス</div></div>
-                  <div className="setting-val">{userInfo.email}</div>
-                </div>
               </div>
             </div>
           )}
