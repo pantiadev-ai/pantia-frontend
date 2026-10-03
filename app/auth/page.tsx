@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import './auth.css';
 
 export default function AuthPage() {
+  const supabase = createClient();
+
   const [currentMode, setCurrentMode] = useState<'login' | 'register'>('login');
   const [selectedRole, setSelectedRole] = useState<'seller' | 'buyer'>('seller');
   const [regStep, setRegStep] = useState<1 | 2 | 3>(1);
@@ -54,7 +57,8 @@ export default function AuthPage() {
     }
   };
 
-  const handleLogin = () => {
+  // ── 実際のログイン処理 (Supabase) ──
+  const handleLogin = async () => {
     let ok = true;
     if (!loginEmail.includes('@')) {
       setLoginEmailErr(true);
@@ -70,13 +74,24 @@ export default function AuthPage() {
       setLoginPwErr(false);
     }
 
-    if (ok) {
-      alert('ログインしました');
-      // TODO: Supabase Auth ログイン処理
+    if (!ok) return;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPw,
+    });
+
+    if (error) {
+      alert(`ログインエラー: ${error.message}`);
+      return;
     }
+
+    alert('ログインに成功しました！');
+    window.location.href = '/mypage';
   };
 
-  const handleRegister = () => {
+  // ── 実際の新規登録処理 (Supabase) ──
+  const handleRegister = async () => {
     let ok = true;
     if (!regEmail.includes('@')) {
       setRegEmailErr(true);
@@ -97,9 +112,26 @@ export default function AuthPage() {
       ok = false;
     }
 
-    if (ok) {
-      setRegStep(3);
+    if (!ok) return;
+
+    const { data, error } = await supabase.auth.signUp({
+      email: regEmail,
+      password: regPw,
+      options: {
+        data: {
+          nickname: regNick,
+          role: selectedRole,
+          age: regAge,
+        },
+      },
+    });
+
+    if (error) {
+      alert(`登録エラー: ${error.message}`);
+      return;
     }
+
+    setRegStep(3);
   };
 
   return (
@@ -217,7 +249,6 @@ export default function AuthPage() {
           {/* REGISTER PANEL */}
           {currentMode === 'register' && (
             <div className="register-panel show">
-              {/* STEP INDICATOR */}
               <div className="steps">
                 <div className={`step ${regStep === 1 ? 'active' : regStep > 1 ? 'done' : ''}`}>
                   <div className="step-num">{regStep > 1 ? '✓' : '1'}</div> ロール選択
@@ -395,7 +426,6 @@ export default function AuthPage() {
                     <div className="form-hint">サービス上で表示される名前です（本名不要）</div>
                   </div>
 
-                  {/* 出品者専用フィールド */}
                   {selectedRole === 'seller' && (
                     <div className="seller-fields show">
                       <div className="field-divider"><span>出品者の追加情報</span></div>
@@ -415,31 +445,9 @@ export default function AuthPage() {
                         />
                         <div className="form-hint">18歳未満の方はご登録いただけません</div>
                       </div>
-
-                      <div className="form-group">
-                        <label className="form-label">職業</label>
-                        <input className="form-input" type="text" placeholder="例：大学生、会社員、主婦 など" />
-                        <div className="form-hint">プロフィールに表示されます（任意）</div>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">振込先口座（売上受け取り用）</label>
-                        <input className="form-input" type="text" placeholder="銀行名" style={{ marginBottom: '8px' }} />
-                        <input className="form-input" type="text" placeholder="支店名" />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '8px', marginTop: '8px' }}>
-                          <select className="form-input" style={{ borderRadius: 'var(--r-pill)' }}>
-                            <option>普通</option>
-                            <option>当座</option>
-                          </select>
-                          <input className="form-input" type="text" placeholder="口座番号" />
-                        </div>
-                        <input className="form-input" type="text" placeholder="口座名義（カタカナ）" style={{ marginTop: '8px' }} />
-                        <div className="form-hint">後から設定・変更も可能です</div>
-                      </div>
                     </div>
                   )}
 
-                  {/* 同意チェック */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '4px' }}>
                     <div className="check-group" onClick={() => setAgreeTerms(!agreeTerms)}>
                       <div className={`check-box ${agreeTerms ? 'checked' : ''}`}></div>
