@@ -9,8 +9,8 @@ interface Item {
   title: string;
   price: number;
   category: string;
-  shipping_badge: string;
-  image_url?: string;
+  shipping_badge?: string;
+  image_src?: string;
   image_urls?: string[];
   created_at: string;
 }
@@ -18,7 +18,7 @@ interface Item {
 export default function MyPage() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState('items'); // デフォルトは出品管理
+  const [activeTab, setActiveTab] = useState('items');
   const [tweetText, setTweetText] = useState('');
   const [tweetList, setTweetList] = useState<string[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -49,7 +49,7 @@ export default function MyPage() {
           age: meta.age || '-',
         });
 
-        // データベースから全商品データを取得
+        // items テーブルから全データ取得
         const { data: itemData, error: itemError } = await supabase
           .from('items')
           .select('*')
@@ -58,6 +58,7 @@ export default function MyPage() {
         if (itemError) {
           console.error('Data Fetch Error:', itemError.message);
         } else if (itemData) {
+          console.log('Fetched Items:', itemData);
           setItems(itemData as Item[]);
         }
       } catch (err) {
@@ -151,9 +152,8 @@ export default function MyPage() {
               ) : (
                 <div className="my-items-list">
                   {items.map((item) => {
-                    const displayImg = (item.image_urls && item.image_urls.length > 0)
-                      ? item.image_urls[0]
-                      : item.image_url;
+                    // image_src または image_urls[0] を優先使用
+                    const displayImg = item.image_src || (item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : null);
 
                     return (
                       <a
