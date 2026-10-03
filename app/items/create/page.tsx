@@ -100,7 +100,7 @@ export default function CreateItemPage() {
 
       const uploadedImageUrls: string[] = [];
 
-      // アップロード処理
+      // 画像アップロード処理
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
         if (file) {
@@ -125,11 +125,11 @@ export default function CreateItemPage() {
         }
       }
 
-      // データベース登録
+      // データベース登録（user_id と seller_id の両方に user.id を確実に保存）
       const { error } = await supabase.from('items').insert([
         {
           user_id: user.id,
-          seller_id: user.id, // ← seller_id カラムにも user.id をセット
+          seller_id: user.id,
           title,
           price: numPrice,
           category: CATEGORY_MAP[category] || category,
