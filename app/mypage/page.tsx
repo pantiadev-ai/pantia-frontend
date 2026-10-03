@@ -10,13 +10,14 @@ interface Item {
   price: number;
   category: string;
   shipping_badge: string;
+  image_url?: string;
   created_at: string;
 }
 
 export default function MyPage() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('items'); // 出品管理タブをデフォルトに設定
   const [tweetText, setTweetText] = useState('');
   const [tweetList, setTweetList] = useState<string[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -28,7 +29,7 @@ export default function MyPage() {
     email: string;
     age: string;
   }>({
-    nickname: 'ユーザー',
+    nickname: 'めめ',
     role: 'seller',
     email: '',
     age: '-',
@@ -45,21 +46,23 @@ export default function MyPage() {
 
       const meta = user.user_metadata || {};
       setUserInfo({
-        nickname: meta.nickname || 'ユーザー',
+        nickname: meta.nickname || 'めめ',
         role: meta.role || 'seller',
         email: user.email || '',
         age: meta.age || '-',
       });
 
-      // 自分の出品商品を Supabase から取得
-      const { data: itemData } = await supabase
+      // 自分の出品商品を user_id または seller_id から取得
+      const { data: itemData, error: itemError } = await supabase
         .from('items')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},seller_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (itemData) {
         setItems(itemData as Item[]);
+      } else if (itemError) {
+        console.error('Fetch items error:', itemError.message);
       }
 
       setLoading(false);
@@ -90,13 +93,13 @@ export default function MyPage() {
   return (
     <>
       <header className="mypage-header">
-        <a href="#" className="logo">♡ LABEL NAME</a>
+        <a href="/" className="logo">♡ LABEL NAME</a>
         <nav>
           <a href="#">商品一覧</a>
           <a href="#">つぶやき</a>
           <a href="#" className="notif-btn">🔔<span className="notif-dot"></span></a>
           <div className="nav-divider"></div>
-          <a href="#" className="nav-active">マイページ</a>
+          <a href="/mypage" className="nav-active">マイページ</a>
           <button
             onClick={handleLogout}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: 'var(--text-sub)', fontWeight: 700 }}
@@ -114,7 +117,7 @@ export default function MyPage() {
             <div className="pm-handle">@{userInfo.nickname.toLowerCase()}</div>
             <div className="pm-stats">
               <div><div className="pm-stat-num">0</div><div className="pm-stat-label">フォロワー</div></div>
-              <div><div className="pm-stat-num">0</div><div className="pm-stat-label">販売数</div></div>
+              <div><div className="pm-stat-num">{items.length}</div><div className="pm-stat-label">出品数</div></div>
               <div><div className="pm-stat-num">5.0</div><div className="pm-stat-label">評価</div></div>
             </div>
             <div className="kyc-badge">✅ 本人確認未完了</div>
@@ -175,8 +178,13 @@ export default function MyPage() {
               ) : (
                 <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {items.map((item) => (
-                    <div key={item.id} style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                      <div>
+                    <div key={item.id} style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.title} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📦</div>
+                      )}
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 800, fontSize: '15px' }}>{item.title}</div>
                         <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px' }}>
                           ¥{item.price.toLocaleString()} ・ {item.category} ・ <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.shipping_badge}</span>
