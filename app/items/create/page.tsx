@@ -12,7 +12,21 @@ export default function CreateItemPage() {
   const [category, setCategory] = useState('ショーツ・パンティ');
   const [shippingBadge, setShippingBadge] = useState('即日発送');
   const [description, setDescription] = useState('');
+  
+  // 画像用ステート
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ファイル選択ハンドラ
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +47,33 @@ export default function CreateItemPage() {
       return;
     }
 
+    let uploadedImageUrl = '';
+
+    // 画像が選択されている場合、Supabase Storage にアップロード
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('item-images')
+        .upload(fileName, imageFile);
+
+      if (storageError) {
+        alert(`画像のアップロードに失敗しました: ${storageError.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 公開URLの取得
+      const { data: publicUrlData } = supabase.storage
+        .from('item-images')
+        .getPublicUrl(fileName);
+
+      uploadedImageUrl = publicUrlData.publicUrl;
+    }
+
     // Supabase に商品データを保存
-    const { data, error } = await supabase.from('items').insert([
+    const { error } = await supabase.from('items').insert([
       {
         user_id: user.id,
         title,
@@ -42,7 +81,7 @@ export default function CreateItemPage() {
         category,
         shipping_badge: shippingBadge,
         description,
-        image_url: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80', // ダミー画像
+        image_url: uploadedImageUrl,
       },
     ]);
 
@@ -69,6 +108,41 @@ export default function CreateItemPage() {
           <h1 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '20px', textAlign: 'center' }}>新規商品を出品</h1>
 
           <form onSubmit={handleSubmit}>
+            {/* 画像アップロードエリア */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>商品写真</label>
+              <div style={{ border: '2px dashed rgba(255, 75, 145, 0.3)', borderRadius: '16px', padding: '20px', textAlign: 'center', background: '#fff' }}>
+                {imagePreview ? (
+                  <div>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '12px', objectFit: 'cover' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(null); }}
+                      style={{ display: 'block', margin: '10px auto 0', padding: '6px 16px', borderRadius: '999px', background: '#FF4B91', color: '#fff', border: 'none', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      写真を変更する
+                    </button>
+                  </div>
+                ) : (
+                  <label style={{ cursor: 'pointer', display: 'block' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>📷</div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>クリックして写真をアップロード</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>PNG, JPG 形式に対応</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>商品名 *</label>
               <input
@@ -146,7 +220,7 @@ export default function CreateItemPage() {
                 cursor: 'pointer',
               }}
             >
-              {isSubmitting ? '出品処理中...' : '🎀 この内容で出品する'}
+              {isSubmitting ? 'アップロード＆保存中...' : '🎀 この内容で出品する'}
             </button>
           </form>
         </div>
