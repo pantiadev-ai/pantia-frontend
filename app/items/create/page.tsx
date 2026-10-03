@@ -34,26 +34,38 @@ export default function CreateItemPage() {
   const [freeOpts, setFreeOpts] = useState<string[]>(['📸 着用写真', '💌 手紙同封']);
   const [paidOpts, setPaidOpts] = useState<string[]>([]);
 
-  // 画像アップロード用ステート
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  // 複数画像用ステート（最大5枚）
+  const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null, null, null, null]);
+  const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null, null, null, null]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // 画像選択処理
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 指定のスロットの画像を選択
+  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      
+      const newFiles = [...imageFiles];
+      newFiles[index] = file;
+      setImageFiles(newFiles);
+
+      const newPreviews = [...imagePreviews];
+      newPreviews[index] = URL.createObjectURL(file);
+      setImagePreviews(newPreviews);
     }
   };
 
-  const removeImg = (e: React.MouseEvent) => {
+  // 画像の削除
+  const removeImg = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setImageFile(null);
-    setImagePreview(null);
+    const newFiles = [...imageFiles];
+    newFiles[index] = null;
+    setImageFiles(newFiles);
+
+    const newPreviews = [...imagePreviews];
+    newPreviews[index] = null;
+    setImagePreviews(newPreviews);
   };
 
   // オプション選択切替
@@ -92,28 +104,31 @@ export default function CreateItemPage() {
         return;
       }
 
-      let uploadedImageUrl = '';
+      const uploadedImageUrls: string[] = [];
 
-      // 画像アップロード
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // 選択されているすべての画像を Storage にアップロード
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${user.id}/${Date.now()}_${i}.${fileExt}`;
 
-        const { error: storageError } = await supabase.storage
-          .from('item-images')
-          .upload(fileName, imageFile);
+          const { error: storageError } = await supabase.storage
+            .from('item-images')
+            .upload(fileName, file);
 
-        if (storageError) {
-          alert(`画像のアップロードに失敗しました: ${storageError.message}`);
-          setIsSubmitting(false);
-          return;
+          if (storageError) {
+            alert(`画像 ${i + 1} 枚目のアップロードに失敗しました: ${storageError.message}`);
+            setIsSubmitting(false);
+            return;
+          }
+
+          const { data: publicUrlData } = supabase.storage
+            .from('item-images')
+            .getPublicUrl(fileName);
+
+          uploadedImageUrls.push(publicUrlData.publicUrl);
         }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('item-images')
-          .getPublicUrl(fileName);
-
-        uploadedImageUrl = publicUrlData.publicUrl;
       }
 
       // データベース保存
@@ -125,7 +140,8 @@ export default function CreateItemPage() {
           category: CATEGORY_MAP[category] || category,
           shipping_badge: isInstant ? '即日発送' : '通常発送',
           description,
-          image_url: uploadedImageUrl,
+          image_url: uploadedImageUrls[0] || '', // メイン画像
+          image_urls: uploadedImageUrls,         // 画像配列
         },
       ]);
 
@@ -146,7 +162,6 @@ export default function CreateItemPage() {
 
   return (
     <>
-      {/* HEADER */}
       <header className="form-header">
         <a href="/" className="logo">♡ LABEL NAME</a>
         <nav>
@@ -157,7 +172,6 @@ export default function CreateItemPage() {
         </nav>
       </header>
 
-      {/* BREADCRUMB */}
       <div className="breadcrumb">
         <a href="#">トップ</a>
         <span className="bc-sep">›</span>
@@ -166,7 +180,6 @@ export default function CreateItemPage() {
         <span>商品を出品する</span>
       </div>
 
-      {/* STEP BAR */}
       <div className="step-bar">
         <div className="steps">
           <div className="step active"><div className="step-circle">1</div> 商品情報</div>
@@ -177,36 +190,37 @@ export default function CreateItemPage() {
         </div>
       </div>
 
-      {/* LAYOUT */}
       <main className="layout">
-        {/* LEFT FORM */}
         <div className="form-section fade-in visible">
-          {/* 1. 写真アップロード */}
+          {/* 1. 写真アップロード（最大5枚） */}
           <div className="form-card">
-            <div className="form-card-title"><span className="icon-pill">📸</span> 商品写真</div>
+            <div className="form-card-title"><span className="icon-pill">📸</span> 商品写真（最大5枚）</div>
 
             <div className="img-upload-area">
-              <label className={`img-slot main-slot ${imagePreview ? 'filled' : ''}`}>
-                <div className="img-main-badge">メイン</div>
-                {imagePreview ? (
-                  <>
-                    <img src={imagePreview} alt="Preview" className="uploaded-img" />
-                    <div className="img-remove" onClick={removeImg}>✕</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="img-slot-icon">📷</div>
-                    <div>追加</div>
-                  </>
-                )}
-                <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
-              </label>
-
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="img-slot" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                  <div className="img-slot-icon">＋</div>
-                  <div>追加</div>
-                </div>
+              {[0, 1, 2, 3, 4].map((index) => (
+                <label
+                  key={index}
+                  className={`img-slot ${index === 0 ? 'main-slot' : ''} ${imagePreviews[index] ? 'filled' : ''}`}
+                >
+                  {index === 0 && <div className="img-main-badge">メイン</div>}
+                  {imagePreviews[index] ? (
+                    <>
+                      <img src={imagePreviews[index]!} alt={`Preview ${index + 1}`} className="uploaded-img" />
+                      <div className="img-remove" onClick={(e) => removeImg(index, e)}>✕</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="img-slot-icon">＋</div>
+                      <div>{index === 0 ? 'メイン写真' : '追加'}</div>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageChange(index, e)}
+                    style={{ display: 'none' }}
+                  />
+                </label>
               ))}
             </div>
             <div className="img-note">
@@ -419,10 +433,10 @@ export default function CreateItemPage() {
         <aside className="sidebar fade-in visible" style={{ transitionDelay: '0.1s' }}>
           <div className="preview-card">
             <div className="preview-thumb">
-              {imagePreview ? (
-                <img src={imagePreview} alt="プレビュー" className="preview-img" />
+              {imagePreviews[0] ? (
+                <img src={imagePreviews[0]!} alt="プレビュー" className="preview-img" />
               ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📷 写真未選択</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>📷 メイン写真未選択</div>
               )}
             </div>
             <div className="preview-info">
@@ -444,13 +458,6 @@ export default function CreateItemPage() {
             <button className="btn-publish" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? '処理中...' : '🎀 出品する'}
             </button>
-          </div>
-
-          <div className="tips-card">
-            <div className="tips-title">💡 売れやすくするコツ</div>
-            <div className="tip-item"><span className="tip-icon">📸</span><span>明るい場所で複数枚撮影すると購入率UP</span></div>
-            <div className="tip-item"><span className="tip-icon">⚡</span><span>即日発送対応にすると上位表示</span></div>
-            <div className="tip-item"><span className="tip-icon">💰</span><span>価格は¥1,500〜¥3,000が一番人気</span></div>
           </div>
         </aside>
       </main>
