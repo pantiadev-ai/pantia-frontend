@@ -150,7 +150,7 @@ export default function CreateItemPage() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight 700, marginBottom: '6px' }}>商品名 *</label>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>商品名 *</label>
               <input
                 type="text"
                 className="form-input"
