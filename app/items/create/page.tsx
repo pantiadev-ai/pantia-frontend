@@ -16,7 +16,6 @@ const CATEGORY_MAP: Record<string, string> = {
 export default function CreateItemPage() {
   const supabase = createClient();
 
-  // フォーム用ステート
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [days, setDays] = useState('');
@@ -26,11 +25,9 @@ export default function CreateItemPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState<string>('');
   
-  // フラグ・トグルステート
   const [isInstant, setIsInstant] = useState(true);
   const [isAnon, setIsAnon] = useState(false);
   
-  // オプション用ステート
   const [freeOpts, setFreeOpts] = useState<string[]>(['📸 着用写真', '💌 手紙同封']);
   const [paidOpts, setPaidOpts] = useState<string[]>([]);
 
@@ -41,7 +38,7 @@ export default function CreateItemPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // 指定のスロットの画像を選択
+  // 指定スロットの画像を選択
   const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -56,7 +53,7 @@ export default function CreateItemPage() {
     }
   };
 
-  // 画像の削除
+  // 画像削除
   const removeImg = (index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const newFiles = [...imageFiles];
@@ -68,7 +65,6 @@ export default function CreateItemPage() {
     setImagePreviews(newPreviews);
   };
 
-  // オプション選択切替
   const toggleFreeOpt = (opt: string) => {
     setFreeOpts((prev) =>
       prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
@@ -81,12 +77,10 @@ export default function CreateItemPage() {
     );
   };
 
-  // 計算
   const numPrice = parseInt(price, 10) || 0;
   const fee = Math.round(numPrice * 0.15);
   const net = numPrice - fee;
 
-  // 出品処理（Supabase連携）
   const handleSubmit = async () => {
     if (!title || !category || !numPrice) {
       alert('必須項目（タイトル・カテゴリ・価格）を入力してください');
@@ -106,7 +100,7 @@ export default function CreateItemPage() {
 
       const uploadedImageUrls: string[] = [];
 
-      // 選択されているすべての画像を Storage にアップロード
+      // アップロード処理
       for (let i = 0; i < imageFiles.length; i++) {
         const file = imageFiles[i];
         if (file) {
@@ -131,7 +125,7 @@ export default function CreateItemPage() {
         }
       }
 
-      // データベース保存
+      // データベース登録
       const { error } = await supabase.from('items').insert([
         {
           user_id: user.id,
@@ -140,8 +134,8 @@ export default function CreateItemPage() {
           category: CATEGORY_MAP[category] || category,
           shipping_badge: isInstant ? '即日発送' : '通常発送',
           description,
-          image_url: uploadedImageUrls[0] || '', // メイン画像
-          image_urls: uploadedImageUrls,         // 画像配列
+          image_url: uploadedImageUrls[0] || '',
+          image_urls: uploadedImageUrls,
         },
       ]);
 
@@ -192,7 +186,7 @@ export default function CreateItemPage() {
 
       <main className="layout">
         <div className="form-section fade-in visible">
-          {/* 1. 写真アップロード（最大5枚） */}
+          {/* 1. 写真アップロード */}
           <div className="form-card">
             <div className="form-card-title"><span className="icon-pill">📸</span> 商品写真（最大5枚）</div>
 
@@ -201,6 +195,7 @@ export default function CreateItemPage() {
                 <label
                   key={index}
                   className={`img-slot ${index === 0 ? 'main-slot' : ''} ${imagePreviews[index] ? 'filled' : ''}`}
+                  style={{ cursor: 'pointer' }}
                 >
                   {index === 0 && <div className="img-main-badge">メイン</div>}
                   {imagePreviews[index] ? (
