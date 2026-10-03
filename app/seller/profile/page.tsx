@@ -110,11 +110,11 @@ export default function SellerProfilePage() {
               </div>
             </div>
             <div className="review-bars">
-              <div className="rbar-row"><span class="rbar-label">5</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '86%' }}></div></div><span className="rbar-count">33</span></div>
-              <div className="rbar-row"><span class="rbar-label">4</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '10%', background: 'var(--pk2)' }}></div></div><span className="rbar-count">4</span></div>
-              <div className="rbar-row"><span class="rbar-label">3</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '3%', background: 'var(--primary-light)' }}></div></div><span className="rbar-count">1</span></div>
-              <div className="rbar-row"><span class="rbar-label">2</span><div className="rbar-track"></div><span className="rbar-count">0</span></div>
-              <div className="rbar-row"><span class="rbar-label">1</span><div className="rbar-track"></div><span className="rbar-count">0</span></div>
+              <div className="rbar-row"><span className="rbar-label">5</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '86%' }}></div></div><span className="rbar-count">33</span></div>
+              <div className="rbar-row"><span className="rbar-label">4</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '10%', background: 'var(--pk2)' }}></div></div><span className="rbar-count">4</span></div>
+              <div className="rbar-row"><span className="rbar-label">3</span><div className="rbar-track"><div className="rbar-fill" style={{ width: '3%', background: 'var(--primary-light)' }}></div></div><span className="rbar-count">1</span></div>
+              <div className="rbar-row"><span className="rbar-label">2</span><div className="rbar-track"></div><span className="rbar-count">0</span></div>
+              <div className="rbar-row"><span className="rbar-label">1</span><div className="rbar-track"></div><span className="rbar-count">0</span></div>
             </div>
           </div>
 
