@@ -4,17 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import './mypage.css';
 
+interface Item {
+  id: string;
+  title: string;
+  price: number;
+  category: string;
+  shipping_badge: string;
+  created_at: string;
+}
+
 export default function MyPage() {
   const supabase = createClient();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tweetText, setTweetText] = useState('');
-  const [tweetList, setTweetList] = useState<string[]>([
-    '今日も新しい出品を準備しました🌸 ぜひプロフィールからチェックしてね💕',
-    '帰ってすぐ出品準備しました！オプション希望の方はメッセージください💕',
-  ]);
+  const [tweetList, setTweetList] = useState<string[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
 
-  // ログインユーザー情報
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<{
     nickname: string;
@@ -28,13 +34,11 @@ export default function MyPage() {
     age: '-',
   });
 
-  // ログインセッションの取得
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
 
       if (error || !user) {
-        // 未ログイン時はログインページヘ自動リダイレクト
         window.location.href = '/auth';
         return;
       }
@@ -46,10 +50,22 @@ export default function MyPage() {
         email: user.email || '',
         age: meta.age || '-',
       });
+
+      // 自分の出品商品を Supabase から取得
+      const { data: itemData } = await supabase
+        .from('items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (itemData) {
+        setItems(itemData);
+      }
+
       setLoading(false);
     };
 
-    fetchUser();
+    fetchData();
   }, []);
 
   const handlePostTweet = () => {
@@ -106,7 +122,7 @@ export default function MyPage() {
 
           <div className="side-nav">
             <a className={`side-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="side-nav-icon">📊</span> ダッシュボード</a>
-            <a className={`side-nav-item ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}><span className="side-nav-icon">📦</span> 出品管理<span className="side-nav-badge">0</span></a>
+            <a className={`side-nav-item ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}><span className="side-nav-icon">📦</span> 出品管理<span className="side-nav-badge">{items.length}</span></a>
             <a className={`side-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><span className="side-nav-icon">💰</span> 売上・振込</a>
             <a className={`side-nav-item ${activeTab === 'tweet' ? 'active' : ''}`} onClick={() => setActiveTab('tweet')}><span className="side-nav-icon">💬</span> つぶやき投稿</a>
             <a className={`side-nav-item ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}><span className="side-nav-icon">✉️</span> メッセージ<span className="side-nav-badge">0</span></a>
@@ -130,8 +146,8 @@ export default function MyPage() {
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-label">👁 出品中の商品</div>
-                  <div className="stat-card-num">0件</div>
-                  <div className="stat-card-sub">うち即日対応 <strong style={{ color: 'var(--primary)' }}>0件</strong></div>
+                  <div className="stat-card-num">{items.length}件</div>
+                  <div className="stat-card-sub">うち即日対応 <strong style={{ color: 'var(--primary)' }}>{items.filter(i => i.shipping_badge === '即日発送').length}件</strong></div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-card-label">⭐ 平均評価</div>
@@ -151,9 +167,28 @@ export default function MyPage() {
                 </div>
                 <a href="/items/create" className="btn-new-item" style={{ textDecoration: 'none' }}>＋ 新規出品</a>
               </div>
-              <div style={{ marginTop: '30px', textAlign: 'center', color: 'var(--text-sub)' }}>
-                まだ出品している商品はありません
-              </div>
+
+              {items.length === 0 ? (
+                <div style={{ marginTop: '30px', textAlign: 'center', color: 'var(--text-sub)' }}>
+                  まだ出品している商品はありません
+                </div>
+              ) : (
+                <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {items.map((item) => (
+                    <div key={item.id} style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '15px' }}>{item.title}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px' }}>
+                          ¥{item.price.toLocaleString()} ・ {item.category} ・ <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.shipping_badge}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -163,11 +198,6 @@ export default function MyPage() {
                 <div className="ss-card"><div className="ss-label">今月の売上</div><div className="ss-num">¥0</div></div>
                 <div className="ss-card"><div className="ss-label">累計売上</div><div className="ss-num">¥0</div></div>
                 <div className="ss-card"><div className="ss-label">振込申請可能額</div><div className="ss-num">¥0</div></div>
-              </div>
-              <div className="payout-card" style={{ marginTop: '16px' }}>
-                <div className="payout-header"><div className="payout-title"><span className="icon-pill">🏦</span> 振込申請</div></div>
-                <div className="balance-big">¥0</div>
-                <button className="btn-payout" disabled style={{ opacity: 0.6, cursor: 'not-allowed' }}>🏦 振込申請する</button>
               </div>
             </div>
           )}
@@ -189,21 +219,6 @@ export default function MyPage() {
                   つぶやく
                 </button>
               </div>
-              <div style={{ marginTop: '20px' }}>
-                {tweetList.map((t, idx) => (
-                  <div key={idx} className="tweet-log-item" style={{ marginBottom: '10px' }}>
-                    <div style={{ fontSize: '13px', color: 'var(--text-sub)' }}>{t}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'messages' && (
-            <div className="panel show">
-              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-sub)' }}>
-                メッセージはありません
-              </div>
             </div>
           )}
 
@@ -218,10 +233,6 @@ export default function MyPage() {
                 <div className="setting-row">
                   <div className="setting-info"><div className="setting-name">メールアドレス</div></div>
                   <div className="setting-val">{userInfo.email}</div>
-                </div>
-                <div className="setting-row">
-                  <div className="setting-info"><div className="setting-name">会員種別</div></div>
-                  <div className="setting-val">{userInfo.role === 'seller' ? '出品者' : '購入者'}</div>
                 </div>
               </div>
             </div>
