@@ -129,6 +129,7 @@ export default function CreateItemPage() {
       const { error } = await supabase.from('items').insert([
         {
           user_id: user.id,
+          seller_id: user.id, // ← seller_id カラムにも user.id をセット
           title,
           price: numPrice,
           category: CATEGORY_MAP[category] || category,
