@@ -178,22 +178,28 @@ export default function MyPage() {
               ) : (
                 <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {items.map((item) => (
-                    <div key={item.id} style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                      {item.image_url ? (
-                        <img src={item.image_url} alt={item.title} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📦</div>
-                      )}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 800, fontSize: '15px' }}>{item.title}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px' }}>
-                          ¥{item.price.toLocaleString()} ・ {item.category} ・ <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.shipping_badge}</span>
+                    <a
+                      key={item.id}
+                      href={`/items/${item.id}`}
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div style={{ background: '#fff', padding: '16px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer' }}>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.title} style={{ width: '60px', height: '60px', borderRadius: '12px', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>📦</div>
+                        )}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: '15px' }}>{item.title}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '4px' }}>
+                            ¥{item.price.toLocaleString()} ・ {item.category} ・ <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.shipping_badge}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {new Date(item.created_at).toLocaleDateString()}
                         </div>
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
+                    </a>
                   ))}
                 </div>
               )}
