@@ -59,7 +59,7 @@ export default function MyPage() {
         .order('created_at', { ascending: false });
 
       if (itemData) {
-        setItems(itemData);
+        setItems(itemData as Item[]);
       }
 
       setLoading(false);

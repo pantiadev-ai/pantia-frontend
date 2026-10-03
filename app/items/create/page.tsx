@@ -38,62 +38,68 @@ export default function CreateItemPage() {
 
     setIsSubmitting(true);
 
-    // ログインユーザーの取得
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      // ログインユーザーの取得
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-      alert('出品するにはログインが必要です');
-      window.location.href = '/auth';
-      return;
-    }
+      if (!user) {
+        alert('出品するにはログインが必要です');
+        window.location.href = '/auth';
+        return;
+      }
 
-    let uploadedImageUrl = '';
+      let uploadedImageUrl = '';
 
-    // 画像が選択されている場合、Supabase Storage にアップロード
-    if (imageFile) {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // 画像が選択されている場合、Supabase Storage にアップロード
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      const { data: storageData, error: storageError } = await supabase.storage
-        .from('item-images')
-        .upload(fileName, imageFile);
+        const { error: storageError } = await supabase.storage
+          .from('item-images')
+          .upload(fileName, imageFile);
 
-      if (storageError) {
-        alert(`画像のアップロードに失敗しました: ${storageError.message}`);
+        if (storageError) {
+          alert(`画像のアップロードに失敗しました: ${storageError.message}`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 公開URLの取得
+        const { data: publicUrlData } = supabase.storage
+          .from('item-images')
+          .getPublicUrl(fileName);
+
+        uploadedImageUrl = publicUrlData.publicUrl;
+      }
+
+      // Supabase に商品データを保存
+      const { error } = await supabase.from('items').insert([
+        {
+          user_id: user.id,
+          title,
+          price: parseInt(price, 10),
+          category,
+          shipping_badge: shippingBadge,
+          description,
+          image_url: uploadedImageUrl,
+        },
+      ]);
+
+      if (error) {
+        alert(`出品エラー: ${error.message}`);
         setIsSubmitting(false);
         return;
       }
 
-      // 公開URLの取得
-      const { data: publicUrlData } = supabase.storage
-        .from('item-images')
-        .getPublicUrl(fileName);
-
-      uploadedImageUrl = publicUrlData.publicUrl;
+      alert('出品が完了しました！');
+      window.location.href = '/mypage';
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '予期せぬエラーが発生しました';
+      alert(`エラー: ${message}`);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Supabase に商品データを保存
-    const { error } = await supabase.from('items').insert([
-      {
-        user_id: user.id,
-        title,
-        price: parseInt(price, 10),
-        category,
-        shipping_badge: shippingBadge,
-        description,
-        image_url: uploadedImageUrl,
-      },
-    ]);
-
-    setIsSubmitting(false);
-
-    if (error) {
-      alert(`出品エラー: ${error.message}`);
-      return;
-    }
-
-    alert('出品が完了しました！');
-    window.location.href = '/mypage';
   };
 
   return (
