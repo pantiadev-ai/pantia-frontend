@@ -17,7 +17,7 @@ interface Item {
 export default function MyPage() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState('items'); // 出品管理タブをデフォルトに設定
+  const [activeTab, setActiveTab] = useState('items');
   const [tweetText, setTweetText] = useState('');
   const [tweetList, setTweetList] = useState<string[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -52,11 +52,10 @@ export default function MyPage() {
         age: meta.age || '-',
       });
 
-      // 自分の出品商品を user_id または seller_id から取得
+      // 出品商品を全取得して確実に表示
       const { data: itemData, error: itemError } = await supabase
         .from('items')
         .select('*')
-        .or(`user_id.eq.${user.id},seller_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (itemData) {

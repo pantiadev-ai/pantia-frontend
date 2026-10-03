@@ -29,7 +29,7 @@ export default function ItemDetailPage() {
   const [activeImage, setActiveImage] = useState<string>('');
   const [isLiked, setIsLiked] = useState(false);
 
-  // オプション計算用ステート
+  // オプション加算計算用ステート
   const [extraDaysPrice, setExtraDaysPrice] = useState(0);
   const [selectedAdds, setSelectedAdds] = useState<string[]>([]);
   const [cartAdded, setCartAdded] = useState(false);
@@ -48,7 +48,6 @@ export default function ItemDetailPage() {
         console.error('Error fetching item:', error.message);
       } else if (data) {
         setItem(data as ItemDetail);
-        // メイン画像の設定（image_urls の先頭、または image_url）
         const primaryImg = (data.image_urls && data.image_urls.length > 0)
           ? data.image_urls[0]
           : (data.image_url || '');
@@ -60,7 +59,6 @@ export default function ItemDetailPage() {
     fetchItem();
   }, [itemId]);
 
-  // オプション加算計算
   const calcTotalAdds = () => {
     let sum = 0;
     if (selectedAdds.includes('anon')) sum += 300;
@@ -103,14 +101,12 @@ export default function ItemDetailPage() {
     );
   }
 
-  // 画像一覧（配列がない場合は単体画像を使用）
   const images = (item.image_urls && item.image_urls.length > 0)
     ? item.image_urls
     : (item.image_url ? [item.image_url] : []);
 
   return (
     <>
-      {/* HEADER */}
       <header className="detail-header">
         <a href="/" className="logo">♡ LABEL NAME</a>
         <div className="header-search">
@@ -125,7 +121,6 @@ export default function ItemDetailPage() {
         </nav>
       </header>
 
-      {/* BREADCRUMB */}
       <div className="breadcrumb">
         <a href="/">トップ</a>
         <span className="bc-sep">›</span>
@@ -134,9 +129,7 @@ export default function ItemDetailPage() {
         <span>{item.title}</span>
       </div>
 
-      {/* MAIN */}
       <main className="main fade-in visible">
-        {/* LEFT: GALLERY & SELLER & DETAILS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="gallery">
             <div className="main-img">
@@ -155,7 +148,6 @@ export default function ItemDetailPage() {
               </div>
             </div>
 
-            {/* サムネイル一覧 */}
             {images.length > 1 && (
               <div className="thumbs">
                 {images.map((img, idx) => (
@@ -171,7 +163,6 @@ export default function ItemDetailPage() {
             )}
           </div>
 
-          {/* 出品者ミニカード */}
           <a href="/mypage" className="seller-mini">
             <div className="sm-avatar">
               め
@@ -187,7 +178,6 @@ export default function ItemDetailPage() {
             <div className="sm-arrow">›</div>
           </a>
 
-          {/* 商品スペック情報 */}
           <div className="detail-card">
             <div className="detail-card-title"><span className="icon-pill">📋</span> 商品情報</div>
             <div className="detail-row"><span className="dl">カテゴリ</span><span className="dv">{item.category}</span></div>
@@ -195,7 +185,6 @@ export default function ItemDetailPage() {
             <div className="detail-row"><span className="dl">出品日</span><span className="dv">{new Date(item.created_at).toLocaleDateString('ja-JP')}</span></div>
           </div>
 
-          {/* 商品説明 */}
           <div className="detail-card">
             <div className="detail-card-title"><span className="icon-pill">📝</span> 商品説明</div>
             <div className="desc-text" style={{ whiteSpace: 'pre-wrap' }}>
@@ -204,7 +193,6 @@ export default function ItemDetailPage() {
           </div>
         </div>
 
-        {/* RIGHT: PURCHASE AREA */}
         <div className="detail">
           <div><div className="item-category">{item.category}</div></div>
           <div><div className="item-title">{item.title}</div></div>
@@ -220,7 +208,6 @@ export default function ItemDetailPage() {
             <span className="badge badge-lilac">📦 匿名配送可</span>
           </div>
 
-          {/* オプション選択 */}
           <div className="options-card">
             <div className="opt-title">オプションを選択</div>
 
@@ -244,7 +231,6 @@ export default function ItemDetailPage() {
             </div>
           </div>
 
-          {/* 購入カード */}
           <div className="purchase-card">
             <div className="purchase-total">
               <span className="pt-label">合計金額</span>
@@ -266,7 +252,6 @@ export default function ItemDetailPage() {
         </div>
       </main>
 
-      {/* FOOTER */}
       <footer className="detail-footer">
         <div className="footer-inner">
           <div className="footer-logo">♡ LABEL NAME</div>
