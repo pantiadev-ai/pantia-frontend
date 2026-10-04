@@ -11,8 +11,10 @@ interface Item {
   category: string;
   shipping_badge?: string;
   image_src?: string;
+  image_url?: string;
   image_urls?: string[];
-  created_at: string;
+  created_at?: string;
+  published_at?: string;
 }
 
 export default function MyPage() {
@@ -49,16 +51,15 @@ export default function MyPage() {
           age: meta.age || '-',
         });
 
-        // items テーブルから全データ取得
+        // ログイン中のユーザーID（user.id）に紐づく商品だけを取得
         const { data: itemData, error: itemError } = await supabase
           .from('items')
           .select('*')
-          .order('created_at', { ascending: false });
+          .or(`user_id.eq.${user.id},seller_id.eq.${user.id}`);
 
         if (itemError) {
           console.error('Data Fetch Error:', itemError.message);
         } else if (itemData) {
-          console.log('Fetched Items:', itemData);
           setItems(itemData as Item[]);
         }
       } catch (err) {
@@ -152,8 +153,8 @@ export default function MyPage() {
               ) : (
                 <div className="my-items-list">
                   {items.map((item) => {
-                    // image_src または image_urls[0] を優先使用
-                    const displayImg = item.image_src || (item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : null);
+                    const displayImg = item.image_src || item.image_url || (item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : null);
+                    const displayDate = item.created_at || item.published_at || new Date().toISOString();
 
                     return (
                       <a
@@ -176,7 +177,7 @@ export default function MyPage() {
                               <span>・</span>
                               <span style={{ color: 'var(--primary)' }}>{item.shipping_badge || '通常発送'}</span>
                               <span>・</span>
-                              <span>{new Date(item.created_at).toLocaleDateString('ja-JP')}</span>
+                              <span>{new Date(displayDate).toLocaleDateString('ja-JP')}</span>
                             </div>
                           </div>
                           <div className="my-item-price">
