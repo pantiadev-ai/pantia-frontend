@@ -80,7 +80,6 @@ export default function MyPage() {
           };
           setSellerProfile(profile);
 
-          // 編集用初期値の設定
           setEditNickname(profile.nickname);
           setEditBio(profile.bio);
 
@@ -119,7 +118,6 @@ export default function MyPage() {
     fetchData();
   }, []);
 
-  // 画像変更ハンドラー
   const handleEditImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -133,7 +131,6 @@ export default function MyPage() {
     }
   };
 
-  // プロフィール保存処理
   const handleSaveProfile = async () => {
     if (!userInfo.id) return;
     setIsSaving(true);
@@ -162,7 +159,6 @@ export default function MyPage() {
         }
       }
 
-      // DBを更新（upsert）
       const { error: updateError } = await supabase
         .from('sellers')
         .upsert({
@@ -246,7 +242,6 @@ export default function MyPage() {
             <div className="pm-name">{sellerProfile.nickname}</div>
             <div className="pm-handle">@{sellerProfile.nickname.toLowerCase()}</div>
 
-            {/* サブ画像ギャラリー */}
             {sellerProfile.profile_image_urls && sellerProfile.profile_image_urls.length > 1 && (
               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '8px' }}>
                 {sellerProfile.profile_image_urls.map((url, i) => (
@@ -255,7 +250,6 @@ export default function MyPage() {
               </div>
             )}
 
-            {/* 自己紹介文 */}
             <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '10px', textAlign: 'left', background: 'rgba(255,255,255,0.6)', padding: '10px', borderRadius: '12px', whiteSpace: 'pre-wrap' }}>
               {sellerProfile.bio}
             </div>
@@ -278,7 +272,6 @@ export default function MyPage() {
         </aside>
 
         <div className="main fade-in visible">
-          {/* 出品管理タブ */}
           {activeTab === 'items' && (
             <div className="panel show">
               <div className="items-toolbar">
@@ -335,7 +328,6 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* ダッシュボードタブ */}
           {activeTab === 'dashboard' && (
             <div className="panel show">
               <div className="stats-grid">
@@ -359,7 +351,6 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* つぶやきタブ */}
           {activeTab === 'tweet' && (
             <div className="panel show">
               <div style={{ background: 'var(--glass-bg)', padding: '20px', borderRadius: 'var(--r)' }}>
@@ -379,7 +370,6 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* 設定・プロフィール編集タブ */}
           {activeTab === 'settings' && (
             <div className="panel show">
               <div className="settings-section">
@@ -397,7 +387,7 @@ export default function MyPage() {
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight 700, color: 'var(--text-sub)' }}>自己紹介文</label>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-sub)' }}>自己紹介文</label>
                     <textarea
                       value={editBio}
                       onChange={(e) => setEditBio(e.target.value)}
