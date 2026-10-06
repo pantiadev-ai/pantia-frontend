@@ -408,7 +408,7 @@ export default function MyPage() {
                             borderRadius: '12px',
                             display: 'flex',
                             alignItems: 'center',
-                            justify-content: 'center',
+                            justifyContent: 'center',
                             cursor: 'pointer',
                             overflow: 'hidden',
                             background: '#fff',
