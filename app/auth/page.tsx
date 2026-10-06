@@ -202,7 +202,7 @@ export default function AuthPage() {
   return (
     <>
       <header className="auth-header">
-        <a href="#" className="logo">♡ LABEL NAME</a>
+        <a href="/" className="logo">♡ LABEL NAME</a>
         <div className="header-help">
           困ったことがあれば <a href="#">ヘルプ</a>
         </div>
@@ -532,4 +532,57 @@ export default function AuthPage() {
                       </span>
                     </div>
                     <div className="check-group" onClick={() => setAgreeAge(!agreeAge)}>
-                      <div className={`check-
+                      <div className={`check-box ${agreeAge ? 'checked' : ''}`}></div>
+                      <span className="check-label">
+                        18歳以上であることを確認しました <span style={{ color: 'var(--primary)' }}>*</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button className="btn-back" onClick={() => setRegStep(1)}>←</button>
+                    <button
+                      className={`btn-submit ${selectedRole === 'seller' ? 'seller-mode' : 'buyer-mode'}`}
+                      onClick={handleRegister}
+                      disabled={loading}
+                      style={{ flex: 1 }}
+                    >
+                      {loading ? '登録中...' : '🎀 登録する'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3 */}
+              {regStep === 3 && (
+                <div className="success-screen show">
+                  <div className="success-icon">
+                    {selectedRole === 'seller' ? '🎀' : '🛍'}
+                  </div>
+                  <div className="success-title">
+                    {selectedRole === 'seller' ? '出品者登録完了！' : '購入者登録完了！'}
+                  </div>
+                  <div className="success-sub">
+                    登録が完了しました🌸<br />
+                    さっそくマイページを開いてみましょう！
+                  </div>
+                  <a href="/mypage" className="btn-go">
+                    マイページへ進む →
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <footer className="auth-footer">
+        <a href="#">利用規約</a>
+        <a href="#">プライバシーポリシー</a>
+        <a href="#">特定商取引法</a>
+        <a href="#">お問い合わせ</a>
+        <a href="#">© 2026 LABEL NAME</a>
+      </footer>
+    </>
+  );
+}
