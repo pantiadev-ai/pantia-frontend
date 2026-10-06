@@ -254,7 +254,31 @@ export default function MyPage() {
               {sellerProfile.bio}
             </div>
 
-            <div className="pm-stats">
+            {/* 公開プロフィール確認ボタン */}
+            {userInfo.id && (
+              <a
+                href={`/sellers/${userInfo.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  marginTop: '12px',
+                  padding: '8px 12px',
+                  borderRadius: '999px',
+                  background: 'var(--primary-light, #FFE5EC)',
+                  color: 'var(--primary, #FF4B91)',
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  textDecoration: 'none',
+                  border: '1px solid rgba(255, 75, 145, 0.3)',
+                }}
+              >
+                👀 公開ページを確認する ↗
+              </a>
+            )}
+
+            <div className="pm-stats" style={{ marginTop: '12px' }}>
               <div><div className="pm-stat-num">0</div><div className="pm-stat-label">フォロワー</div></div>
               <div><div className="pm-stat-num">{items.length}</div><div className="pm-stat-label">出品数</div></div>
               <div><div className="pm-stat-num">5.0</div><div className="pm-stat-label">評価</div></div>
@@ -408,7 +432,7 @@ export default function MyPage() {
                             borderRadius: '12px',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
+                            justify-content: 'center',
                             cursor: 'pointer',
                             overflow: 'hidden',
                             background: '#fff',
