@@ -24,21 +24,40 @@ export default function AuthPage() {
   const [showRegPwConf, setShowRegPwConf] = useState(false);
   const [regNick, setRegNick] = useState('');
   const [regAge, setRegAge] = useState('');
+  const [regBio, setRegBio] = useState('');
+
+  // プロフィール画像（最大5枚）
+  const [imageFiles, setImageFiles] = useState<(File | null)[]>([null, null, null, null, null]);
+  const [imagePreviews, setImagePreviews] = useState<(string | null)[]>([null, null, null, null, null]);
 
   // 同意チェックボックス
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeAge, setAgreeAge] = useState(false);
 
-  // エラー状態
+  // エラー状態・送信状態
   const [loginEmailErr, setLoginEmailErr] = useState(false);
   const [loginPwErr, setLoginPwErr] = useState(false);
   const [regEmailErr, setRegEmailErr] = useState(false);
   const [regPwConfErr, setRegPwConfErr] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // パスワード強度
   const [pwStrengthText, setPwStrengthText] = useState('英数字を含む8文字以上で設定してください');
   const [pwStrengthColor, setPwStrengthColor] = useState('var(--text-muted)');
+
+  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const newFiles = [...imageFiles];
+      newFiles[index] = file;
+      setImageFiles(newFiles);
+
+      const newPreviews = [...imagePreviews];
+      newPreviews[index] = URL.createObjectURL(file);
+      setImagePreviews(newPreviews);
+    }
+  };
 
   const handlePwStrength = (val: string) => {
     setRegPw(val);
@@ -57,7 +76,7 @@ export default function AuthPage() {
     }
   };
 
-  // ── 実際のログイン処理 (Supabase) ──
+  // ── ログイン処理 ──
   const handleLogin = async () => {
     let ok = true;
     if (!loginEmail.includes('@')) {
@@ -76,10 +95,12 @@ export default function AuthPage() {
 
     if (!ok) return;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password: loginPw,
     });
+    setLoading(false);
 
     if (error) {
       alert(`ログインエラー: ${error.message}`);
@@ -90,7 +111,7 @@ export default function AuthPage() {
     window.location.href = '/mypage';
   };
 
-  // ── 実際の新規登録処理 (Supabase) ──
+  // ── 新規登録処理 ──
   const handleRegister = async () => {
     let ok = true;
     if (!regEmail.includes('@')) {
@@ -114,24 +135,68 @@ export default function AuthPage() {
 
     if (!ok) return;
 
-    const { data, error } = await supabase.auth.signUp({
-      email: regEmail,
-      password: regPw,
-      options: {
-        data: {
-          nickname: regNick,
-          role: selectedRole,
-          age: regAge,
+    setLoading(true);
+
+    try {
+      // 1. Auth 登録
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: regEmail,
+        password: regPw,
+        options: {
+          data: {
+            nickname: regNick,
+            role: selectedRole,
+            age: regAge,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      alert(`登録エラー: ${error.message}`);
-      return;
+      if (signUpError) throw signUpError;
+      const user = authData.user;
+
+      if (user) {
+        const uploadedUrls: string[] = [];
+
+        // 2. プロフィール画像アップロード
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          if (file) {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}/profile_${Date.now()}_${i}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from('profile-images')
+              .upload(fileName, file);
+
+            if (!uploadError) {
+              const { data: pubData } = supabase.storage
+                .from('profile-images')
+                .getPublicUrl(fileName);
+              uploadedUrls.push(pubData.publicUrl);
+            }
+          }
+        }
+
+        // 3. sellers テーブルに登録（自己紹介文・画像URL付き）
+        await supabase.from('sellers').insert([
+          {
+            id: user.id,
+            nickname: regNick,
+            age: parseInt(regAge, 10) || null,
+            bio: regBio,
+            profile_image_url: uploadedUrls[0] || '',
+            profile_image_urls: uploadedUrls,
+          },
+        ]);
+      }
+
+      setRegStep(3);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '登録エラーが発生しました';
+      alert(msg);
+    } finally {
+      setLoading(false);
     }
-
-    setRegStep(3);
   };
 
   return (
@@ -224,25 +289,9 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <button className="btn-submit seller-mode" onClick={handleLogin}>
-                🔑 ログイン
+              <button className="btn-submit seller-mode" onClick={handleLogin} disabled={loading}>
+                {loading ? '処理中...' : '🔑 ログイン'}
               </button>
-
-              <div className="or-divider"><span>または</span></div>
-
-              <div className="sns-btns">
-                <button className="sns-btn google">
-                  <span className="sns-icon">G</span> Googleでログイン
-                </button>
-                <button className="sns-btn x-twitter">
-                  <span className="sns-icon">𝕏</span> X（Twitter）でログイン
-                </button>
-              </div>
-
-              <div className="switch-link">
-                アカウントをお持ちでない方は{' '}
-                <a onClick={() => setCurrentMode('register')}>新規登録</a>
-              </div>
             </div>
           )}
 
@@ -303,28 +352,16 @@ export default function AuthPage() {
                   <div className="age-verify">
                     <div className="age-verify-icon">⚠️</div>
                     <div className="age-verify-text">
-                      本サービスは<strong>18歳以上</strong>の方のみご利用いただけます。登録完了後に本人確認（eKYC）をお願いします。
+                      本サービスは<strong>18歳以上</strong>の方のみご利用いただけます。
                     </div>
                   </div>
 
                   <button
                     className={`btn-submit ${selectedRole === 'seller' ? 'seller-mode' : 'buyer-mode'}`}
                     onClick={() => setRegStep(2)}
-                    style={{ marginTop: 0 }}
                   >
                     次へ進む →
                   </button>
-
-                  <div className="or-divider"><span>または</span></div>
-                  <div className="sns-btns">
-                    <button className="sns-btn google"><span className="sns-icon">G</span> Googleで登録</button>
-                    <button className="sns-btn x-twitter"><span className="sns-icon">𝕏</span> X（Twitter）で登録</button>
-                  </div>
-
-                  <div className="switch-link">
-                    すでにアカウントをお持ちの方は{' '}
-                    <a onClick={() => setCurrentMode('login')}>ログイン</a>
-                  </div>
                 </div>
               )}
 
@@ -355,9 +392,6 @@ export default function AuthPage() {
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                     />
-                    {regEmailErr && (
-                      <div className="form-error show">メールアドレスを入力してください</div>
-                    )}
                   </div>
 
                   <div className="form-group">
@@ -407,9 +441,6 @@ export default function AuthPage() {
                         {showRegPwConf ? '🙈' : '👁'}
                       </button>
                     </div>
-                    {regPwConfErr && (
-                      <div className="form-error show">パスワードが一致しません</div>
-                    )}
                   </div>
 
                   <div className="form-group">
@@ -423,12 +454,11 @@ export default function AuthPage() {
                       value={regNick}
                       onChange={(e) => setRegNick(e.target.value)}
                     />
-                    <div className="form-hint">サービス上で表示される名前です（本名不要）</div>
                   </div>
 
                   {selectedRole === 'seller' && (
                     <div className="seller-fields show">
-                      <div className="field-divider"><span>出品者の追加情報</span></div>
+                      <div className="field-divider"><span>プロフィール設定</span></div>
 
                       <div className="form-group">
                         <label className="form-label">
@@ -443,12 +473,52 @@ export default function AuthPage() {
                           value={regAge}
                           onChange={(e) => setRegAge(e.target.value)}
                         />
-                        <div className="form-hint">18歳未満の方はご登録いただけません</div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">自己紹介文</label>
+                        <textarea
+                          className="form-input"
+                          placeholder="はじめまして！よろしくお願いします🌸"
+                          style={{ minHeight: '80px', borderRadius: '12px', resize: 'vertical' }}
+                          value={regBio}
+                          onChange={(e) => setRegBio(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">プロフィール写真（最大5枚）</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginTop: '6px' }}>
+                          {[0, 1, 2, 3, 4].map((idx) => (
+                            <label
+                              key={idx}
+                              style={{
+                                aspectRatio: '1/1',
+                                border: '1.5px dashed var(--primary)',
+                                borderRadius: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                overflow: 'hidden',
+                                background: '#fff',
+                              }}
+                            >
+                              {imagePreviews[idx] ? (
+                                <img src={imagePreviews[idx]!} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <span style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: 800 }}>＋</span>
+                              )}
+                              <input type="file" accept="image/*" onChange={(e) => handleImageChange(idx, e)} style={{ display: 'none' }} />
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', margin: '16px 0 12px' }}>
                     <div className="check-group" onClick={() => setAgreeTerms(!agreeTerms)}>
                       <div className={`check-box ${agreeTerms ? 'checked' : ''}`}></div>
                       <span className="check-label">
@@ -474,9 +544,10 @@ export default function AuthPage() {
                     <button
                       className={`btn-submit ${selectedRole === 'seller' ? 'seller-mode' : 'buyer-mode'}`}
                       onClick={handleRegister}
+                      disabled={loading}
                       style={{ flex: 1 }}
                     >
-                      🎀 登録する
+                      {loading ? '登録中...' : '🎀 登録する'}
                     </button>
                   </div>
                 </div>
@@ -492,16 +563,11 @@ export default function AuthPage() {
                     {selectedRole === 'seller' ? '出品者登録完了！' : '購入者登録完了！'}
                   </div>
                   <div className="success-sub">
-                    ようこそ！確認メールをご確認の上、<br />
-                    {selectedRole === 'seller'
-                      ? 'プロフィールを設定して出品をはじめましょう🌸'
-                      : 'お気に入りの出品者を探してみましょう💕'}
+                    登録が完了しました🌸<br />
+                    さっそくマイページを開いてみましょう！
                   </div>
-                  <a
-                    href={selectedRole === 'seller' ? '/seller/profile' : '/'}
-                    className="btn-go"
-                  >
-                    {selectedRole === 'seller' ? 'プロフィールを設定する →' : '商品を探す →'}
+                  <a href="/mypage" className="btn-go">
+                    マイページへ進む →
                   </a>
                 </div>
               )}
