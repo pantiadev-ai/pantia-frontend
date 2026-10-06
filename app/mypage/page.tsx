@@ -17,6 +17,13 @@ interface Item {
   published_at?: string;
 }
 
+interface SellerProfile {
+  nickname: string;
+  bio?: string;
+  profile_image_url?: string;
+  profile_image_urls?: string[];
+}
+
 export default function MyPage() {
   const supabase = createClient();
 
@@ -26,11 +33,15 @@ export default function MyPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [userInfo, setUserInfo] = useState({
+  const [sellerProfile, setSellerProfile] = useState<SellerProfile>({
     nickname: 'めめ',
-    role: 'seller',
+    bio: 'プロフィールが未設定です。',
+    profile_image_url: '',
+    profile_image_urls: [],
+  });
+
+  const [userInfo, setUserInfo] = useState({
     email: '',
-    age: '-',
   });
 
   useEffect(() => {
@@ -43,23 +54,36 @@ export default function MyPage() {
           return;
         }
 
-        const meta = user.user_metadata || {};
-        setUserInfo({
-          nickname: meta.nickname || 'めめ',
-          role: meta.role || 'seller',
-          email: user.email || '',
-          age: meta.age || '-',
-        });
+        setUserInfo({ email: user.email || '' });
 
-        // ログイン中のユーザーID（user.id）に紐づく商品だけを取得
-        const { data: itemData, error: itemError } = await supabase
+        // sellers テーブルからプロフィールを取得
+        const { data: profileData } = await supabase
+          .from('sellers')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileData) {
+          setSellerProfile({
+            nickname: profileData.nickname || user.user_metadata?.nickname || 'めめ',
+            bio: profileData.bio || '自己紹介文が未設定です🌸',
+            profile_image_url: profileData.profile_image_url || '',
+            profile_image_urls: profileData.profile_image_urls || [],
+          });
+        } else {
+          setSellerProfile((prev) => ({
+            ...prev,
+            nickname: user.user_metadata?.nickname || 'めめ',
+          }));
+        }
+
+        // 出品商品を全取得
+        const { data: itemData } = await supabase
           .from('items')
           .select('*')
           .or(`user_id.eq.${user.id},seller_id.eq.${user.id}`);
 
-        if (itemError) {
-          console.error('Data Fetch Error:', itemError.message);
-        } else if (itemData) {
+        if (itemData) {
           setItems(itemData as Item[]);
         }
       } catch (err) {
@@ -113,9 +137,31 @@ export default function MyPage() {
       <main className="layout">
         <aside className="sidebar fade-in visible">
           <div className="profile-mini">
-            <div className="pm-avatar">{userInfo.nickname.slice(0, 1)}<div className="pm-online"></div></div>
-            <div className="pm-name">{userInfo.nickname}</div>
-            <div className="pm-handle">@{userInfo.nickname.toLowerCase()}</div>
+            <div className="pm-avatar" style={{ overflow: 'hidden' }}>
+              {sellerProfile.profile_image_url ? (
+                <img src={sellerProfile.profile_image_url} alt={sellerProfile.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                sellerProfile.nickname.slice(0, 1)
+              )}
+              <div className="pm-online"></div>
+            </div>
+            <div className="pm-name">{sellerProfile.nickname}</div>
+            <div className="pm-handle">@{sellerProfile.nickname.toLowerCase()}</div>
+
+            {/* サブ画像のギャラリー（最大5枚表示） */}
+            {sellerProfile.profile_image_urls && sellerProfile.profile_image_urls.length > 1 && (
+              <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '8px' }}>
+                {sellerProfile.profile_image_urls.map((url, i) => (
+                  <img key={i} src={url} alt={`sub_${i}`} style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #fff' }} />
+                ))}
+              </div>
+            )}
+
+            {/* 自己紹介文 */}
+            <div style={{ fontSize: '12px', color: 'var(--text-sub)', marginTop: '10px', textAlign: 'left', background: 'rgba(255,255,255,0.6)', padding: '10px', borderRadius: '12px', whiteSpace: 'pre-wrap' }}>
+              {sellerProfile.bio}
+            </div>
+
             <div className="pm-stats">
               <div><div className="pm-stat-num">0</div><div className="pm-stat-label">フォロワー</div></div>
               <div><div className="pm-stat-num">{items.length}</div><div className="pm-stat-label">出品数</div></div>
@@ -129,7 +175,6 @@ export default function MyPage() {
             <div className={`side-nav-item ${activeTab === 'items' ? 'active' : ''}`} onClick={() => setActiveTab('items')}><span className="side-nav-icon">📦</span> 出品管理<span className="side-nav-badge">{items.length}</span></div>
             <div className={`side-nav-item ${activeTab === 'sales' ? 'active' : ''}`} onClick={() => setActiveTab('sales')}><span className="side-nav-icon">💰</span> 売上・振込</div>
             <div className={`side-nav-item ${activeTab === 'tweet' ? 'active' : ''}`} onClick={() => setActiveTab('tweet')}><span className="side-nav-icon">💬</span> つぶやき投稿</div>
-            <div className={`side-nav-item ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => setActiveTab('messages')}><span className="side-nav-icon">✉️</span> メッセージ<span className="side-nav-badge">0</span></div>
             <div className={`side-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}><span className="side-nav-icon">⚙</span> 設定</div>
           </div>
         </aside>
@@ -232,6 +277,23 @@ export default function MyPage() {
                 >
                   つぶやく
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* 設定タブ */}
+          {activeTab === 'settings' && (
+            <div className="panel show">
+              <div className="settings-section">
+                <div className="settings-title"><span className="icon-pill">👤</span> アカウント情報</div>
+                <div className="setting-row">
+                  <div className="setting-info"><div className="setting-name">ニックネーム</div></div>
+                  <div className="setting-val">{sellerProfile.nickname}</div>
+                </div>
+                <div className="setting-row">
+                  <div className="setting-info"><div className="setting-name">メールアドレス</div></div>
+                  <div className="setting-val">{userInfo.email}</div>
+                </div>
               </div>
             </div>
           )}
