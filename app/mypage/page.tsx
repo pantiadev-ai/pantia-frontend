@@ -34,15 +34,23 @@ export default function MyPage() {
   const [loading, setLoading] = useState(true);
 
   const [sellerProfile, setSellerProfile] = useState<SellerProfile>({
-    nickname: 'めめ',
+    nickname: 'こはる',
     bio: 'プロフィールが未設定です。',
     profile_image_url: '',
     profile_image_urls: [],
   });
 
   const [userInfo, setUserInfo] = useState({
+    id: '',
     email: '',
   });
+
+  // プロフィール編集用ステート
+  const [editNickname, setEditNickname] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editImageFiles, setEditImageFiles] = useState<(File | null)[]>([null, null, null, null, null]);
+  const [editImagePreviews, setEditImagePreviews] = useState<(string | null)[]>([null, null, null, null, null]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,7 +62,7 @@ export default function MyPage() {
           return;
         }
 
-        setUserInfo({ email: user.email || '' });
+        setUserInfo({ id: user.id, email: user.email || '' });
 
         // sellers テーブルからプロフィールを取得
         const { data: profileData } = await supabase
@@ -64,16 +72,31 @@ export default function MyPage() {
           .single();
 
         if (profileData) {
-          setSellerProfile({
-            nickname: profileData.nickname || user.user_metadata?.nickname || 'めめ',
+          const profile = {
+            nickname: profileData.nickname || user.user_metadata?.nickname || 'こはる',
             bio: profileData.bio || '自己紹介文が未設定です🌸',
             profile_image_url: profileData.profile_image_url || '',
             profile_image_urls: profileData.profile_image_urls || [],
-          });
+          };
+          setSellerProfile(profile);
+
+          // 編集用初期値の設定
+          setEditNickname(profile.nickname);
+          setEditBio(profile.bio);
+
+          const initialPreviews: (string | null)[] = [null, null, null, null, null];
+          if (profile.profile_image_urls && profile.profile_image_urls.length > 0) {
+            profile.profile_image_urls.forEach((url: string, i: number) => {
+              if (i < 5) initialPreviews[i] = url;
+            });
+          } else if (profile.profile_image_url) {
+            initialPreviews[0] = profile.profile_image_url;
+          }
+          setEditImagePreviews(initialPreviews);
         } else {
           setSellerProfile((prev) => ({
             ...prev,
-            nickname: user.user_metadata?.nickname || 'めめ',
+            nickname: user.user_metadata?.nickname || 'こはる',
           }));
         }
 
@@ -95,6 +118,81 @@ export default function MyPage() {
 
     fetchData();
   }, []);
+
+  // 画像変更ハンドラー
+  const handleEditImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const newFiles = [...editImageFiles];
+      newFiles[index] = file;
+      setEditImageFiles(newFiles);
+
+      const newPreviews = [...editImagePreviews];
+      newPreviews[index] = URL.createObjectURL(file);
+      setEditImagePreviews(newPreviews);
+    }
+  };
+
+  // プロフィール保存処理
+  const handleSaveProfile = async () => {
+    if (!userInfo.id) return;
+    setIsSaving(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < 5; i++) {
+        const file = editImageFiles[i];
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${userInfo.id}/profile_${Date.now()}_${i}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('profile-images')
+            .upload(fileName, file);
+
+          if (!uploadError) {
+            const { data: pubData } = supabase.storage
+              .from('profile-images')
+              .getPublicUrl(fileName);
+            uploadedUrls.push(pubData.publicUrl);
+          }
+        } else if (editImagePreviews[i] && editImagePreviews[i]?.startsWith('http')) {
+          uploadedUrls.push(editImagePreviews[i]!);
+        }
+      }
+
+      // DBを更新（upsert）
+      const { error: updateError } = await supabase
+        .from('sellers')
+        .upsert({
+          id: userInfo.id,
+          nickname: editNickname,
+          bio: editBio,
+          profile_image_url: uploadedUrls[0] || '',
+          profile_image_urls: uploadedUrls,
+        });
+
+      if (updateError) {
+        alert(`更新エラー: ${updateError.message}`);
+        return;
+      }
+
+      setSellerProfile({
+        nickname: editNickname,
+        bio: editBio,
+        profile_image_url: uploadedUrls[0] || '',
+        profile_image_urls: uploadedUrls,
+      });
+
+      alert('プロフィールを更新しました！🌸');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '保存に失敗しました';
+      alert(msg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handlePostTweet = () => {
     if (!tweetText.trim()) return;
@@ -148,7 +246,7 @@ export default function MyPage() {
             <div className="pm-name">{sellerProfile.nickname}</div>
             <div className="pm-handle">@{sellerProfile.nickname.toLowerCase()}</div>
 
-            {/* サブ画像のギャラリー（最大5枚表示） */}
+            {/* サブ画像ギャラリー */}
             {sellerProfile.profile_image_urls && sellerProfile.profile_image_urls.length > 1 && (
               <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '8px' }}>
                 {sellerProfile.profile_image_urls.map((url, i) => (
@@ -281,18 +379,79 @@ export default function MyPage() {
             </div>
           )}
 
-          {/* 設定タブ */}
+          {/* 設定・プロフィール編集タブ */}
           {activeTab === 'settings' && (
             <div className="panel show">
               <div className="settings-section">
-                <div className="settings-title"><span className="icon-pill">👤</span> アカウント情報</div>
-                <div className="setting-row">
-                  <div className="setting-info"><div className="setting-name">ニックネーム</div></div>
-                  <div className="setting-val">{sellerProfile.nickname}</div>
-                </div>
-                <div className="setting-row">
-                  <div className="setting-info"><div className="setting-name">メールアドレス</div></div>
-                  <div className="setting-val">{userInfo.email}</div>
+                <div className="settings-title"><span className="icon-pill">✏️</span> プロフィール編集</div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-sub)' }}>ニックネーム</label>
+                    <input
+                      type="text"
+                      value={editNickname}
+                      onChange={(e) => setEditNickname(e.target.value)}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '999px', border: '1px solid rgba(255, 75, 145, 0.3)', marginTop: '4px', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight 700, color: 'var(--text-sub)' }}>自己紹介文</label>
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      rows={4}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255, 75, 145, 0.3)', marginTop: '4px', outline: 'none', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-sub)' }}>プロフィール写真（最大5枚）</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginTop: '6px' }}>
+                      {[0, 1, 2, 3, 4].map((idx) => (
+                        <label
+                          key={idx}
+                          style={{
+                            aspectRatio: '1/1',
+                            border: '1.5px dashed var(--primary)',
+                            borderRadius: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify-content: 'center',
+                            cursor: 'pointer',
+                            overflow: 'hidden',
+                            background: '#fff',
+                          }}
+                        >
+                          {editImagePreviews[idx] ? (
+                            <img src={editImagePreviews[idx]!} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: '14px', color: 'var(--primary)', fontWeight: 800 }}>＋</span>
+                          )}
+                          <input type="file" accept="image/*" onChange={(e) => handleEditImageChange(idx, e)} style={{ display: 'none' }} />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '999px',
+                      background: 'linear-gradient(135deg, var(--primary), #FF75A0)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      marginTop: '8px',
+                      boxShadow: '0 4px 12px rgba(255, 75, 145, 0.3)',
+                    }}
+                  >
+                    {isSaving ? '保存中...' : '🎀 プロフィール変更を保存'}
+                  </button>
                 </div>
               </div>
             </div>
