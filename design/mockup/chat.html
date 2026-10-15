@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メッセージ - LABEL NAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="chat.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="chat-header-bar">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <div class="header-right">
+    <a href="#" class="hbtn">商品一覧</a>
+    <a href="#" class="hbtn">タイムライン</a>
+    <a href="#" class="hbtn nav-login">K***さん ▾</a>
+  </div>
+</header>
+
+<div class="chat-layout">
+
+  <!-- ── THREAD LIST ── -->
+  <aside class="thread-list">
+    <div class="tl-header">
+      <div class="tl-title">メッセージ</div>
+      <div class="tl-search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="会話を検索...">
+      </div>
+    </div>
+    <div class="thread-tabs">
+      <div class="tt active">すべて</div>
+      <div class="tt">未読 <span class="tt-unread-badge">3</span></div>
+      <div class="tt">出品者</div>
+    </div>
+    <div class="threads-scroll">
+
+      <!-- active thread -->
+      <div class="thread-item active" onclick="switchThread(this, 'め', 'めい', '大学生 19歳', true)">
+        <div class="ti-avatar">め<div class="ti-online"></div></div>
+        <div class="ti-info">
+          <div class="ti-name">めい <span class="online-tag">オンライン</span></div>
+          <div class="ti-preview unread-text">着用写真は3枚あります！購入後すぐに...</div>
+        </div>
+        <div class="ti-right">
+          <div class="ti-time">14:22</div>
+          <div class="ti-badge">2</div>
+        </div>
+      </div>
+
+      <div class="thread-item unread" onclick="switchThread(this, 'な', 'なな', '看護師 26歳', true)">
+        <div class="ti-avatar" style="background:var(--secondary-light);color:var(--secondary);border-color:rgba(139, 92, 246, 0.3);">な<div class="ti-online"></div></div>
+        <div class="ti-info">
+          <div class="ti-name">なな</div>
+          <div class="ti-preview unread-text">リクエストに対応できます！詳細は...</div>
+        </div>
+        <div class="ti-right">
+          <div class="ti-time">昨日</div>
+          <div class="ti-badge">1</div>
+        </div>
+      </div>
+
+      <div class="thread-item" onclick="switchThread(this, 'り', 'りり', '主婦 29歳', false)">
+        <div class="ti-avatar" style="background:var(--green);color:var(--green2);border-color:rgba(16, 185, 129, 0.3);">り</div>
+        <div class="ti-info">
+          <div class="ti-name">りり</div>
+          <div class="ti-preview">ありがとうございました！またよろしく</div>
+        </div>
+        <div class="ti-right"><div class="ti-time">5/7</div></div>
+      </div>
+
+      <div class="thread-item" onclick="switchThread(this, 'あ', 'あーや', '大学生 18歳', false)">
+        <div class="ti-avatar" style="background:var(--yellow);color:var(--yellow2);border-color:rgba(245, 158, 11, 0.3);">あ</div>
+        <div class="ti-info">
+          <div class="ti-name">あーや</div>
+          <div class="ti-preview">発送完了しました📦 追跡番号は...</div>
+        </div>
+        <div class="ti-right"><div class="ti-time">5/5</div></div>
+      </div>
+
+      <div class="thread-item" onclick="switchThread(this, 'さ', 'さき', '歯科助手 24歳', false)">
+        <div class="ti-avatar" style="background:#E8F5FF;color:#3B82F6;border-color:rgba(59, 130, 246, 0.3);">さ</div>
+        <div class="ti-info">
+          <div class="ti-name">さき</div>
+          <div class="ti-preview">いつもありがとうございます🌸</div>
+        </div>
+        <div class="ti-right"><div class="ti-time">5/3</div></div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── CHAT MAIN ── -->
+  <main class="chat-main" style="position:relative;">
+
+    <!-- CHAT HEADER -->
+    <div class="chat-header">
+      <div class="ch-avatar" id="chatAvatar">め<div class="ch-online"></div></div>
+      <div class="ch-info">
+        <div class="ch-name" id="chatName">めい</div>
+        <div class="ch-status" id="chatStatus">🟢 オンライン</div>
+      </div>
+      <div class="ch-actions">
+        <div class="ch-btn" title="プロフィールを見る">👤</div>
+        <div class="ch-btn" title="通報する">🚩</div>
+        <div class="ch-btn" title="ブロックする">🚫</div>
+      </div>
+    </div>
+
+    <!-- ORDER BANNER -->
+    <div class="order-banner">
+      <div class="ob-thumb">
+        <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=200&q=80" alt="商品画像" class="ob-img">
+      </div>
+      <div class="ob-info">
+        <div class="ob-title">コットンショーツ 2日着用</div>
+        <div class="ob-sub">注文 #2245 ・ ¥2,100</div>
+      </div>
+      <div class="ob-status new">新規注文</div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="messages-scroll" id="messagesScroll">
+
+      <div class="date-divider"><span>5月8日（水）</span></div>
+
+      <!-- Seller -->
+      <div class="msg-row">
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="msg-sender">めい</div>
+          <div class="bubble theirs">はじめまして、めいです🌸 ご購入ありがとうございます！何かご不明な点があればお気軽にどうぞ💕</div>
+          <div class="msg-meta"><span>13:45</span></div>
+        </div>
+      </div>
+
+      <!-- Mine -->
+      <div class="msg-row mine">
+        <div class="msg-avatar">K</div>
+        <div class="msg-group">
+          <div class="bubble mine">こちらこそよろしくお願いします！着用写真は何枚くらい撮ってもらえますか？</div>
+          <div class="msg-meta"><span>13:52</span><span class="read-check">✓✓ 既読</span></div>
+        </div>
+      </div>
+
+      <!-- Seller image -->
+      <div class="msg-row">
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="bubble theirs">3〜5枚撮影します📸 こんな感じのイメージで撮ろうと思っています！</div>
+          <div class="img-bubble" style="margin-top:6px;">🌸</div>
+          <div class="msg-meta"><span>13:55</span></div>
+        </div>
+      </div>
+
+      <!-- Mine reaction -->
+      <div class="msg-row mine">
+        <div class="msg-avatar">K</div>
+        <div class="msg-group">
+          <div class="bubble mine">すごくかわいいです！ぜひそのイメージで撮ってください🎀</div>
+          <div class="msg-meta"><span>14:01</span><span class="read-check">✓✓ 既読</span></div>
+        </div>
+      </div>
+
+      <!-- Sys msg -->
+      <div class="sys-msg">💳 注文 #2245 の決済が完了しました</div>
+
+      <div class="date-divider"><span>5月9日（木）</span></div>
+
+      <!-- Seller with item card -->
+      <div class="msg-row">
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="bubble theirs">おはようございます☀️ 今日着用してから発送しますね！よかったら他の商品も見てみてください💕</div>
+          <div class="item-bubble" style="margin-top:8px;">
+            <div class="ib-thumb">
+              <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=300&q=80" alt="商品画像" class="ib-img">
+            </div>
+            <div class="ib-name">レースショーツ 1日着用</div>
+            <div class="ib-price">¥2,000</div>
+            <button class="ib-btn">商品を見る →</button>
+          </div>
+          <div class="msg-meta"><span>09:12</span></div>
+        </div>
+      </div>
+
+      <div class="msg-row mine">
+        <div class="msg-avatar">K</div>
+        <div class="msg-group">
+          <div class="bubble mine">ありがとうございます！楽しみにしています🎀 レースショーツも気になりますね〜</div>
+          <div class="reactions">
+            <button class="reaction mine">♥ 1</button>
+          </div>
+          <div class="msg-meta"><span>09:18</span><span class="read-check">✓✓ 既読</span></div>
+        </div>
+      </div>
+
+      <div class="msg-row">
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="bubble theirs">発送完了しました📦 追跡番号：<strong style="color:var(--primary);">1234-5678-9012</strong> ヤマトの追跡サービスでご確認いただけます。匿名配送なので出品者欄は「代行センター」と表示されます😊</div>
+          <div class="msg-meta"><span>14:20</span></div>
+        </div>
+      </div>
+
+      <!-- Today's messages -->
+      <div class="date-divider"><span>今日</span></div>
+
+      <div class="msg-row">
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="bubble theirs">着用写真お送りします🌸 合計3枚になります💕</div>
+          <div class="tw-imgs" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;">
+            <div class="img-bubble" style="height:100px;font-size:28px;">📸</div>
+            <div class="img-bubble" style="height:100px;font-size:28px;">🌸</div>
+          </div>
+          <div class="msg-meta"><span>14:18</span></div>
+        </div>
+      </div>
+
+      <div class="msg-row mine">
+        <div class="msg-avatar">K</div>
+        <div class="msg-group">
+          <div class="bubble mine">わあ、ありがとうございます！とても素敵です🎀 今後もよろしくお願いします！</div>
+          <div class="msg-meta"><span>14:22</span><span class="read-check">✓✓ 既読</span></div>
+        </div>
+      </div>
+
+      <!-- Typing indicator -->
+      <div class="typing-indicator" id="typingIndicator" style="display:none;">
+        <div class="msg-avatar">め</div>
+        <div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+
+    </div>
+
+    <!-- NEW MSG TOAST -->
+    <div class="new-msg-toast" id="newMsgToast" onclick="scrollToBottom()">↓ 新しいメッセージ</div>
+
+    <!-- EMOJI PICKER -->
+    <div class="emoji-picker" id="emojiPicker">
+      <div class="ep-emoji" onclick="insertEmoji('🌸')">🌸</div>
+      <div class="ep-emoji" onclick="insertEmoji('💕')">💕</div>
+      <div class="ep-emoji" onclick="insertEmoji('🎀')">🎀</div>
+      <div class="ep-emoji" onclick="insertEmoji('✨')">✨</div>
+      <div class="ep-emoji" onclick="insertEmoji('😊')">😊</div>
+      <div class="ep-emoji" onclick="insertEmoji('😂')">😂</div>
+      <div class="ep-emoji" onclick="insertEmoji('🫠')">🫠</div>
+      <div class="ep-emoji" onclick="insertEmoji('💗')">💗</div>
+      <div class="ep-emoji" onclick="insertEmoji('📸')">📸</div>
+      <div class="ep-emoji" onclick="insertEmoji('📦')">📦</div>
+      <div class="ep-emoji" onclick="insertEmoji('💳')">💳</div>
+      <div class="ep-emoji" onclick="insertEmoji('🏠')">🏠</div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area">
+      <div class="input-toolbar">
+        <button class="tool-btn" title="画像を送る">🖼</button>
+        <button class="tool-btn" title="商品を添付">🛍</button>
+        <button class="tool-btn" title="絵文字" onclick="toggleEmoji()">😊</button>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:4px;font-weight:500;">※ 住所・個人情報の送付はお控えください</span>
+      </div>
+      <div class="input-row">
+        <textarea class="msg-input" id="msgInput" placeholder="メッセージを入力..." rows="1" oninput="autoResize(this); updateSendBtn()" onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled title="送信">➤</button>
+      </div>
+      <div class="input-hint">Enter で送信 ・ Shift+Enter で改行</div>
+    </div>
+
+  </main>
+
+  <!-- ── RIGHT SIDEBAR ── -->
+  <aside class="right-sidebar">
+
+    <!-- 出品者プロフィール -->
+    <div class="rs-section">
+      <div class="rs-title">出品者情報</div>
+      <div class="sp-mini">
+        <div class="sp-avatar" id="rsAvatar">め</div>
+        <div class="sp-name" id="rsName">めい</div>
+        <div class="sp-sub" id="rsSub">大学生 19歳</div>
+        <div class="kyc-badge">✅ 本人確認済み</div>
+        <div class="sp-stats">
+          <div><div class="sp-stat-n">4.9</div><div class="sp-stat-l">評価</div></div>
+          <div><div class="sp-stat-n">48</div><div class="sp-stat-l">販売数</div></div>
+          <div><div class="sp-stat-n">312</div><div class="sp-stat-l">フォロワー</div></div>
+        </div>
+        <button class="sp-btn">プロフィールを見る</button>
+      </div>
+    </div>
+
+    <!-- 注文情報 -->
+    <div class="rs-section">
+      <div class="rs-title">注文情報</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;">
+          <span style="color:var(--text-muted);font-weight:600;">注文番号</span>
+          <span style="font-weight:800;color:var(--primary);font-family:'Plus Jakarta Sans',sans-serif;">#2245</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;align-items:center;">
+          <span style="color:var(--text-muted);font-weight:600;">ステータス</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);background:var(--primary-light);color:var(--primary);">新規注文</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;">
+          <span style="color:var(--text-muted);font-weight:600;">金額</span>
+          <span style="font-weight:800;color:var(--text-main);">¥2,100</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;">
+          <span style="color:var(--text-muted);font-weight:600;">発送予定</span>
+          <span style="font-weight:700;color:var(--green2);">即日〜翌日</span>
+        </div>
+        <div style="margin-top:6px;padding:10px;background:rgba(255,255,255,0.7);border:1px solid var(--glass-border);border-radius:var(--radius-md);font-size:11px;color:var(--text-sub);line-height:1.6;font-weight:500;">
+          📦 商品受け取り後にレビューを投稿してください
+        </div>
+      </div>
+    </div>
+
+    <!-- 共有された商品 -->
+    <div class="rs-section">
+      <div class="rs-title">会話内の商品</div>
+      <div class="shared-item">
+        <div class="si-thumb">
+          <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="商品" class="si-img">
+        </div>
+        <div><div class="si-name">コットンショーツ 2日着用</div><div class="si-price">¥2,100</div></div>
+      </div>
+      <div class="shared-item">
+        <div class="si-thumb">
+          <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=100&q=80" alt="商品" class="si-img">
+        </div>
+        <div><div class="si-name">レースショーツ 1日着用</div><div class="si-price">¥2,000</div></div>
+      </div>
+    </div>
+
+    <!-- 共有された画像 -->
+    <div class="rs-section">
+      <div class="rs-title">共有された画像</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+        <div class="rs-img-thumb">🌸</div>
+        <div class="rs-img-thumb">📸</div>
+        <div class="rs-img-thumb">📸</div>
+      </div>
+    </div>
+
+    <!-- アクション -->
+    <div class="rs-section">
+      <div class="rs-title">その他の操作</div>
+      <div class="rs-actions">
+        <button class="rs-action-btn">🔔 通知をオフにする</button>
+        <button class="rs-action-btn">⭐ レビューを書く</button>
+        <button class="rs-action-btn danger">🚩 通報する</button>
+        <button class="rs-action-btn danger">🚫 ブロックする</button>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+  // SCROLL TO BOTTOM ON LOAD
+  function scrollToBottom() {
+    const el = document.getElementById('messagesScroll');
+    el.scrollTop = el.scrollHeight;
+    document.getElementById('newMsgToast').style.display = 'none';
+  }
+  scrollToBottom();
+
+  // AUTO RESIZE TEXTAREA
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // SEND BTN ENABLE
+  function updateSendBtn() {
+    const v = document.getElementById('msgInput').value.trim();
+    document.getElementById('sendBtn').disabled = !v;
+  }
+
+  // ENTER KEY
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  // SEND MESSAGE
+  function sendMessage() {
+    const input = document.getElementById('msgInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const scroll = document.getElementById('messagesScroll');
+    const typing = document.getElementById('typingIndicator');
+
+    // Add my bubble
+    const row = document.createElement('div');
+    row.className = 'msg-row mine';
+    row.innerHTML = `
+      <div class="msg-avatar">K</div>
+      <div class="msg-group">
+        <div class="bubble mine">${text.replace(/\n/g,'<br>')}</div>
+        <div class="msg-meta"><span>${getTime()}</span></div>
+      </div>`;
+    scroll.insertBefore(row, typing);
+
+    input.value = '';
+    input.style.height = 'auto';
+    updateSendBtn();
+    scrollToBottom();
+
+    // Show typing after 800ms
+    setTimeout(() => {
+      typing.style.display = 'flex';
+      scrollToBottom();
+    }, 800);
+
+    // Reply after 2.2s
+    const replies = [
+      'ありがとうございます🌸',
+      'かしこまりました！すぐに対応しますね💕',
+      'はい、大丈夫です😊 準備しておきます！',
+      'ご連絡ありがとうございます。確認しますね✨',
+      'もちろんです🎀 よろしくお願いします！',
+    ];
+    setTimeout(() => {
+      typing.style.display = 'none';
+      const rep = document.createElement('div');
+      rep.className = 'msg-row';
+      rep.innerHTML = `
+        <div class="msg-avatar">め</div>
+        <div class="msg-group">
+          <div class="bubble theirs">${replies[Math.floor(Math.random()*replies.length)]}</div>
+          <div class="msg-meta"><span>${getTime()}</span></div>
+        </div>`;
+      scroll.insertBefore(rep, typing);
+      scrollToBottom();
+    }, 2200);
+  }
+
+  // THREAD SWITCH
+  function switchThread(el, avatar, name, sub, online) {
+    document.querySelectorAll('.thread-item').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    el.classList.remove('unread');
+    const badge = el.querySelector('.ti-badge');
+    if (badge) badge.remove();
+
+    document.getElementById('chatAvatar').textContent = avatar;
+    document.getElementById('chatAvatar').innerHTML += online ? '<div class="ch-online"></div>' : '';
+    document.getElementById('chatName').textContent = name;
+    document.getElementById('chatStatus').textContent = online ? '🟢 オンライン' : '⚫ オフライン';
+    document.getElementById('chatStatus').style.color = online ? 'var(--green2)' : 'var(--text-muted)';
+    document.getElementById('rsAvatar').textContent = avatar;
+    document.getElementById('rsName').textContent = name;
+    document.getElementById('rsSub').textContent = sub;
+  }
+
+  // EMOJI
+  function toggleEmoji() {
+    document.getElementById('emojiPicker').classList.toggle('show');
+  }
+  function insertEmoji(e) {
+    const input = document.getElementById('msgInput');
+    input.value += e;
+    input.focus();
+    updateSendBtn();
+    document.getElementById('emojiPicker').classList.remove('show');
+  }
+
+  // CLOSE EMOJI ON OUTSIDE CLICK
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#emojiPicker') && !e.target.closest('.tool-btn')) {
+      document.getElementById('emojiPicker').classList.remove('show');
+    }
+  });
+
+  function getTime() {
+    const d = new Date();
+    return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  // SCROLL WATCH → show toast
+  const scroll = document.getElementById('messagesScroll');
+  scroll.addEventListener('scroll', () => {
+    const bottom = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight;
+    if (bottom > 200) {
+      // could show toast
+    }
+  });
+</script>
+</body>
+</html>

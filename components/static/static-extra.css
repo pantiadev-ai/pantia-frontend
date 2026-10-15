@@ -1,0 +1,142 @@
+/* 規約などの画面だけの追加の見た目（styles/terms.css は直さない）。.pg-terms の下だけに効く */
+
+/* 表がスマホで横にはみ出すときは、表だけ横に動かす */
+.pg-terms .pt-table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pg-terms .pt-table-wrap .tos-table { min-width: 420px; }
+
+.pg-terms .page-hero-title { line-height: 1.35; }
+.pg-terms ol.flow,
+.pg-terms ul.pt-plain { list-style: none; }
+.pg-terms .rule-list + .prose,
+.pg-terms .rule-list + .pt-table-wrap,
+.pg-terms .pt-table-wrap + .rule-list,
+.pg-terms .prose + .rule-list,
+.pg-terms .prose + .pt-table-wrap { margin-top: 14px; }
+.pg-terms .ri-text a,
+.pg-terms .tos-table a,
+.pg-terms .contact-card a { color: var(--primary); font-weight: 700; text-decoration: none; }
+.pg-terms .ri-text a:hover,
+.pg-terms .tos-table a:hover,
+.pg-terms .contact-card a:hover { text-decoration: underline; }
+.pg-terms .pt-contact-lines { font-size: 13px; color: var(--text-sub); line-height: 2; font-weight: 600; }
+
+/* 運営の情報がまだ入っていない所（特商法） */
+.pg-terms .pt-fill { color: var(--err); font-weight: 800; }
+
+/* ── よくある質問（ヘルプ） ── */
+.pg-terms .pt-faq { display: flex; flex-direction: column; gap: 8px; }
+.pg-terms .pt-faq details {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--r-sm);
+}
+.pg-terms .pt-faq summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 13px 40px 13px 16px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-main);
+  position: relative;
+  line-height: 1.6;
+}
+.pg-terms .pt-faq summary::-webkit-details-marker { display: none; }
+.pg-terms .pt-faq summary::before { content: "Q."; color: var(--primary); margin-right: 6px; }
+.pg-terms .pt-faq summary::after {
+  content: "＋";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
+  font-weight: 800;
+}
+.pg-terms .pt-faq details[open] summary::after { content: "－"; }
+.pg-terms .pt-faq summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-sm); }
+.pg-terms .pt-faq .pt-faq-a {
+  padding: 0 16px 14px 16px;
+  font-size: 13px;
+  color: var(--text-sub);
+  line-height: 1.85;
+  font-weight: 500;
+}
+.pg-terms .pt-faq .pt-faq-a p + p { margin-top: 8px; }
+.pg-terms .pt-faq .pt-faq-a a { color: var(--primary); font-weight: 700; text-decoration: none; }
+.pg-terms .pt-faq .pt-faq-a strong { color: var(--text-main); font-weight: 800; }
+
+/* ── お問い合わせのフォーム ── */
+.pg-terms .pt-cform { display: flex; flex-direction: column; gap: 16px; }
+.pg-terms .pt-cform .pt-field { display: flex; flex-direction: column; gap: 6px; }
+.pg-terms .pt-cform label,
+.pg-terms .pt-cform .pt-label { font-size: 12.5px; font-weight: 800; color: var(--text-main); }
+.pg-terms .pt-cform .pt-req { color: var(--primary); margin-left: 3px; }
+.pg-terms .pt-cform input,
+.pg-terms .pt-cform select,
+.pg-terms .pt-cform textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--r-sm);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.pg-terms .pt-cform textarea { min-height: 180px; resize: vertical; line-height: 1.7; }
+.pg-terms .pt-cform input:focus,
+.pg-terms .pt-cform select:focus,
+.pg-terms .pt-cform textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--pk1); }
+.pg-terms .pt-cform [aria-invalid="true"] { border-color: var(--err); }
+.pg-terms .pt-cform input:disabled,
+.pg-terms .pt-cform select:disabled,
+.pg-terms .pt-cform textarea:disabled { opacity: 0.6; cursor: not-allowed; }
+.pg-terms .pt-cform .pt-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
+.pg-terms .pt-cform .pt-hint.ng { color: var(--err); }
+.pg-terms .pt-cform .pt-count { font-size: 11px; color: var(--text-muted); text-align: right; }
+.pg-terms .pt-cform .pt-count.ng { color: var(--err); font-weight: 700; }
+.pg-terms .pt-cform .pt-submit {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--pk2));
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 13px 34px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 75, 145, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.pg-terms .pt-cform .pt-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 75, 145, 0.4); }
+.pg-terms .pt-cform .pt-submit:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.pg-terms .pt-cform .pt-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+/* 人には見えない欄（機械よけ） */
+.pg-terms .pt-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.pg-terms .pt-closed-box {
+  background: var(--err-bg);
+  color: var(--err);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* 下の帯のリンク。共通の SiteFooter は a に footer-link を付けていないので、ここで同じ見た目にする */
+.pg-terms .terms-footer .footer-links a { font-size: 12px; color: #9e8a9b; text-decoration: none; font-weight: 500; }
+.pg-terms .terms-footer .footer-links a:hover { color: var(--primary-light); }
+
+/* スマホ（見本は横幅の狭い時の余白を決めていない） */
+@media (max-width: 520px) {
+  .pg-terms .page { padding: 0 16px; margin-top: 20px; }
+  .pg-terms .tos-section { padding: 22px 18px; }
+  .pg-terms .page-hero { padding: 24px 18px; }
+  .pg-terms .page-hero-title { font-size: 22px; }
+  .pg-terms .fee-cards { grid-template-columns: 1fr; }
+  .pg-terms .td-label { white-space: normal; }
+  .pg-terms .pt-cform .pt-submit { align-self: stretch; }
+}

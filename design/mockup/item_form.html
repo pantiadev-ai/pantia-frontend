@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品を出品する - LABEL NAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="item_form.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="form-header">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <nav>
+    <a href="#">マイページ</a>
+    <a href="#">出品管理</a>
+    <div class="nav-divider"></div>
+    <a href="#" class="nav-login">めい ▾</a>
+  </nav>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a href="#">トップ</a>
+  <span class="bc-sep">›</span>
+  <a href="#">マイページ</a>
+  <span class="bc-sep">›</span>
+  <span>商品を出品する</span>
+</div>
+
+<!-- STEP BAR -->
+<div class="step-bar">
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-circle" id="sc1">1</div> 商品情報</div>
+    <div class="step-line" id="sl1"></div>
+    <div class="step" id="s2"><div class="step-circle" id="sc2">2</div> オプション設定</div>
+    <div class="step-line" id="sl2"></div>
+    <div class="step" id="s3"><div class="step-circle" id="sc3">3</div> 確認・出品</div>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<main class="layout">
+
+  <!-- ── LEFT: FORM ── -->
+  <div class="form-section fade-in">
+
+    <!-- 1. 写真アップロード -->
+    <div class="form-card">
+      <div class="form-card-title"><span class="icon-pill">📸</span> 商品写真</div>
+
+      <div class="img-upload-area">
+        <div class="img-slot main-slot filled" onclick="triggerUpload(0)">
+          <div class="img-main-badge">メイン</div>
+          <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=200&q=80" alt="プレビュー1" class="uploaded-img" id="imgPrev0">
+          <div class="img-remove" onclick="removeImg(event,0)">✕</div>
+        </div>
+        <div class="img-slot filled" onclick="triggerUpload(1)">
+          <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=200&q=80" alt="プレビュー2" class="uploaded-img" id="imgPrev1">
+          <div class="img-remove" onclick="removeImg(event,1)">✕</div>
+        </div>
+        <div class="img-slot filled" onclick="triggerUpload(2)">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=200&q=80" alt="プレビュー3" class="uploaded-img" id="imgPrev2">
+          <div class="img-remove" onclick="removeImg(event,2)">✕</div>
+        </div>
+        <div class="img-slot" onclick="triggerUpload(3)">
+          <div class="img-slot-icon">＋</div>
+          <div>追加</div>
+        </div>
+        <div class="img-slot" onclick="triggerUpload(4)">
+          <div class="img-slot-icon">＋</div>
+          <div>追加</div>
+        </div>
+      </div>
+      <div class="img-note">
+        ⚠️ 顔・個人情報が映り込まないようご注意ください。写真のEXIF情報（位置情報）は自動で削除されます。最大5枚まで。
+      </div>
+    </div>
+
+    <!-- 2. 基本情報 -->
+    <div class="form-card">
+      <div class="form-card-title"><span class="icon-pill">📝</span> 基本情報</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">商品タイトル <span class="req">必須</span></label>
+          <input class="form-input" type="text" id="titleInput" placeholder="例：コットンショーツ 2日着用 着用写真付き" maxlength="40" oninput="updatePreview()">
+          <div class="char-count"><span id="titleCount">0</span>/40</div>
+        </div>
+      </div>
+
+      <div class="form-row cols2">
+        <div class="form-group">
+          <label class="form-label">カテゴリ <span class="req">必須</span></label>
+          <select class="form-select" id="categoryInput" onchange="updatePreview()">
+            <option value="">選択してください</option>
+            <option value="panty">🩲 パンティ</option>
+            <option value="bra">👙 ブラジャー</option>
+            <option value="set">💞 B&Pセット</option>
+            <option value="fluid">🧴 体液系</option>
+            <option value="clothes">👗 衣類系</option>
+            <option value="other">✨ その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">着用日数 <span class="req">必須</span></label>
+          <select class="form-select" id="daysInput" onchange="updatePreview()">
+            <option value="">選択してください</option>
+            <option value="1">1日</option>
+            <option value="2">2日</option>
+            <option value="3">3日</option>
+            <option value="4">4日</option>
+            <option value="5">5日</option>
+            <option value="6">6日</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row cols3">
+        <div class="form-group">
+          <label class="form-label">素材</label>
+          <select class="form-select">
+            <option value="">未選択</option>
+            <option>コットン</option>
+            <option>レース</option>
+            <option>シルク</option>
+            <option>ナイロン</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">カラー</label>
+          <select class="form-select">
+            <option value="">未選択</option>
+            <option>ホワイト</option>
+            <option>ブラック</option>
+            <option>ピンク</option>
+            <option>ベージュ</option>
+            <option>ブルー</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">サイズ</label>
+          <select class="form-select">
+            <option value="">未選択</option>
+            <option>S</option>
+            <option>M</option>
+            <option>L</option>
+            <option>LL</option>
+            <option>フリー</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">商品説明 <span class="req">必須</span></label>
+          <textarea class="form-textarea" id="descInput" placeholder="商品の詳細、着用シーン、状態などを記入してください。購入者が安心して購入できるよう、丁寧に書きましょう🌸" maxlength="500" oninput="updateCharCount()"></textarea>
+          <div class="char-count"><span id="descCount">0</span>/500</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. 価格設定 -->
+    <div class="form-card">
+      <div class="form-card-title"><span class="icon-pill">💰</span> 価格設定</div>
+
+      <div class="form-row cols2">
+        <div class="form-group">
+          <label class="form-label">販売価格（円） <span class="req">必須</span></label>
+          <input class="form-input" type="number" id="priceInput" placeholder="例：1800" min="500" max="100000" step="100" oninput="updatePrice()">
+          <div class="form-hint">最低価格：¥500</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">在庫数</label>
+          <select class="form-select">
+            <option>1点のみ</option>
+            <option>複数対応可</option>
+          </select>
+          <div class="form-hint">使用済み品は基本1点のみ推奨</div>
+        </div>
+      </div>
+
+      <div class="price-preview" id="pricePreview">
+        <div class="pp-row"><span>販売価格</span><span id="ppBase">¥ ---</span></div>
+        <div class="pp-row"><span>手数料（15%）</span><span id="ppFee" style="color:var(--err);">- ¥ ---</span></div>
+        <hr class="pp-divider">
+        <div class="pp-row"><span style="font-weight:600;">あなたの受け取り額</span><span class="pp-total" id="ppNet">¥ ---</span></div>
+      </div>
+    </div>
+
+    <!-- 4. オプション設定 -->
+    <div class="form-card">
+      <div class="form-card-title"><span class="icon-pill">✅</span> 対応オプション</div>
+
+      <div class="form-row" style="margin-bottom:16px;">
+        <div class="form-group">
+          <label class="form-label">無料オプション <span class="opt-tag-label">複数選択可</span></label>
+          <div class="option-chips" id="freeOptions">
+            <div class="opt-chip selected" onclick="toggleOpt(this)">📸 着用写真</div>
+            <div class="opt-chip selected" onclick="toggleOpt(this)">💌 手紙同封</div>
+            <div class="opt-chip" onclick="toggleOpt(this)">📦 匿名配送</div>
+            <div class="opt-chip" onclick="toggleOpt(this)">🧴 ジップロック梱包</div>
+            <div class="opt-chip" onclick="toggleOpt(this)">✉️ メッセージカード</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">有料オプション <span class="opt-tag-label">任意</span></label>
+          <div class="option-chips" id="paidOptions">
+            <div class="opt-chip" onclick="toggleOpt(this)">🎬 着用動画（+¥800）</div>
+            <div class="opt-chip" onclick="toggleOpt(this)">📅 着用日数延長（+¥500/日）</div>
+            <div class="opt-chip" onclick="toggleOpt(this)">🔒 リクエスト専用</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. 発送・配送 -->
+    <div class="form-card">
+      <div class="form-card-title"><span class="icon-pill">🚚</span> 発送・配送設定</div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">⚡ 即日発送対応</div>
+          <div class="toggle-desc">購入後24時間以内に発送できる場合はONにしてください</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleInstant" checked onchange="updatePreview()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">📦 匿名配送対応</div>
+          <div class="toggle-desc">会社経由の転送便で住所を秘匿できます（別途送料+¥300）</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleAnon">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">💬 購入前メッセージ可</div>
+          <div class="toggle-desc">購入前に購入者からメッセージを受け付けます</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleMsg" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">🔒 フォロワー限定公開</div>
+          <div class="toggle-desc">フォロワーのみに商品を表示します</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggleFollower">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="form-row" style="margin-top:16px;">
+        <div class="form-group">
+          <label class="form-label">発送目安</label>
+          <select class="form-select">
+            <option>即日〜翌日</option>
+            <option>1〜2日</option>
+            <option>2〜3日</option>
+            <option>3〜5日</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">NGオプション・注意事項 <span class="opt-tag-label">任意</span></label>
+          <textarea class="form-textarea" placeholder="例：顔写真はお断りしています。7日以上の着用はNG。" style="min-height:70px;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- モバイル用アクションボタン -->
+    <div style="display:none;" class="mobile-actions">
+      <button class="btn-publish" onclick="handlePublish()">🎀 出品する</button>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: SIDEBAR ── -->
+  <aside class="sidebar fade-in" style="transition-delay:0.1s;">
+
+    <!-- プレビュー -->
+    <div class="preview-card">
+      <div class="preview-thumb" id="previewThumb">
+        <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80" alt="プレビュー" class="preview-img" id="previewImg">
+      </div>
+      <div class="preview-info">
+        <div class="preview-tag" id="previewTag">カテゴリ未選択</div>
+        <div class="preview-title" id="previewTitle">商品タイトルがここに表示されます</div>
+        <div class="preview-seller">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--green2);"></div>
+          めい
+        </div>
+        <div class="preview-price" id="previewPrice">¥ ---</div>
+        <div class="preview-badges" id="previewBadges">
+          <span class="preview-badge">即日</span>
+          <span class="preview-badge">写真付</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- アクションボタン -->
+    <div class="action-card">
+      <button class="btn-publish" onclick="handlePublish()">🎀 出品する</button>
+      <button class="btn-draft" onclick="handleDraft()">💾 下書き保存</button>
+      <button class="btn-preview">👁 プレビュー確認</button>
+      <div class="action-note">
+        出品後は商品一覧ページに即時反映されます。<br>内容はいつでも編集できます。
+      </div>
+    </div>
+
+    <!-- 出品のコツ -->
+    <div class="tips-card">
+      <div class="tips-title">💡 売れやすくするコツ</div>
+      <div class="tip-item"><span class="tip-icon">📸</span><span>写真は明るい場所で複数枚撮影すると購入率UP</span></div>
+      <div class="tip-item"><span class="tip-icon">📝</span><span>着用シーンや状態を丁寧に書くと信頼感アップ</span></div>
+      <div class="tip-item"><span class="tip-icon">⚡</span><span>即日発送対応にすると検索結果で上位表示</span></div>
+      <div class="tip-item"><span class="tip-icon">💬</span><span>つぶやきで告知すると出品直後の閲覧数が増える</span></div>
+      <div class="tip-item"><span class="tip-icon">💰</span><span>価格は¥1,500〜¥3,000が最も売れやすい帯域</span></div>
+    </div>
+
+  </aside>
+
+</main>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal">
+    <div class="modal-icon">🎀</div>
+    <div class="modal-title">出品完了！</div>
+    <div class="modal-sub">
+      商品が出品されました🌸<br>
+      つぶやきで告知して<br>もっと多くの人に見てもらいましょう！
+    </div>
+    <button class="modal-btn" onclick="closeModal()">商品ページを見る →</button>
+  </div>
+</div>
+
+<script>
+  // FADE IN
+  const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), { threshold: 0.05 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+  const CATEGORY_LABELS = {
+    panty: '🩲 パンティ', bra: '👙 ブラジャー', set: '💞 B&Pセット',
+    fluid: '🧴 体液系', clothes: '👗 衣類系', other: '✨ その他'
+  };
+
+  function updatePreview() {
+    const title = document.getElementById('titleInput').value || '商品タイトルがここに表示されます';
+    const cat = document.getElementById('categoryInput').value;
+
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('titleCount').textContent = document.getElementById('titleInput').value.length;
+
+    if (cat) {
+      document.getElementById('previewTag').textContent = CATEGORY_LABELS[cat];
+    }
+
+    const instant = document.getElementById('toggleInstant').checked;
+    const badges = document.getElementById('previewBadges');
+    badges.innerHTML = instant ? '<span class="preview-badge">即日</span><span class="preview-badge">写真付</span>' : '<span class="preview-badge">写真付</span>';
+  }
+
+  function updateCharCount() {
+    const v = document.getElementById('descInput').value;
+    document.getElementById('descCount').textContent = v.length;
+  }
+
+  function updatePrice() {
+    const v = parseInt(document.getElementById('priceInput').value) || 0;
+    document.getElementById('previewPrice').textContent = v ? '¥' + v.toLocaleString() : '¥ ---';
+    if (v > 0) {
+      const fee = Math.round(v * 0.15);
+      const net = v - fee;
+      document.getElementById('ppBase').textContent = '¥' + v.toLocaleString();
+      document.getElementById('ppFee').textContent = '- ¥' + fee.toLocaleString();
+      document.getElementById('ppNet').textContent = '¥' + net.toLocaleString();
+    } else {
+      document.getElementById('ppBase').textContent = '¥ ---';
+      document.getElementById('ppFee').textContent = '- ¥ ---';
+      document.getElementById('ppNet').textContent = '¥ ---';
+    }
+  }
+
+  function toggleOpt(el) {
+    el.classList.toggle('selected');
+  }
+
+  function triggerUpload(i) {
+    console.log('Upload slot', i);
+  }
+
+  function removeImg(e, i) {
+    e.stopPropagation();
+    const slots = document.querySelectorAll('.img-slot');
+    slots[i].classList.remove('filled');
+    slots[i].innerHTML = '<div class="img-slot-icon">＋</div><div>追加</div>';
+    if (i === 0) slots[i].innerHTML = '<div class="img-main-badge">メイン</div><div class="img-slot-icon">＋</div><div>追加</div>';
+  }
+
+  function handlePublish() {
+    const title = document.getElementById('titleInput').value;
+    const cat = document.getElementById('categoryInput').value;
+    const price = document.getElementById('priceInput').value;
+    if (!title || !cat || !price) {
+      alert('必須項目（タイトル・カテゴリ・価格）を入力してください');
+      return;
+    }
+    document.getElementById('successModal').classList.add('show');
+  }
+
+  function handleDraft() {
+    const btn = document.querySelector('.btn-draft');
+    btn.textContent = '✓ 下書き保存しました';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'var(--green2)';
+    btn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    setTimeout(() => {
+      btn.textContent = '💾 下書き保存';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2200);
+  }
+
+  function closeModal() {
+    document.getElementById('successModal').classList.remove('show');
+  }
+</script>
+</body>
+</html>

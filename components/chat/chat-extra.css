@@ -1,0 +1,565 @@
+/* メッセージ画面の足し分（styles/chat.css は自動生成のため直さず、ここで足す）。
+   見本に無い部品（button の直し・送れないときの表示・商品の選択など）と、広さに応じた形 */
+
+/* ── 枠 ── */
+@supports (height: 100dvh) {
+  /* スマホのアドレスバーで下が隠れないように */
+  .pg-chat {
+    height: 100dvh;
+    --chat-h: calc(100dvh - 64px);
+  }
+}
+.pg-chat .chat-layout {
+  grid-template-columns: 320px minmax(0, 1fr) 280px;
+}
+.pg-chat .chat-layout.no-side {
+  grid-template-columns: 320px minmax(0, 1fr);
+}
+.pg-chat .chat-main {
+  position: relative;
+  min-width: 0;
+}
+.pg-chat .ch-info {
+  min-width: 0;
+}
+/* backdrop-filter は position: fixed の子（通報の窓）を枠の中に閉じ込めるので、窓を置く所だけ外す */
+.pg-chat .chat-header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+/* 共通の部品（pt-）が、チャットの囲いの文字の形（太さ・寄せ）を受け継がないようにする。
+   余白は styles/chat.css の全体リセットを強さ0（:where）にしたので本来は要らないが、念のため残す */
+.pg-chat .pt-modal-back {
+  padding: 16px;
+}
+.pg-chat .pt-modal {
+  padding: 24px;
+  font-weight: 400;
+  text-align: left;
+  letter-spacing: normal;
+  white-space: normal;
+}
+.pg-chat .pt-modal-actions {
+  margin-top: 18px;
+}
+.pg-chat .pt-btn {
+  padding: 10px 20px;
+}
+.pg-chat .pt-msg {
+  margin: 8px 0;
+  padding: 10px 14px;
+}
+.pg-chat .pt-uploader-main {
+  padding: 2px 8px;
+}
+.pg-chat button {
+  font-family: inherit;
+}
+
+/* ── 一覧 ── */
+.pg-chat button.tt {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+}
+.pg-chat a.thread-item {
+  text-decoration: none;
+  color: inherit;
+}
+.pg-chat .chat-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+.pg-chat .chat-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-chat .chat-muted-mark {
+  font-size: 11px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.pg-chat .chat-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.pg-chat .chat-empty p + p {
+  margin-top: 6px;
+}
+.pg-chat .chat-empty-icon {
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+.pg-chat .chat-empty-btn {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 9px 20px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--primary), #ff75a0);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.pg-chat .chat-placeholder {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 700;
+  gap: 8px;
+}
+.pg-chat .chat-placeholder-icon {
+  font-size: 44px;
+}
+
+/* ── 会話の頭 ── */
+.pg-chat .ch-btn {
+  color: var(--text-sub);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.pg-chat .ch-btn.active {
+  background: var(--primary-light);
+  border-color: rgba(255, 75, 145, 0.3);
+  color: var(--primary);
+}
+.pg-chat .ch-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pg-chat .ch-actions {
+  align-items: center;
+  flex-shrink: 0;
+}
+.pg-chat .ch-status.off {
+  color: var(--text-muted);
+}
+.pg-chat .ch-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-chat .ch-back {
+  display: none;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text-sub);
+  text-decoration: none;
+  padding: 0 6px 2px 0;
+}
+.pg-chat .chat-inline-error {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* ── メッセージ ── */
+.pg-chat .chat-older {
+  align-self: center;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 18px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.pg-chat .chat-older:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pg-chat .chat-empty-thread {
+  margin: auto;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* 改行をそのまま見せる。長い URL などで横にはみ出さない */
+.pg-chat .bubble,
+.pg-chat .sys-msg {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pg-chat .chat-sys {
+  max-width: 90%;
+}
+.pg-chat .chat-sys-link {
+  color: var(--primary);
+  font-weight: 700;
+}
+.pg-chat .msg-row.is-held .bubble.mine,
+.pg-chat .msg-row.is-held .chat-imgs,
+.pg-chat .msg-row.is-held .item-bubble {
+  opacity: 0.6;
+}
+.pg-chat .chat-held {
+  background: var(--yellow);
+  color: var(--yellow2);
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+}
+.pg-chat .chat-imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pg-chat .msg-row.mine .chat-imgs {
+  justify-content: flex-end;
+}
+.pg-chat .chat-imgs.multi .img-bubble {
+  width: 130px;
+  height: 110px;
+}
+.pg-chat .img-bubble img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pg-chat a.item-bubble {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.pg-chat .item-bubble .ib-btn {
+  display: block;
+  text-align: center;
+}
+.pg-chat .item-bubble.chat-gone {
+  cursor: default;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.pg-chat .chat-report {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.pg-chat .chat-report:hover {
+  color: var(--primary);
+}
+.pg-chat button.new-msg-toast {
+  border: 0;
+}
+.pg-chat .new-msg-toast.show {
+  display: block;
+}
+
+/* ── 送る欄 ── */
+.pg-chat .input-area {
+  position: relative;
+}
+/* 見本は送る欄の高さが決まっている前提の位置。欄が伸びても上に出るようにする */
+.pg-chat .input-area .emoji-picker {
+  bottom: calc(100% + 8px);
+}
+.pg-chat .ep-emoji {
+  background: none;
+  border: 0;
+  line-height: 1.2;
+}
+.pg-chat .tool-btn.active {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.pg-chat .tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.pg-chat .chat-caution {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.pg-chat .chat-panel {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  border-radius: var(--radius-md);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.pg-chat .chat-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+}
+.pg-chat .chat-panel-close {
+  background: none;
+  border: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.pg-chat .chat-panel-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.pg-chat .chat-panel-empty a {
+  color: var(--primary);
+  font-weight: 700;
+}
+.pg-chat .chat-uploader .pt-uploader-grid {
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+.pg-chat .chat-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+.pg-chat .chat-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 6px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+.pg-chat .chat-pick.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(255, 75, 145, 0.15);
+}
+.pg-chat .chat-pick-thumb {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 22px;
+}
+.pg-chat .chat-pick-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pg-chat .chat-pick-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-chat .chat-pick-price {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.pg-chat .chat-picked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.pg-chat .chat-form-msg {
+  margin: 8px 0 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.pg-chat .chat-count {
+  font-weight: 700;
+}
+.pg-chat .chat-count.over {
+  color: var(--primary);
+}
+.pg-chat .chat-closed {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+.pg-chat .chat-closed-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 7px 18px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--primary), #ff75a0);
+  color: #fff;
+  text-decoration: none;
+}
+
+/* ── 右の欄 ── */
+.pg-chat .right-sidebar a {
+  text-decoration: none;
+  color: inherit;
+}
+.pg-chat a.sp-btn {
+  display: block;
+  text-align: center;
+  color: #fff;
+}
+.pg-chat .chat-orders .order-banner {
+  padding: 8px 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+}
+.pg-chat .chat-orders .order-banner:last-child {
+  border-bottom: 0;
+}
+.pg-chat .chat-imgs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.pg-chat .rs-img-thumb {
+  overflow: hidden;
+}
+.pg-chat .rs-img-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pg-chat .chat-rs-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.pg-chat .ob-status.pending {
+  background: var(--yellow);
+  color: var(--yellow2);
+}
+.pg-chat .ob-status.prep {
+  background: var(--secondary-light);
+  color: var(--secondary);
+}
+.pg-chat .ob-status.shipped {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+.pg-chat .ob-status.done {
+  background: var(--green);
+  color: var(--green2);
+}
+.pg-chat .ob-status.cancel {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 狭い画面で右の欄の代わりに出す、この相手との注文（折りたたみ） */
+.pg-chat .chat-fold {
+  display: none;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid var(--glass-border);
+}
+.pg-chat .chat-fold summary {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+.pg-chat .chat-fold .chat-orders {
+  padding: 0 16px 6px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/* ── 広さに応じた形 ── */
+@media (max-width: 1100px) {
+  .pg-chat .chat-layout {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+  .pg-chat .right-sidebar {
+    display: none;
+  }
+  .pg-chat .chat-fold {
+    display: block;
+  }
+}
+@media (max-width: 768px) {
+  .pg-chat .chat-layout,
+  .pg-chat .chat-layout.no-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-chat .chat-layout.is-list .chat-main {
+    display: none;
+  }
+  .pg-chat .chat-layout.is-room .thread-list {
+    display: none;
+  }
+  .pg-chat .chat-hide-sm {
+    display: none;
+  }
+  .pg-chat .ch-back {
+    display: block;
+  }
+  .pg-chat .logo {
+    padding: 0 14px;
+    font-size: 17px;
+  }
+  .pg-chat .header-right {
+    padding: 0 10px;
+    gap: 4px;
+  }
+  .pg-chat .hbtn {
+    padding: 8px 10px;
+  }
+  .pg-chat .chat-header {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .pg-chat .ch-actions {
+    gap: 4px;
+  }
+  .pg-chat .ch-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .pg-chat .messages-scroll {
+    padding: 14px 12px;
+  }
+  .pg-chat .msg-group {
+    max-width: 80%;
+  }
+  .pg-chat .input-area {
+    padding: 10px 12px;
+  }
+  .pg-chat .chat-caution {
+    display: none;
+  }
+  .pg-chat .chat-hint-keys {
+    display: none;
+  }
+}
