@@ -41,7 +41,10 @@ npm run dev
 ## Supabase の準備
 
 1. **migration を番号順に当てる**（`supabase/migrations/`）。本番は「migration が先、アプリがあと」。
-   - 本番に当てる前に `supabase/post-deploy/00_precheck.sql` を流し、作る表・箱の名前が本番に無いことを確かめる（読むだけ）。
+   - 本番に当てる前に `supabase/post-deploy/00_precheck.sql` を流す（読むだけ）。作る表・関数・箱の名前が本番に無いか、旧表の形、拡張機能などを1つの表で返す。`NG` が1つでもあれば当てない。
+   - 1本ずつ SQL Editor で流す（各ファイルは1回の実行で全部通るか全部戻る）。
+   - 当てた後に `supabase/post-deploy/05_postcheck.sql`（読むだけ）で `NG` が無いこと、Advisors の Security で ERROR が 0 件なことを確かめてからアプリを出す。
+   - 0008 の引っ越しは、アプリを切り替える直前に `select public.migrate_legacy_data();` だけをもう一度流す（その間に前の画面で登録した人と出品を拾う。何度流しても同じ結果。ファイルごと流し直すと表を作る所で止まる）。
    - 新しいアプリを出して動きを確かめた後に `supabase/post-deploy/10_lock_legacy.sql`（前の表を閉じる）。
 2. **Auth の設定**（Supabase の管理画面）:
    - URL Configuration の Site URL に `NEXT_PUBLIC_SITE_URL`、Redirect URLs に `${NEXT_PUBLIC_SITE_URL}/auth/callback**` を足す（Preview の URL も使うなら同じ形で）。
