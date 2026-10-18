@@ -326,6 +326,8 @@ function RegisterPanel({
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [adult, setAdult] = useState(false);
   const [touched, setTouched] = useState(false);
+  // 登録したその場でログインできた（Supabase の「メールの確認」が切ってある）。確認メールは来ないので案内を変える
+  const [signedIn, setSignedIn] = useState(false);
 
   const isSeller = role === "seller";
   const mode = isSeller ? "seller-mode" : role === "buyer" ? "buyer-mode" : "seller-mode";
@@ -386,10 +388,11 @@ function RegisterPanel({
           agreePrivacy: true,
           adult: true,
         }),
-      () => {
+      (d) => {
         // パスワードは画面に残さない
         setPassword("");
         setConfirm("");
+        setSignedIn(Boolean(d?.signedIn));
         setStep(3);
       },
     );
@@ -701,7 +704,24 @@ function RegisterPanel({
       ) : null}
 
       {/* STEP 3: 完了 */}
-      {step === 3 ? (
+      {step === 3 && signedIn ? (
+        <div className="success-screen show" role="status">
+          <div className="success-icon" aria-hidden="true">
+            {isSeller ? "🎀" : "🛍"}
+          </div>
+          <h1 className="success-title">{isSeller ? "出品者の登録が完了しました" : "購入者の登録が完了しました"}</h1>
+          <div className="success-sub">
+            続けて、本人確認（18歳以上の確認）をお願いします。
+            <br />
+            本人確認が済むと、{isSeller ? "出品" : "購入"}ができるようになります。
+          </div>
+          {/* ログインの状態を画面の上の部分にも反映させるため、ページごと読み直す */}
+          <a href="/kyc" className={`btn-go ${isSeller ? "seller" : "buyer"}`}>
+            本人確認へ進む →
+          </a>
+        </div>
+      ) : null}
+      {step === 3 && !signedIn ? (
         <div className="success-screen show" role="status">
           <div className="success-icon" aria-hidden="true">
             {isSeller ? "🎀" : "🛍"}

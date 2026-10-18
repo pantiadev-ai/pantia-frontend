@@ -104,7 +104,8 @@ const SignupSchema = z
   })
   .refine((v) => v.role !== "seller" || v.age !== null);
 
-export async function signup(input: unknown): Promise<ActionResult<{ role: "seller" | "buyer" }>> {
+/** signedIn = Supabase の「メールの確認」が切ってあり、登録したその場でログインできた（確認メールは送られない） */
+export async function signup(input: unknown): Promise<ActionResult<{ role: "seller" | "buyer"; signedIn: boolean }>> {
   return runAction(async () => {
     const parsed = SignupSchema.safeParse(input);
     if (!parsed.success) throw new ActionError("入力の内容を確かめてください。");
@@ -124,14 +125,16 @@ export async function signup(input: unknown): Promise<ActionResult<{ role: "sell
     }
 
     const supabase = await createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: v.email,
       password: v.password,
       options: { data: meta, emailRedirectTo: callbackUrl("/kyc") },
     });
     if (error) {
       // 登録済みのアドレスでも、初めての人と同じ「確認メールを送りました」を出す（有無を当てさせない）
-      if (error.code === "user_already_exists" || error.code === "email_exists") return { ok: true, data: { role: v.role } };
+      if (error.code === "user_already_exists" || error.code === "email_exists") {
+        return { ok: true, data: { role: v.role, signedIn: false } };
+      }
       if (error.code === "weak_password") throw new ActionError(WEAK_PASSWORD);
       if (error.code === "signup_disabled") throw new ActionError(REGISTRATION_CLOSED);
       if (error.code === "email_address_invalid") throw new ActionError("このメールアドレスは使えません。別のアドレスでお試しください。");
@@ -145,7 +148,7 @@ export async function signup(input: unknown): Promise<ActionResult<{ role: "sell
       console.error("[signup]", error.code ?? error.status);
       throw new ActionError("登録できませんでした。時間をおいて、もう一度お試しください。");
     }
-    return { ok: true, data: { role: v.role } };
+    return { ok: true, data: { role: v.role, signedIn: Boolean(data.session) } };
   });
 }
 
