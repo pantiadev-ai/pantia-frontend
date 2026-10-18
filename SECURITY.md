@@ -102,11 +102,11 @@ AI を使うなら（使わないなら「なし」）:
 
 | 守る物 | 夜間バックアップ（`C:\Users\OWNER\dev\ai-kakumei-backup\targets.json` など） | 載せる日 |
 |---|---|---|
-| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。守り方が決まった日に載せる |
+| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
 | ファイル（Storage・VPS のファイル）。無ければ「なし」 | 出品・アイコン・つぶやき・チャットの写真（本人確認の書類は7日で消すので載せない）。 仮（社長・公開前） | 本番の migration を当てた日 |
 
 - 外形監視に載せる URL（`uptime_targets.json`）: https://pantia-frontend-app.vercel.app/auth（200）・https://pantia-frontend-app.vercel.app/api/cron/health（合言葉なしで 200）・Supabase の入口。 仮（社長・客先の監視に載せるか公開前に決める）
-- cron があるなら、最後まで走った時刻の記録と `/api/cron/health`: あり。expire-orders・auto-complete・retry-refunds・cleanup（どれも1日1回。vercel.json）が cron_runs に残し、health が「最後に終わってから26時間を過ぎた物」を 503 で返す。期限切れの支払い待ちは、購入の手続きの中でもその場で取り消す（lib/order-sweep.ts）ので、1日1回でも売り場は詰まらない
+- cron があるなら、最後まで走った時刻の記録と `/api/cron/health`: あり。expire-orders・auto-complete・retry-refunds・cleanup（どれも1日1回。vercel.json）が cron_runs に残し、health が「最後に終わってから26時間を過ぎた物」を 503 で返す。期限切れの支払い待ちは、購入の手続きの中でもその場で取り消す（lib/order-sweep.ts）ので、1日1回でも売り場は詰まらない。2026-10-19 00:30 JST に retry-refunds が本番で初めて最後まで走り、cron_runs に成功が残った（サーバーの鍵と CRON_SECRET が正しい印）。health は4本が一度ずつ走るまで 503
 
 ## 8. ASVS 5.0 の章（28 §2-2）
 
