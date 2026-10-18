@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン・会員登録 - LABEL NAME</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="auth-header">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <div class="header-help">
+    困ったことがあれば <a href="#">ヘルプ</a>
+  </div>
+</header>
+
+<!-- PAGE -->
+<main class="page">
+  <div class="card">
+
+    <!-- MODE SWITCH -->
+    <div class="mode-switch">
+      <button class="mode-btn active" id="loginModeBtn" onclick="setMode('login')">ログイン</button>
+      <button class="mode-btn" id="registerModeBtn" onclick="setMode('register')">新規登録</button>
+    </div>
+
+    <!-- ===== LOGIN PANEL ===== -->
+    <div class="login-panel show" id="loginPanel">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:22px;font-weight:800;color:var(--text);">おかえりなさい 🌸</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px;">アカウントにログインしてください</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">メールアドレス <span class="required">*</span></label>
+        <input class="form-input" type="email" placeholder="example@email.com" id="loginEmail">
+        <div class="form-error" id="loginEmailErr">メールアドレスを入力してください</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">パスワード <span class="required">*</span></label>
+        <a href="#" class="forgot-link">パスワードを忘れた方</a>
+        <div class="pw-wrap">
+          <input class="form-input" type="password" placeholder="パスワードを入力" id="loginPw" style="padding-right:44px;">
+          <button class="pw-toggle" onclick="togglePw('loginPw', this)" type="button">👁</button>
+        </div>
+        <div class="form-error" id="loginPwErr">パスワードを入力してください</div>
+      </div>
+
+      <div style="margin-bottom:4px;">
+        <div class="check-group" onclick="toggleCheck('stayCheck')">
+          <div class="check-box" id="stayCheck"></div>
+          <span class="check-label">ログイン状態を保持する</span>
+        </div>
+      </div>
+
+      <button class="btn-submit seller-mode" onclick="handleLogin()">🔑 ログイン</button>
+
+      <div class="or-divider"><span>または</span></div>
+
+      <div class="sns-btns">
+        <button class="sns-btn">
+          <span class="sns-icon">G</span> Googleでログイン
+        </button>
+        <button class="sns-btn">
+          <span class="sns-icon" style="color:#1DA1F2;">𝕏</span> X（Twitter）でログイン
+        </button>
+      </div>
+
+      <div class="switch-link">
+        アカウントをお持ちでない方は <a onclick="setMode('register')">新規登録</a>
+      </div>
+    </div>
+
+    <!-- ===== REGISTER PANEL ===== -->
+    <div class="register-panel" id="registerPanel">
+
+      <!-- STEP INDICATOR -->
+      <div class="steps" id="stepIndicator">
+        <div class="step active" id="step1"><div class="step-num">1</div> ロール選択</div>
+        <div class="step-line" id="line1"></div>
+        <div class="step" id="step2"><div class="step-num">2</div> 基本情報</div>
+        <div class="step-line" id="line2"></div>
+        <div class="step" id="step3"><div class="step-num">3</div> 完了</div>
+      </div>
+
+      <!-- STEP 1: ロール選択 -->
+      <div id="regStep1">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:20px;font-weight:800;color:var(--text);">はじめまして！🎀</div>
+          <div style="font-size:13px;color:var(--text3);margin-top:4px;">どちらで登録しますか？</div>
+        </div>
+
+        <div class="role-selector">
+          <div class="role-cards">
+            <div class="role-card seller" id="sellerCard" onclick="selectRole('seller')">
+              <div class="role-icon">👗</div>
+              <div class="role-name">出品者</div>
+              <div class="role-desc">商品を売りたい方</div>
+              <div class="role-check" id="sellerCheck"></div>
+            </div>
+            <div class="role-card buyer" id="buyerCard" onclick="selectRole('buyer')">
+              <div class="role-icon">🛍</div>
+              <div class="role-name">購入者</div>
+              <div class="role-desc">商品を買いたい方</div>
+              <div class="role-check" id="buyerCheck"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="age-verify">
+          <div class="age-verify-icon">⚠️</div>
+          <div class="age-verify-text">
+            本サービスは<strong>18歳以上</strong>の方のみご利用いただけます。登録完了後に本人確認（eKYC）をお願いします。
+          </div>
+        </div>
+
+        <button class="btn-submit seller-mode" id="step1Next" onclick="goStep2()" style="margin-top:0;">
+          次へ進む →
+        </button>
+
+        <div class="or-divider"><span>または</span></div>
+        <div class="sns-btns">
+          <button class="sns-btn"><span class="sns-icon">G</span> Googleで登録</button>
+          <button class="sns-btn"><span class="sns-icon" style="color:#1DA1F2;">𝕏</span> X（Twitter）で登録</button>
+        </div>
+
+        <div class="switch-link">
+          すでにアカウントをお持ちの方は <a onclick="setMode('login')">ログイン</a>
+        </div>
+      </div>
+
+      <!-- STEP 2: 基本情報 -->
+      <div id="regStep2" style="display:none;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:18px;font-weight:800;color:var(--text);" id="step2Title">基本情報を入力</div>
+          <div style="font-size:12px;margin-top:4px;" id="step2Sub"></div>
+        </div>
+
+        <!-- 共通フィールド -->
+        <div class="form-group">
+          <label class="form-label">メールアドレス <span class="required">*</span></label>
+          <input class="form-input" type="email" placeholder="example@email.com" id="regEmail">
+          <div class="form-error" id="regEmailErr">メールアドレスを入力してください</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">パスワード <span class="required">*</span></label>
+          <div class="pw-wrap">
+            <input class="form-input" type="password" placeholder="8文字以上" id="regPw" style="padding-right:44px;" oninput="checkPwStrength(this.value)">
+            <button class="pw-toggle" onclick="togglePw('regPw', this)" type="button">👁</button>
+          </div>
+          <div class="form-hint" id="pwStrength">英数字を含む8文字以上で設定してください</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">パスワード確認 <span class="required">*</span></label>
+          <div class="pw-wrap">
+            <input class="form-input" type="password" placeholder="もう一度入力" id="regPwConf" style="padding-right:44px;">
+            <button class="pw-toggle" onclick="togglePw('regPwConf', this)" type="button">👁</button>
+          </div>
+          <div class="form-error" id="regPwConfErr">パスワードが一致しません</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">ニックネーム <span class="required">*</span></label>
+          <input class="form-input" type="text" placeholder="例：めい" id="regNick">
+          <div class="form-hint">サービス上で表示される名前です（本名不要）</div>
+        </div>
+
+        <!-- 出品者専用フィールド -->
+        <div class="seller-fields" id="sellerFields">
+          <div class="field-divider"><span>出品者の追加情報</span></div>
+
+          <div class="form-group">
+            <label class="form-label">年齢 <span class="required">*</span></label>
+            <input class="form-input" type="number" placeholder="例：22" id="regAge" min="18" max="99">
+            <div class="form-hint">18歳未満の方はご登録いただけません</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">職業</label>
+            <input class="form-input" type="text" placeholder="例：大学生、会社員、主婦 など">
+            <div class="form-hint">プロフィールに表示されます（任意）</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">振込先口座（売上受け取り用）</label>
+            <input class="form-input" type="text" placeholder="銀行名" style="margin-bottom:8px;">
+            <input class="form-input" type="text" placeholder="支店名">
+            <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:8px;">
+              <select class="form-input" style="border-radius:var(--r-pill);">
+                <option>普通</option>
+                <option>当座</option>
+              </select>
+              <input class="form-input" type="text" placeholder="口座番号">
+            </div>
+            <input class="form-input" type="text" placeholder="口座名義（カタカナ）" style="margin-top:8px;">
+            <div class="form-hint">後から設定・変更も可能です</div>
+          </div>
+        </div>
+
+        <!-- 同意チェック -->
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:4px;">
+          <div class="check-group" onclick="toggleCheck('agreeTerms')">
+            <div class="check-box" id="agreeTerms"></div>
+            <span class="check-label"><a href="#">利用規約</a>に同意する <span style="color:var(--pk3);">*</span></span>
+          </div>
+          <div class="check-group" onclick="toggleCheck('agreePrivacy')">
+            <div class="check-box" id="agreePrivacy"></div>
+            <span class="check-label"><a href="#">プライバシーポリシー</a>に同意する <span style="color:var(--pk3);">*</span></span>
+          </div>
+          <div class="check-group" onclick="toggleCheck('agreeAge')">
+            <div class="check-box" id="agreeAge"></div>
+            <span class="check-label">18歳以上であることを確認しました <span style="color:var(--pk3);">*</span></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn-back" onclick="goStep1()">←</button>
+          <button class="btn-submit seller-mode" id="step2Submit" onclick="handleRegister()" style="flex:1;">
+            🎀 登録する
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: 完了 -->
+      <div id="regStep3" style="display:none;">
+        <div class="success-screen show">
+          <div class="success-icon" id="successIcon">🎉</div>
+          <div class="success-title" id="successTitle">登録完了！</div>
+          <div class="success-sub" id="successSub">
+            アカウントが作成されました。<br>
+            確認メールを送信しましたので<br>メールをご確認ください。
+          </div>
+          <a href="#" class="btn-go" id="successBtn">トップページへ →</a>
+        </div>
+      </div>
+
+    </div>
+    <!-- /REGISTER PANEL -->
+
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="auth-footer">
+  <a href="#">利用規約</a>
+  <a href="#">プライバシーポリシー</a>
+  <a href="#">特定商取引法</a>
+  <a href="#">お問い合わせ</a>
+  <a href="#">© 2026 LABEL NAME</a>
+</footer>
+
+<script>
+  let currentMode = 'login';
+  let selectedRole = 'seller';
+
+  // ── MODE SWITCH ──
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('loginModeBtn').classList.toggle('active', mode === 'login');
+    document.getElementById('registerModeBtn').classList.toggle('active', mode === 'register');
+    document.getElementById('loginPanel').classList.toggle('show', mode === 'login');
+    document.getElementById('registerPanel').classList.toggle('show', mode === 'register');
+  }
+
+  // ── ROLE SELECT ──
+  function selectRole(role) {
+    selectedRole = role;
+    const sc = document.getElementById('sellerCard');
+    const bc = document.getElementById('buyerCard');
+    sc.classList.toggle('selected', role === 'seller');
+    bc.classList.toggle('selected', role === 'buyer');
+    document.getElementById('sellerCheck').textContent = role === 'seller' ? '✓' : '';
+    document.getElementById('buyerCheck').textContent = role === 'buyer' ? '✓' : '';
+
+    // ボタン色切り替え
+    const btn = document.getElementById('step1Next');
+    btn.className = 'btn-submit ' + (role === 'seller' ? 'seller-mode' : 'buyer-mode');
+  }
+
+  // ── STEP NAVIGATION ──
+  function goStep2() {
+    document.getElementById('regStep1').style.display = 'none';
+    document.getElementById('regStep2').style.display = 'block';
+
+    // Step indicator
+    document.getElementById('step1').className = 'step done';
+    document.getElementById('step1').querySelector('.step-num').textContent = '✓';
+    document.getElementById('line1').classList.add('done');
+    document.getElementById('step2').classList.add('active');
+
+    // 出品者フィールド表示切り替え
+    const sf = document.getElementById('sellerFields');
+    sf.classList.toggle('show', selectedRole === 'seller');
+
+    // サブタイトル
+    document.getElementById('step2Sub').textContent =
+      selectedRole === 'seller' ? '💗 出品者として登録します' : '🛍 購入者として登録します';
+    document.getElementById('step2Sub').style.color = selectedRole === 'seller' ? 'var(--pk4)' : 'var(--lilac2)';
+
+    // 送信ボタン色
+    document.getElementById('step2Submit').className =
+      'btn-submit ' + (selectedRole === 'seller' ? 'seller-mode' : 'buyer-mode');
+  }
+
+  function goStep1() {
+    document.getElementById('regStep2').style.display = 'none';
+    document.getElementById('regStep1').style.display = 'block';
+    document.getElementById('step1').className = 'step active';
+    document.getElementById('step1').querySelector('.step-num').textContent = '1';
+    document.getElementById('line1').classList.remove('done');
+    document.getElementById('step2').className = 'step';
+  }
+
+  function goStep3() {
+    document.getElementById('regStep2').style.display = 'none';
+    document.getElementById('regStep3').style.display = 'block';
+
+    document.getElementById('step2').className = 'step done';
+    document.getElementById('step2').querySelector('.step-num').textContent = '✓';
+    document.getElementById('line2').classList.add('done');
+    document.getElementById('step3').classList.add('active');
+
+    if (selectedRole === 'seller') {
+      document.getElementById('successIcon').textContent = '🎀';
+      document.getElementById('successTitle').textContent = '出品者登録完了！';
+      document.getElementById('successSub').innerHTML =
+        'ようこそ！確認メールをご確認の上、<br>プロフィールを設定して出品をはじめましょう🌸';
+      document.getElementById('successBtn').textContent = 'プロフィールを設定する →';
+      document.getElementById('successBtn').style.background = 'linear-gradient(135deg, var(--pk3), var(--pk4))';
+    } else {
+      document.getElementById('successIcon').textContent = '🛍';
+      document.getElementById('successTitle').textContent = '購入者登録完了！';
+      document.getElementById('successSub').innerHTML =
+        'ようこそ！確認メールをご確認の上、<br>お気に入りの出品者を探してみましょう💕';
+      document.getElementById('successBtn').textContent = '商品を探す →';
+      document.getElementById('successBtn').style.background = 'linear-gradient(135deg, var(--lilac2), var(--lilac3))';
+    }
+  }
+
+  // ── FORM HANDLERS ──
+  function handleLogin() {
+    const email = document.getElementById('loginEmail');
+    const pw = document.getElementById('loginPw');
+    let ok = true;
+
+    if (!email.value.includes('@')) {
+      email.classList.add('error');
+      document.getElementById('loginEmailErr').classList.add('show');
+      ok = false;
+    } else {
+      email.classList.remove('error');
+      document.getElementById('loginEmailErr').classList.remove('show');
+    }
+
+    if (pw.value.length < 1) {
+      pw.classList.add('error');
+      document.getElementById('loginPwErr').classList.add('show');
+      ok = false;
+    } else {
+      pw.classList.remove('error');
+      document.getElementById('loginPwErr').classList.remove('show');
+    }
+
+    if (ok) {
+      const btn = document.querySelector('#loginPanel .btn-submit');
+      btn.textContent = '✓ ログインしました';
+      btn.style.background = 'var(--green2)';
+      btn.style.boxShadow = '0 6px 20px rgba(46, 204, 113, 0.4)';
+    }
+  }
+
+  function handleRegister() {
+    const terms = document.getElementById('agreeTerms').classList.contains('checked');
+    const privacy = document.getElementById('agreePrivacy').classList.contains('checked');
+    const age = document.getElementById('agreeAge').classList.contains('checked');
+    const email = document.getElementById('regEmail');
+    const pw = document.getElementById('regPw');
+    const pwc = document.getElementById('regPwConf');
+
+    let ok = true;
+
+    if (!email.value.includes('@')) {
+      email.classList.add('error');
+      document.getElementById('regEmailErr').classList.add('show');
+      ok = false;
+    } else {
+      email.classList.remove('error');
+      document.getElementById('regEmailErr').classList.remove('show');
+    }
+
+    if (pw.value !== pwc.value || pwc.value.length < 1) {
+      pwc.classList.add('error');
+      document.getElementById('regPwConfErr').classList.add('show');
+      ok = false;
+    } else {
+      pwc.classList.remove('error');
+      document.getElementById('regPwConfErr').classList.remove('show');
+    }
+
+    if (!terms || !privacy || !age) {
+      alert('必須項目にすべて同意してください');
+      ok = false;
+    }
+
+    if (ok) goStep3();
+  }
+
+  // ── HELPERS ──
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      btn.textContent = '👁';
+    }
+  }
+
+  function toggleCheck(id) {
+    document.getElementById(id).classList.toggle('checked');
+  }
+
+  function checkPwStrength(val) {
+    const el = document.getElementById('pwStrength');
+    if (val.length === 0) {
+      el.textContent = '英数字を含む8文字以上で設定してください';
+      el.style.color = 'var(--text3)';
+    } else if (val.length < 8) {
+      el.textContent = '⚠ もう少し長くしてください';
+      el.style.color = '#F39C12';
+    } else if (!/[0-9]/.test(val) || !/[a-zA-Z]/.test(val)) {
+      el.textContent = '⚠ 英字と数字を両方含めてください';
+      el.style.color = '#F39C12';
+    } else {
+      el.textContent = '✓ 安全なパスワードです';
+      el.style.color = 'var(--green2)';
+      document.getElementById('regPw').classList.add('success');
+    }
+  }
+
+  // デフォルトで出品者選択
+  selectRole('seller');
+</script>
+</body>
+</html>

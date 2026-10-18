@@ -1,0 +1,88 @@
+/* 出品フォームで足りない所だけ（見本 item_form の CSS は @/styles/item-form.css）。.pg-item-form の中だけに効く */
+
+/* ボタンの字を本文と同じにする（見本は div だったチップを button にしたため） */
+.pg-item-form button {
+  font-family: inherit;
+}
+.pg-item-form button.opt-chip {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* 押せないとき */
+.pg-item-form .btn-publish:disabled,
+.pg-item-form .btn-draft:disabled,
+.pg-item-form .btn-preview:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* a で作ったボタン */
+.pg-item-form a.btn-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+.pg-item-form a.modal-btn {
+  text-decoration: none;
+}
+
+/* 下書き保存のあと少しの間（見本の handleDraft と同じ色） */
+.pg-item-form .btn-draft.lf-saved {
+  background: var(--green);
+  color: var(--green2);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* 写真がまだ無いときのプレビュー */
+.pg-item-form .lf-noimg {
+  font-size: 44px;
+  opacity: 0.6;
+}
+
+/* 本人確認がまだのときの案内 */
+.pg-item-form .lf-kyc-note {
+  background: var(--yellow);
+  color: var(--yellow2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.pg-item-form .lf-kyc-note a {
+  color: var(--primary);
+  font-weight: 800;
+}
+.pg-item-form .action-note a {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* 完了の窓の「閉じる」 */
+.pg-item-form .lf-modal-close {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* 売り切れなどで編集できないとき */
+.pg-item-form .lf-closed {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+.pg-item-form .lf-closed a {
+  color: var(--primary);
+  font-weight: 800;
+}

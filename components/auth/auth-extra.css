@@ -1,0 +1,98 @@
+/* ログイン・登録の画面だけの追加の見た目（styles/auth.css は直さない）。.pg-auth の下だけに効く */
+
+/* 見本の文字の大きさ（見本はタグに直接書いていた） */
+.pg-auth .pt-auth-head { text-align: center; margin-bottom: 24px; }
+.pg-auth .pt-auth-title { font-size: 22px; font-weight: 800; color: var(--text-main); }
+.pg-auth .pt-auth-title.small { font-size: 18px; }
+.pg-auth .pt-auth-sub { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+.pg-auth .pt-auth-sub.seller { color: var(--pk4); font-weight: 700; }
+.pg-auth .pt-auth-sub.buyer { color: var(--lilac2); font-weight: 700; }
+
+/* ボタン・カードは <button>・<label> で作るので、ブラウザの既定の見た目を消す */
+.pg-auth button { font-family: inherit; }
+.pg-auth .role-card { display: block; position: relative; }
+.pg-auth .check-group { user-select: none; }
+.pg-auth .check-label a { position: relative; }
+.pg-auth .switch-link button,
+.pg-auth .pt-linklike {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pg-auth .switch-link button:hover,
+.pg-auth .pt-linklike:hover { text-decoration: underline; }
+
+/* キーボードで動かしたときの枠（中の本物の入力欄は見えないので、見える方に出す） */
+.pg-auth .role-card:has(input:focus-visible),
+.pg-auth .check-group:has(input:focus-visible) .check-box,
+.pg-auth .mode-btn:focus-visible,
+.pg-auth .btn-submit:focus-visible,
+.pg-auth .btn-back:focus-visible,
+.pg-auth .sns-btn:focus-visible,
+.pg-auth .pw-toggle:focus-visible,
+.pg-auth .btn-go:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.pg-auth .btn-submit:disabled,
+.pg-auth .sns-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.pg-auth .pt-agree { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.pg-auth .pt-agree .req { color: var(--pk3); }
+.pg-auth .pt-row { display: flex; gap: 10px; }
+.pg-auth .pt-row .btn-submit { flex: 1; }
+.pg-auth .pt-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-top: 10px;
+  text-align: center;
+}
+.pg-auth .pt-closed {
+  background: var(--err-bg);
+  color: var(--err);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.pg-auth .pt-msg { margin: 0 0 14px; }
+.pg-auth .form-hint.ok { color: var(--green2); }
+.pg-auth .form-hint.ng { color: var(--err); }
+.pg-auth .btn-go.seller { background: linear-gradient(135deg, var(--pk3), var(--pk4)); }
+.pg-auth .btn-go.buyer {
+  background: linear-gradient(135deg, var(--lilac2), var(--lilac3));
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* 停止中のお知らせ・再設定の画面 */
+.pg-auth .pt-auth-text { font-size: 13px; color: var(--text-sub); line-height: 1.9; margin-bottom: 18px; }
+.pg-auth .pt-auth-text p + p { margin-top: 8px; }
+.pg-auth .pt-auth-actions { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.pg-auth .pt-auth-actions form { display: block; }
+.pg-auth .pt-auth-actions .btn-go { justify-content: center; text-align: center; }
+.pg-auth .pt-auth-actions .btn-submit { margin-top: 0; }
+
+/* 下の帯は共通の SiteFooter（.footer-inner の中にリンク）。見本は帯の中に直接リンクを並べている */
+.pg-auth .auth-footer .footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 24px;
+  width: 100%;
+}
+.pg-auth .auth-footer .footer-logo,
+.pg-auth .auth-footer .footer-copy { color: rgba(255, 255, 255, 0.45); font-size: 12px; }
+.pg-auth .auth-footer .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 24px; }
+
+@media (max-width: 520px) {
+  .pg-auth .card { padding: 32px 20px 28px; }
+}

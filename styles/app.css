@@ -1,0 +1,735 @@
+/* 見本の無い画面（カート・購入・注文・本人確認・通知・振込・設定・規約以外の案内など）の共通の型。
+   見本（styles/items-list.css など）と同じ色・角丸・ガラスの見た目に揃える。囲いは .pg-app。
+   見本と同じく、全部のセレクタを .pg-app の中に閉じる（ページを移っても他の画面に混ざらない）。 */
+.pg-app {
+  --bg-grad-1: #fff0f5;
+  --bg-grad-2: #f3e8ff;
+  --bg-grad-3: #e8f5ff;
+  --primary: #ff4b91;
+  --primary-hover: #ff2e7e;
+  --primary-light: #ffe5ec;
+  --secondary: #8b5cf6;
+  --secondary-light: #f3e8ff;
+  --text-main: #2d1a29;
+  --text-sub: #665263;
+  --text-muted: #a392a0;
+  --line: rgba(255, 75, 145, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 10px 30px -5px rgba(255, 75, 145, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+  --ok: #10b981;
+  --ok-bg: #e8fbf0;
+  --warn: #d97706;
+  --warn-bg: #fef3c7;
+  --danger: #e11d48;
+  --danger-bg: #ffe4e6;
+  --r: 20px;
+  --r-sm: 12px;
+  --r-pill: 9999px;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-jakarta), var(--font-noto), sans-serif;
+  background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 50%, var(--bg-grad-3) 100%);
+  background-attachment: fixed;
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+.pg-app *,
+.pg-app *::before,
+.pg-app *::after {
+  box-sizing: border-box;
+}
+.pg-app h1,
+.pg-app h2,
+.pg-app h3,
+.pg-app p,
+.pg-app ul,
+.pg-app ol,
+.pg-app dl,
+.pg-app dd {
+  margin: 0;
+  padding: 0;
+}
+.pg-app ul,
+.pg-app ol {
+  list-style: none;
+}
+.pg-app a {
+  color: var(--primary);
+}
+.pg-app img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ── ヘッダー（見本の list-header と同じ形） ── */
+.pg-app .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  padding: 0 28px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pg-app .logo {
+  font-size: 20px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.pg-app .header-search {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 1;
+  max-width: 340px;
+}
+.pg-app .header-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-main);
+  width: 100%;
+  font-family: inherit;
+}
+.pg-app .app-header nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pg-app .app-header nav a {
+  font-size: 13px;
+  color: var(--text-sub);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  transition: all 0.2s;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pg-app .app-header nav a:hover,
+.pg-app .app-header nav a.nav-active {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.pg-app .nav-login {
+  border: 1px solid rgba(255, 75, 145, 0.3) !important;
+  color: var(--primary) !important;
+  background: rgba(255, 255, 255, 0.8);
+}
+.pg-app .nav-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 0 4px;
+}
+
+/* ── フッター（見本の list-footer と同じ形） ── */
+.pg-app .app-footer {
+  margin-top: auto;
+  background: #1a0f1a;
+  padding: 36px 28px 24px;
+}
+.pg-app .footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.pg-app .footer-logo {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+}
+.pg-app .footer-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.pg-app .footer-links a {
+  font-size: 12px;
+  color: #9e8a9b;
+  text-decoration: none;
+  font-weight: 500;
+}
+.pg-app .footer-links a:hover {
+  color: var(--primary-light);
+}
+.pg-app .footer-copy {
+  font-size: 11px;
+  color: #9e8a9b;
+}
+
+/* ── 本文の枠 ── */
+.pg-app .app-main {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 28px 64px;
+  flex: 1;
+}
+.pg-app .app-main.narrow {
+  max-width: 640px;
+}
+.pg-app .app-main.wide {
+  max-width: 1200px;
+}
+.pg-app .breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.pg-app .breadcrumb a {
+  text-decoration: none;
+  font-weight: 700;
+}
+.pg-app .page-title {
+  font-size: 22px;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+.pg-app .page-sub {
+  color: var(--text-sub);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.pg-app .section-title {
+  font-size: 15px;
+  font-weight: 900;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── カード ── */
+.pg-app .card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--r);
+  padding: 22px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.pg-app .card.tight {
+  padding: 14px 16px;
+}
+.pg-app .grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.pg-app .grid-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+.pg-app .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pg-app .row.between {
+  justify-content: space-between;
+}
+.pg-app .row.wrap {
+  flex-wrap: wrap;
+}
+.pg-app .stack > * + * {
+  margin-top: 12px;
+}
+.pg-app .muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pg-app .sub {
+  color: var(--text-sub);
+}
+.pg-app .strong {
+  font-weight: 800;
+}
+.pg-app .price {
+  font-weight: 900;
+  color: var(--primary);
+}
+.pg-app .divider {
+  height: 1px;
+  background: var(--line);
+  margin: 16px 0;
+  border: 0;
+}
+
+/* ── 一覧の行 ── */
+.pg-app .list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+}
+.pg-app .list-row:last-child {
+  border-bottom: 0;
+}
+.pg-app .list-row.unread {
+  background: linear-gradient(90deg, rgba(255, 75, 145, 0.06), transparent);
+}
+.pg-app .thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--primary-light);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.pg-app .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, var(--primary-light), var(--secondary-light));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.pg-app .grow {
+  flex: 1;
+  min-width: 0;
+}
+.pg-app .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 表 ── */
+.pg-app .table-wrap {
+  overflow-x: auto;
+}
+.pg-app table.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pg-app .table th,
+.pg-app .table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.pg-app .table th {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.pg-app .table td.num,
+.pg-app .table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pg-app dl.kv {
+  display: grid;
+  grid-template-columns: 9em minmax(0, 1fr);
+  gap: 8px 12px;
+  font-size: 13px;
+}
+.pg-app dl.kv dt {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* ── ボタン ── */
+.pg-app .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 22px;
+  border-radius: var(--r-pill);
+  font-weight: 800;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid rgba(255, 75, 145, 0.3);
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.pg-app .btn:hover {
+  background: var(--primary-light);
+}
+.pg-app .btn.primary {
+  background: linear-gradient(135deg, var(--primary), #ff75a0);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 6px 16px rgba(255, 75, 145, 0.25);
+}
+.pg-app .btn.primary:hover {
+  transform: translateY(-1px);
+}
+.pg-app .btn.danger {
+  color: var(--danger);
+  border-color: rgba(225, 29, 72, 0.3);
+}
+.pg-app .btn.danger:hover {
+  background: var(--danger-bg);
+}
+.pg-app .btn.small {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+.pg-app .btn.block {
+  width: 100%;
+}
+.pg-app .btn:disabled,
+.pg-app .btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.pg-app .link-btn {
+  background: none;
+  border: 0;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ── 入力 ── */
+.pg-app .field {
+  margin-bottom: 16px;
+}
+.pg-app .field > label,
+.pg-app .field > .label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+}
+.pg-app .req {
+  color: var(--primary);
+  font-size: 10px;
+  margin-left: 4px;
+}
+.pg-app input[type="text"],
+.pg-app input[type="email"],
+.pg-app input[type="password"],
+.pg-app input[type="number"],
+.pg-app input[type="tel"],
+.pg-app input[type="date"],
+.pg-app input[type="search"],
+.pg-app select,
+.pg-app textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.95);
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-main);
+  outline: none;
+}
+.pg-app textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.pg-app input:focus,
+.pg-app select:focus,
+.pg-app textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(255, 75, 145, 0.12);
+}
+.pg-app .hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.pg-app .check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pg-app .check input {
+  margin-top: 4px;
+  accent-color: var(--primary);
+}
+
+/* ── 状態のしるし ── */
+.pg-app .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--primary-light);
+  color: var(--primary);
+  white-space: nowrap;
+}
+.pg-app .chip.pending,
+.pg-app .chip.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.pg-app .chip.new,
+.pg-app .chip.prep {
+  background: var(--secondary-light);
+  color: var(--secondary);
+}
+.pg-app .chip.shipped {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+.pg-app .chip.done,
+.pg-app .chip.ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+.pg-app .chip.cancel,
+.pg-app .chip.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.pg-app .chip.gray {
+  background: #f1eef1;
+  color: var(--text-sub);
+}
+
+/* ── お知らせの帯 ── */
+.pg-app .notice {
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  background: var(--primary-light);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 75, 145, 0.2);
+}
+.pg-app .notice.warn {
+  background: var(--warn-bg);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+.pg-app .notice.ok {
+  background: var(--ok-bg);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.pg-app .notice.danger {
+  background: var(--danger-bg);
+  border-color: rgba(225, 29, 72, 0.25);
+}
+
+/* ── タブ ── */
+.pg-app .tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  padding-bottom: 2px;
+}
+.pg-app .tabs a,
+.pg-app .tabs button {
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-sub);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--glass-border);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pg-app .tabs .active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ── 空・ページ送り ── */
+.pg-app .empty {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+}
+.pg-app .empty .icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+.pg-app .empty .title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+.pg-app .pager {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── 商品の並び（ランキング・カートなど） ── */
+.pg-app .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.pg-app .mini-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--glass-shadow);
+  display: block;
+}
+.pg-app .mini-card .img {
+  aspect-ratio: 1;
+  width: 100%;
+  object-fit: cover;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+}
+.pg-app .mini-card .body {
+  padding: 10px 12px 12px;
+}
+.pg-app .mini-card .title {
+  font-size: 13px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-app .rank-no {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pg-app .rank-no.top {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #fff;
+}
+
+/* ── 文書（プライバシー・特商法・ヘルプ） ── */
+.pg-app .doc h2 {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 24px 0 8px;
+  padding-left: 10px;
+  border-left: 4px solid var(--primary);
+}
+.pg-app .doc p,
+.pg-app .doc li {
+  font-size: 14px;
+  color: var(--text-sub);
+  margin-bottom: 8px;
+}
+.pg-app .doc ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.pg-app .doc ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.pg-app details.faq {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+}
+.pg-app details.faq summary {
+  font-weight: 800;
+  cursor: pointer;
+}
+.pg-app details.faq p {
+  margin-top: 8px;
+  color: var(--text-sub);
+}
+
+/* ── スマホ ── */
+@media (max-width: 768px) {
+  .pg-app .app-header {
+    padding: 0 16px;
+  }
+  .pg-app .app-main {
+    padding: 16px 16px 48px;
+  }
+  .pg-app .grid-2,
+  .pg-app .grid-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-app dl.kv {
+    grid-template-columns: 7em minmax(0, 1fr);
+  }
+  .pg-app .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pg-app .card {
+    padding: 16px;
+  }
+}

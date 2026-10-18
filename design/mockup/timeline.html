@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイタイムライン - LABEL NAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="timeline.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="timeline-header">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <div class="header-search">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="出品者・商品を検索">
+  </div>
+  <nav>
+    <a href="#">商品一覧</a>
+    <a href="#" class="nav-active">タイムライン</a>
+    <a href="#">ランキング</a>
+    <a href="#" class="notif-wrap">🔔<span class="notif-dot"></span></a>
+    <div class="nav-divider"></div>
+    <a href="#" class="nav-login">K***さん ▾</a>
+  </nav>
+</header>
+
+<!-- LAYOUT -->
+<main class="layout">
+
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="left-sidebar fade-in">
+
+    <!-- 購入者プロフィール -->
+    <div class="buyer-profile">
+      <div class="bp-avatar">K</div>
+      <div class="bp-name">K***さん</div>
+      <div class="bp-role">🛍 購入者</div>
+      <div class="bp-stats">
+        <div><div class="bp-stat-num" id="followingCount">6</div><div class="bp-stat-label">フォロー中</div></div>
+        <div><div class="bp-stat-num">24</div><div class="bp-stat-label">購入数</div></div>
+        <div><div class="bp-stat-num">12</div><div class="bp-stat-label">お気に入り</div></div>
+      </div>
+    </div>
+
+    <!-- ナビ -->
+    <div class="side-nav">
+      <div class="side-nav-item active" onclick="switchTab('all', this)">
+        <span>✨</span> すべて
+      </div>
+      <div class="side-nav-item" onclick="switchTab('tweets', this)">
+        <span>💬</span> つぶやき<span class="side-nav-badge">8</span>
+      </div>
+      <div class="side-nav-item" onclick="switchTab('items', this)">
+        <span>🛍</span> 新着商品<span class="side-nav-badge">14</span>
+      </div>
+      <div class="side-nav-item" onclick="switchTab('sellers', this)">
+        <span>👩</span> フォロー中の子
+      </div>
+    </div>
+
+    <!-- フォロー中リスト -->
+    <div class="following-card">
+      <div class="fc-title">
+        フォロー中 (6)
+        <span class="fc-link" onclick="switchTab('sellers', document.querySelectorAll('.side-nav-item')[3])">全員見る</span>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('めい')">
+        <div class="fc-avatar">め<div class="fc-online"></div></div>
+        <div><div class="fc-name">めい</div><div class="fc-sub">大学生 19歳</div></div>
+        <div class="fc-new-dot" title="新着あり"></div>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('なな')">
+        <div class="fc-avatar" style="background:var(--secondary-light);color:var(--secondary);">な<div class="fc-online"></div></div>
+        <div><div class="fc-name">なな</div><div class="fc-sub">看護師 26歳</div></div>
+        <div class="fc-new-dot" title="新着あり"></div>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('あーや')">
+        <div class="fc-avatar" style="background:var(--yellow);">あ<div class="fc-online"></div></div>
+        <div><div class="fc-name">あーや</div><div class="fc-sub">大学生 18歳</div></div>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('りり')">
+        <div class="fc-avatar" style="background:var(--green);color:var(--green2);">り</div>
+        <div><div class="fc-name">りり</div><div class="fc-sub">主婦 29歳</div></div>
+        <div class="fc-new-dot"></div>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('みい')">
+        <div class="fc-avatar" style="background:var(--primary-light);">み</div>
+        <div><div class="fc-name">みい</div><div class="fc-sub">飲食 28歳</div></div>
+      </div>
+      <div class="fc-item" onclick="filterBySeller('さき')">
+        <div class="fc-avatar" style="background:rgba(59, 130, 246, 0.12);color:#3B82F6;">さ</div>
+        <div><div class="fc-name">さき</div><div class="fc-sub">歯科助手 24歳</div></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── CENTER: TIMELINE ── -->
+  <div class="timeline fade-in" style="transition-delay:0.08s;">
+
+    <!-- タブ -->
+    <div class="tl-tabs">
+      <button class="tl-tab active" id="tab-all" onclick="switchTab('all', this)">✨ すべて</button>
+      <button class="tl-tab" id="tab-tweets" onclick="switchTab('tweets', this)">💬 つぶやき</button>
+      <button class="tl-tab" id="tab-items" onclick="switchTab('items', this)">🛍 新着商品</button>
+      <button class="tl-tab" id="tab-sellers" onclick="switchTab('sellers', this)">👩 フォロー管理</button>
+    </div>
+
+    <!-- フィルターバー（出品者で絞り込み中） -->
+    <div id="sellerFilter" class="seller-filter-bar" style="display:none;">
+      <span>👩</span>
+      <span id="filterLabel">めいのみ表示中</span>
+      <span onclick="clearFilter()" style="margin-left:auto;cursor:pointer;font-size:14px;color:var(--text-muted);font-weight:800;">✕</span>
+    </div>
+
+    <!-- ══ ALL タブ ══ -->
+    <div class="tl-panel show" id="panel-all">
+
+      <!-- NEW バッジ付き -->
+      <div class="tweet-card new-post">
+        <div class="new-badge">🆕 新着</div>
+        <div class="tw-header">
+          <div class="tw-avatar">め</div>
+          <div class="tw-meta">
+            <div class="tw-name">めい <span class="tw-verified">✅</span></div>
+            <div class="tw-sub"><span>大学生</span><span>19歳</span></div>
+          </div>
+          <div class="tw-time">2分前</div>
+        </div>
+        <div class="tw-body">今日も新しいパンツ出品しました🌸 講義終わりに撮影したのでフレッシュです！ぜひチェックしてね💕 <span class="hashtag">#新着出品</span> <span class="hashtag">#パンティ</span></div>
+        <a href="#" class="item-link">
+          <div class="il-thumb">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="商品" class="il-img">
+          </div>
+          <div class="il-info"><div class="il-name">コットンショーツ 2日着用</div><div class="il-price">¥1,800</div></div>
+          <div class="il-badge">即日</div>
+        </a>
+        <div class="tw-actions">
+          <button class="tw-action" onclick="toggleLike(this)">♡ 28</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 7</button>
+          <button class="tw-action">🔗 シェア</button>
+        </div>
+        <div class="comments-wrap">
+          <div class="cmt-item"><div class="cmt-avatar">K</div><div class="cmt-bubble"><div class="cmt-name" style="color:var(--secondary);">あなた</div><div class="cmt-text">着用写真は何枚ありますか？</div></div></div>
+          <div class="cmt-item"><div class="cmt-avatar" style="background:var(--primary-light);color:var(--primary);">め</div><div class="cmt-bubble" style="background:var(--primary-light);"><div class="cmt-name" style="color:var(--primary);">めい</div><div class="cmt-text">3枚あります！購入後すぐにお送りします🌸</div></div></div>
+          <div class="cmt-input-wrap">
+            <div class="cmt-avatar">K</div>
+            <input class="cmt-input" type="text" placeholder="コメントを送る...">
+            <button class="cmt-send">送信</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新着商品カード -->
+      <div class="tweet-card new-post">
+        <div class="new-badge">🆕 新着商品</div>
+        <div class="tw-header">
+          <div class="tw-avatar" style="background:var(--secondary-light);color:var(--secondary);">な</div>
+          <div class="tw-meta">
+            <div class="tw-name">なな</div>
+            <div class="tw-sub"><span>看護師</span><span>26歳</span></div>
+          </div>
+          <div class="tw-time">8分前</div>
+        </div>
+        <div class="tw-body">夜勤明け出品です🫠 汗だくで仕上がりよしです。リクエストあればすぐ対応します！</div>
+        <a href="#" class="item-link">
+          <div class="il-thumb">
+            <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=100&q=80" alt="商品" class="il-img">
+          </div>
+          <div class="il-info"><div class="il-name">Tバック 1日着用 オプション相談可</div><div class="il-price">¥2,200</div></div>
+          <div class="il-badge">相談可</div>
+        </a>
+        <div class="tw-actions">
+          <button class="tw-action liked" onclick="toggleLike(this)"><span class="hi">♥</span> 34</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 11</button>
+          <button class="tw-action">🔗 シェア</button>
+        </div>
+        <div class="comments-wrap">
+          <div class="cmt-input-wrap">
+            <div class="cmt-avatar">K</div>
+            <input class="cmt-input" type="text" placeholder="コメントを送る...">
+            <button class="cmt-send">送信</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div class="tw-avatar" style="background:var(--yellow);color:var(--yellow2);">あ</div>
+          <div class="tw-meta">
+            <div class="tw-name">あーや</div>
+            <div class="tw-sub"><span>大学生</span><span>18歳</span></div>
+          </div>
+          <div class="tw-time">32分前</div>
+        </div>
+        <div class="tw-body">フォロワー100人達成ありがとうございます🎉 新しいパンツ出品したのでぜひ見てね💓 <span class="hashtag">#フォロワー100人</span></div>
+        <div class="tw-imgs two">
+          <div class="tw-img">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80" alt="写真" class="tw-photo-img">
+          </div>
+          <div class="tw-img">
+            <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=400&q=80" alt="写真" class="tw-photo-img">
+          </div>
+        </div>
+        <div class="tw-actions">
+          <button class="tw-action" onclick="toggleLike(this)">♡ 51</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 14</button>
+          <button class="tw-action">🔗 シェア</button>
+        </div>
+        <div class="comments-wrap">
+          <div class="cmt-input-wrap"><div class="cmt-avatar">K</div><input class="cmt-input" type="text" placeholder="コメントを送る..."><button class="cmt-send">送信</button></div>
+        </div>
+      </div>
+
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div class="tw-avatar" style="background:var(--green);color:var(--green2);">り</div>
+          <div class="tw-meta">
+            <div class="tw-name">りり</div>
+            <div class="tw-sub"><span>主婦</span><span>29歳</span></div>
+          </div>
+          <div class="tw-time">1時間前</div>
+        </div>
+        <div class="tw-body">5月キャンペーン中🎏 今月末まで着用写真を無料でお付けします！プロフィールからどうぞ😊 <span class="hashtag">#キャンペーン</span></div>
+        <a href="#" class="item-link">
+          <div class="il-thumb">
+            <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=100&q=80" alt="商品" class="il-img">
+          </div>
+          <div class="il-info"><div class="il-name">ブラック Tバック 3日着用</div><div class="il-price">¥2,800</div></div>
+          <div class="il-badge">写真無料</div>
+        </a>
+        <div class="tw-actions">
+          <button class="tw-action" onclick="toggleLike(this)">♡ 17</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 5</button>
+          <button class="tw-action">🔗 シェア</button>
+        </div>
+        <div class="comments-wrap">
+          <div class="cmt-input-wrap"><div class="cmt-avatar">K</div><input class="cmt-input" type="text" placeholder="コメントを送る..."><button class="cmt-send">送信</button></div>
+        </div>
+      </div>
+
+      <div class="load-more"><button class="btn-load">もっと見る</button></div>
+    </div>
+
+    <!-- ══ TWEETS タブ ══ -->
+    <div class="tl-panel" id="panel-tweets">
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div class="tw-avatar">め</div>
+          <div class="tw-meta"><div class="tw-name">めい <span class="tw-verified">✅</span></div><div class="tw-sub"><span>大学生</span><span>19歳</span></div></div>
+          <div class="tw-time">2分前</div>
+        </div>
+        <div class="tw-body">今日も新しいパンツ出品しました🌸 <span class="hashtag">#新着出品</span> <span class="hashtag">#パンティ</span></div>
+        <div class="tw-actions">
+          <button class="tw-action" onclick="toggleLike(this)">♡ 28</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 7</button>
+        </div>
+        <div class="comments-wrap"><div class="cmt-input-wrap"><div class="cmt-avatar">K</div><input class="cmt-input" type="text" placeholder="コメントを送る..."><button class="cmt-send">送信</button></div></div>
+      </div>
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div class="tw-avatar" style="background:var(--secondary-light);color:var(--secondary);">な</div>
+          <div class="tw-meta"><div class="tw-name">なな</div><div class="tw-sub"><span>看護師</span><span>26歳</span></div></div>
+          <div class="tw-time">15分前</div>
+        </div>
+        <div class="tw-body">夜勤明けです🫠 リクエストあればすぐ対応できます！ <span class="hashtag">#看護師</span> <span class="hashtag">#リクエスト受付中</span></div>
+        <div class="tw-actions">
+          <button class="tw-action liked" onclick="toggleLike(this)"><span class="hi">♥</span> 34</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 11</button>
+        </div>
+        <div class="comments-wrap"><div class="cmt-input-wrap"><div class="cmt-avatar">K</div><input class="cmt-input" type="text" placeholder="コメントを送る..."><button class="cmt-send">送信</button></div></div>
+      </div>
+      <div class="tweet-card">
+        <div class="tw-header">
+          <div class="tw-avatar" style="background:var(--green);color:var(--green2);">り</div>
+          <div class="tw-meta"><div class="tw-name">りり</div><div class="tw-sub"><span>主婦</span><span>29歳</span></div></div>
+          <div class="tw-time">1時間前</div>
+        </div>
+        <div class="tw-body">5月限定キャンペーン中🎏 着用写真が今月末まで無料でつきます！ <span class="hashtag">#5月限定</span></div>
+        <div class="tw-actions">
+          <button class="tw-action" onclick="toggleLike(this)">♡ 17</button>
+          <button class="tw-action" onclick="toggleComment(this)">💬 5</button>
+        </div>
+        <div class="comments-wrap"><div class="cmt-input-wrap"><div class="cmt-avatar">K</div><input class="cmt-input" type="text" placeholder="コメントを送る..."><button class="cmt-send">送信</button></div></div>
+      </div>
+      <div class="load-more"><button class="btn-load">もっと見る</button></div>
+    </div>
+
+    <!-- ══ ITEMS タブ ══ -->
+    <div class="tl-panel" id="panel-items">
+      <div style="font-size:12px;color:var(--text-muted);font-weight:600;">フォロー中の出品者の新着商品 14件</div>
+      <div class="items-grid">
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">パンティ</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">コットンショーツ 2日着用</div><div class="item-seller">めい</div><div class="item-footer"><div class="item-price">¥1,800</div><div class="item-badge">即日</div></div></div>
+        </div>
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">パンティ</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">Tバック 1日着用</div><div class="item-seller">なな</div><div class="item-footer"><div class="item-price">¥2,200</div><div class="item-badge">相談可</div></div></div>
+        </div>
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">B&Pセット</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">水色レースのセット</div><div class="item-seller">みい</div><div class="item-footer"><div class="item-price">¥2,500</div><div class="item-badge">即日</div></div></div>
+        </div>
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">パンティ</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">レースショーツ 1日着用</div><div class="item-seller">めい</div><div class="item-footer"><div class="item-price">¥2,000</div><div class="item-badge">写真付</div></div></div>
+        </div>
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">パンティ</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">ブラックTバック 3日着用</div><div class="item-seller">りり</div><div class="item-footer"><div class="item-price">¥2,800</div><div class="item-badge">写真無料</div></div></div>
+        </div>
+        <div class="item-card">
+          <div class="item-thumb">
+            <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=300&q=80" alt="商品" class="item-img">
+            <div class="item-tag">衣類系</div>
+            <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          </div>
+          <div class="item-info"><div class="item-name">制服ソックス 3日着用</div><div class="item-seller">めい</div><div class="item-footer"><div class="item-price">¥1,200</div><div class="item-badge">即日</div></div></div>
+        </div>
+      </div>
+      <div class="load-more"><button class="btn-load">もっと見る</button></div>
+    </div>
+
+    <!-- ══ SELLERS タブ ══ -->
+    <div class="tl-panel" id="panel-sellers">
+      <div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:4px;">フォロー中の出品者 6人</div>
+
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar">め<div class="sgh-online"></div></div>
+        <div><div class="sgh-name">めい</div><div class="sgh-sub">大学生 19歳 ・ ⭐ 4.9 ・ 48件販売</div></div>
+        <div class="sgh-badge">新着2件</div>
+      </div>
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar" style="background:var(--secondary-light);color:var(--secondary);">な<div class="sgh-online"></div></div>
+        <div><div class="sgh-name">なな</div><div class="sgh-sub">看護師 26歳 ・ ⭐ 4.8 ・ 62件販売</div></div>
+        <div class="sgh-badge">新着1件</div>
+      </div>
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar" style="background:var(--yellow);color:var(--yellow2);">あ<div class="sgh-online"></div></div>
+        <div><div class="sgh-name">あーや</div><div class="sgh-sub">大学生 18歳 ・ ⭐ 4.7 ・ 21件販売</div></div>
+        <div class="sgh-badge" style="background:var(--green);color:var(--green2);">オンライン</div>
+      </div>
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar" style="background:var(--green);color:var(--green2);">り</div>
+        <div><div class="sgh-name">りり</div><div class="sgh-sub">主婦 29歳 ・ ⭐ 4.9 ・ 78件販売</div></div>
+        <div class="sgh-badge">新着1件</div>
+      </div>
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar" style="background:var(--primary-light);color:var(--primary);">み</div>
+        <div><div class="sgh-name">みい</div><div class="sgh-sub">飲食 28歳 ・ ⭐ 4.6 ・ 33件販売</div></div>
+        <div class="sgh-badge" style="background:rgba(0,0,0,0.06);color:var(--text-muted);">更新なし</div>
+      </div>
+      <div class="seller-group-header" onclick="location.href='#'">
+        <div class="sgh-avatar" style="background:rgba(59, 130, 246, 0.12);color:#3B82F6;">さ</div>
+        <div><div class="sgh-name">さき</div><div class="sgh-sub">歯科助手 24歳 ・ ⭐ 4.7 ・ 28件販売</div></div>
+        <div class="sgh-badge" style="background:rgba(0,0,0,0.06);color:var(--text-muted);">更新なし</div>
+      </div>
+
+      <!-- アンフォロー案内 -->
+      <div class="unfollow-notice">
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.7;font-weight:500;">出品者カードをタップしてプロフィールを確認できます。<br>フォロー解除はプロフィールページから行えます。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT SIDEBAR ── -->
+  <aside class="right-sidebar fade-in" style="transition-delay:0.16s;">
+
+    <!-- おすすめ出品者 -->
+    <div class="side-card">
+      <div class="side-title"><span class="icon-pill">💡</span> おすすめの子</div>
+      <div class="discover-item">
+        <div class="di-avatar" style="background:rgba(59, 130, 246, 0.12);color:#3B82F6;">さ<div class="di-online"></div></div>
+        <div><div class="di-name">さき</div><div class="di-sub">歯科助手 24歳</div><div class="di-stats"><span>⭐ 4.7</span><span>📦 28件</span></div></div>
+        <button class="btn-follow following" onclick="toggleFollow(this)">フォロー中</button>
+      </div>
+      <div class="discover-item">
+        <div class="di-avatar" style="background:var(--green);color:var(--green2);">ゆ<div class="di-online"></div></div>
+        <div><div class="di-name">ゆき</div><div class="di-sub">会社員 25歳</div><div class="di-stats"><span>⭐ 4.8</span><span>📦 15件</span></div></div>
+        <button class="btn-follow" onclick="toggleFollow(this)">フォロー</button>
+      </div>
+      <div class="discover-item">
+        <div class="di-avatar" style="background:var(--secondary-light);color:var(--secondary);">ひ</div>
+        <div><div class="di-name">ひな</div><div class="di-sub">大学生 20歳</div><div class="di-stats"><span>⭐ 4.5</span><span>📦 8件</span></div></div>
+        <button class="btn-follow" onclick="toggleFollow(this)">フォロー</button>
+      </div>
+      <div class="discover-item">
+        <div class="di-avatar" style="background:var(--yellow);color:var(--yellow2);">こ</div>
+        <div><div class="di-name">こころ</div><div class="di-sub">保育士 23歳</div><div class="di-stats"><span>⭐ 4.9</span><span>📦 41件</span></div></div>
+        <button class="btn-follow" onclick="toggleFollow(this)">フォロー</button>
+      </div>
+    </div>
+
+    <!-- トレンドタグ -->
+    <div class="side-card">
+      <div class="side-title"><span class="icon-pill">🔥</span> トレンドタグ</div>
+      <div>
+        <span class="htag">#パンティ</span>
+        <span class="htag">#即日発送</span>
+        <span class="htag">#女子大生</span>
+        <span class="htag">#看護師</span>
+        <span class="htag">#キャンペーン</span>
+        <span class="htag">#リクエスト可</span>
+        <span class="htag">#B&Pセット</span>
+        <span class="htag">#新着出品</span>
+      </div>
+    </div>
+
+    <!-- 通知設定 -->
+    <div class="side-card">
+      <div class="side-title"><span class="icon-pill">🔔</span> 通知設定</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:var(--text-sub);font-weight:600;">新着つぶやき</div>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:var(--text-sub);font-weight:600;">新着商品</div>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;color:var(--text-sub);font-weight:600;">キャンペーン情報</div>
+          <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<!-- TOAST -->
+<div id="toast" class="toast" style="display:none;">
+  <div class="toast-icon">🌸</div>
+  <div id="toastMsg">めいさんが新しくつぶやきました</div>
+  <div class="toast-close" onclick="document.getElementById('toast').style.display='none'">✕</div>
+</div>
+
+<script>
+  // FADE IN
+  const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), { threshold:0.05 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+  // TAB SWITCH
+  function switchTab(name, el) {
+    document.querySelectorAll('.tl-panel').forEach(p => p.classList.remove('show'));
+    document.querySelectorAll('.tl-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.side-nav-item').forEach(s => s.classList.remove('active'));
+    const panel = document.getElementById('panel-' + name);
+    if (panel) panel.classList.add('show');
+    const tab = document.getElementById('tab-' + name);
+    if (tab) tab.classList.add('active');
+    if (el && el.classList.contains('side-nav-item')) el.classList.add('active');
+  }
+
+  // SELLER FILTER
+  function filterBySeller(name) {
+    const filter = document.getElementById('sellerFilter');
+    document.getElementById('filterLabel').textContent = name + 'のみ表示中';
+    filter.style.display = 'flex';
+    switchTab('all', null);
+    showToast('👩 ' + name + 'のみ表示しています');
+  }
+  function clearFilter() {
+    document.getElementById('sellerFilter').style.display = 'none';
+  }
+
+  // LIKE
+  function toggleLike(btn) {
+    const liked = btn.classList.toggle('liked');
+    const n = parseInt(btn.textContent.match(/\d+/)[0]) + (liked ? 1 : -1);
+    btn.innerHTML = (liked ? '<span class="hi">♥</span> ' : '♡ ') + n;
+  }
+
+  // COMMENT TOGGLE
+  function toggleComment(btn) {
+    const wrap = btn.closest('.tweet-card').querySelector('.comments-wrap');
+    if (wrap) { wrap.classList.toggle('show'); if(wrap.classList.contains('show')) wrap.querySelector('.cmt-input')?.focus(); }
+  }
+
+  // HEART
+  function toggleHeart(e, el) {
+    e.stopPropagation();
+    const on = el.textContent.trim() === '♡';
+    el.textContent = on ? '♥' : '♡';
+    el.style.color = on ? '#FF4B91' : '';
+    el.style.borderColor = on ? '#FF4B91' : '';
+  }
+
+  // FOLLOW
+  function toggleFollow(btn) {
+    const following = btn.classList.toggle('following');
+    btn.textContent = following ? 'フォロー中' : 'フォロー';
+    const count = document.getElementById('followingCount');
+    count.textContent = parseInt(count.textContent) + (following ? 1 : -1);
+    if (following) showToast('🌸 フォローしました！新着情報がタイムラインに表示されます');
+  }
+
+  // TOAST
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.style.display = 'flex';
+    setTimeout(() => { t.style.display = 'none'; }, 3500);
+  }
+
+  // 初回Toast
+  setTimeout(() => showToast('🆕 めいさんが新しくつぶやきました'), 1200);
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+/* アカウント設定・本人確認・お知らせの画面で足りない部品（見本 mypage.html に無い所）。
+   色・角丸は styles/mypage.css の変数をそのまま使う。全部 .pg-mypage の下に書く。 */
+
+/* 画面の題 */
+.pg-mypage .acc-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pg-mypage .acc-title { font-size: 20px; font-weight: 800; color: var(--text-main); margin: 0; }
+.pg-mypage h2.settings-title { margin: 0 0 16px; }
+.pg-mypage .acc-lead { font-size: 12px; color: var(--text-sub); font-weight: 500; margin: 4px 0 0; line-height: 1.7; }
+
+/* 行の中で開く入力欄 */
+.pg-mypage .acc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 0 4px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+}
+.pg-mypage .acc-form:last-child { border-bottom: none; }
+.pg-mypage .acc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pg-mypage .acc-grid .acc-wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .pg-mypage .acc-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.pg-mypage .acc-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pg-mypage .acc-label { font-size: 12px; font-weight: 700; color: var(--text-main); }
+.pg-mypage .acc-label .acc-req { color: var(--primary); margin-left: 4px; font-size: 10px; }
+.pg-mypage .acc-input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-main);
+}
+.pg-mypage .acc-input:focus { outline: 2px solid var(--primary-light); border-color: var(--primary); }
+.pg-mypage textarea.acc-input { min-height: 84px; resize: vertical; line-height: 1.6; }
+.pg-mypage .acc-note { font-size: 11px; color: var(--text-muted); font-weight: 500; line-height: 1.7; margin: 0; }
+.pg-mypage .acc-check { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--text-sub); font-weight: 600; line-height: 1.7; }
+.pg-mypage .acc-check input { margin-top: 4px; accent-color: var(--primary); }
+
+.pg-mypage .acc-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pg-mypage .acc-actions.start { justify-content: flex-start; }
+
+/* 危ない操作のボタン（退会・削除） */
+.pg-mypage .setting-btn.acc-danger,
+.pg-mypage .pt-btn.acc-danger { border-color: rgba(239, 68, 68, 0.3); color: var(--err); }
+.pg-mypage .pt-btn.primary.acc-danger { background: var(--err); border-color: var(--err); color: #fff; }
+.pg-mypage .settings-section.acc-danger-zone { border-color: rgba(239, 68, 68, 0.3); }
+.pg-mypage .acc-danger-text { color: var(--err); }
+
+/* 本人確認の状態（見本の .kyc-status は緑だけ） */
+.pg-mypage .kyc-status.is-unsubmitted { background: rgba(0, 0, 0, 0.05); color: var(--text-sub); }
+.pg-mypage .kyc-status.is-pending { background: var(--yellow); color: var(--yellow2); }
+.pg-mypage .kyc-status.is-rejected { background: var(--err-bg); color: var(--err); }
+
+/* 説明の箱 */
+.pg-mypage .acc-box {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 75, 145, 0.15);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.8;
+}
+.pg-mypage .acc-box.warn { background: var(--err-bg); border-color: rgba(239, 68, 68, 0.25); color: #9f1239; }
+.pg-mypage .acc-box ul { margin: 4px 0 0; padding-left: 18px; }
+
+/* 本人確認の写真の欄 */
+.pg-mypage .acc-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) {
+  .pg-mypage .acc-photos { grid-template-columns: minmax(0, 1fr); }
+}
+.pg-mypage .acc-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--r-sm);
+  border: 1.5px dashed rgba(255, 75, 145, 0.3);
+  background: rgba(255, 255, 255, 0.7);
+  min-width: 0;
+}
+.pg-mypage .acc-photo.is-set { border-style: solid; border-color: var(--primary); background: var(--pk0); }
+.pg-mypage .acc-photo-name { font-size: 12px; font-weight: 800; color: var(--text-main); }
+.pg-mypage .acc-photo-file { font-size: 11px; color: var(--text-sub); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-mypage .acc-photo input[type="file"] { font-size: 11px; max-width: 100%; }
+
+/* 空の表示 */
+.pg-mypage .acc-empty {
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+}
+.pg-mypage .acc-empty-icon { font-size: 28px; display: block; margin-bottom: 8px; }
+
+/* ブロックした人の行 */
+.pg-mypage .acc-person { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.pg-mypage .acc-person img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+
+/* お知らせ（見本のメッセージ一覧 .msg-item を使い、本文は折り返す） */
+.pg-mypage .msg-item.acc-noti { align-items: flex-start; cursor: default; }
+.pg-mypage .msg-item.acc-noti:hover { transform: none; }
+.pg-mypage .acc-noti-link { display: block; color: inherit; text-decoration: none; min-width: 0; }
+.pg-mypage .acc-noti-link:hover .msg-name { color: var(--primary); }
+.pg-mypage .msg-preview.acc-noti-body { white-space: pre-wrap; overflow: visible; text-overflow: clip; word-break: break-word; font-size: 12px; color: var(--text-sub); line-height: 1.6; }
+.pg-mypage .acc-noti-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.pg-mypage .acc-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.pg-mypage .acc-icon-btn:hover { color: var(--err); }
+.pg-mypage .acc-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ページ送り */
+.pg-mypage .acc-pager { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12px; font-weight: 700; color: var(--text-sub); }
+.pg-mypage .acc-pager a {
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 75, 145, 0.3);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--primary);
+  text-decoration: none;
+}
+.pg-mypage .acc-pager a:hover { background: #fff; }
+
+.pg-mypage a.setting-btn { text-decoration: none; display: inline-flex; align-items: center; }

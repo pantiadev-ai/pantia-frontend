@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイページ - めい - LABEL NAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mypage.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="mypage-header">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <nav>
+    <a href="#">商品一覧</a>
+    <a href="#">つぶやき</a>
+    <a href="#" class="notif-btn">🔔<span class="notif-dot"></span></a>
+    <div class="nav-divider"></div>
+    <a href="#" class="nav-active">マイページ</a>
+    <a href="#" style="padding:7px 10px;">⚙</a>
+  </nav>
+</header>
+
+<!-- LAYOUT -->
+<main class="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar fade-in">
+
+    <!-- プロフィールミニ -->
+    <div class="profile-mini">
+      <div class="pm-avatar">め<div class="pm-online"></div></div>
+      <div class="pm-name">めい</div>
+      <div class="pm-handle">@mei_chan</div>
+      <div class="pm-stats">
+        <div><div class="pm-stat-num">312</div><div class="pm-stat-label">フォロワー</div></div>
+        <div><div class="pm-stat-num">48</div><div class="pm-stat-label">販売数</div></div>
+        <div><div class="pm-stat-num">4.9</div><div class="pm-stat-label">評価</div></div>
+      </div>
+      <div class="kyc-badge">✅ 本人確認済み</div>
+    </div>
+
+    <!-- サイドナビ -->
+    <div class="side-nav">
+      <a class="side-nav-item active" onclick="switchTab('dashboard')"><span class="side-nav-icon">📊</span> ダッシュボード</a>
+      <a class="side-nav-item" onclick="switchTab('items')"><span class="side-nav-icon">📦</span> 出品管理<span class="side-nav-badge">12</span></a>
+      <a class="side-nav-item" onclick="switchTab('sales')"><span class="side-nav-icon">💰</span> 売上・振込</a>
+      <a class="side-nav-item" onclick="switchTab('tweet')"><span class="side-nav-icon">💬</span> つぶやき投稿</a>
+      <a class="side-nav-item" onclick="switchTab('messages')"><span class="side-nav-icon">✉️</span> メッセージ<span class="side-nav-badge">3</span></a>
+      <a class="side-nav-item" onclick="switchTab('settings')"><span class="side-nav-icon">⚙️</span> 設定</a>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main fade-in" style="transition-delay:0.08s;">
+
+    <!-- ══ DASHBOARD PANEL ══ -->
+    <div class="panel show" id="panel-dashboard">
+
+      <!-- 統計カード -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-label">💰 今月の売上</div>
+          <div class="stat-card-num pk">¥38,400</div>
+          <div class="stat-card-sub"><span class="stat-up">↑ 12%</span> 先月比</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">📦 今月の販売数</div>
+          <div class="stat-card-num">14件</div>
+          <div class="stat-card-sub"><span class="stat-up">↑ 3件</span> 先月比</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">👁 出品中の商品</div>
+          <div class="stat-card-num">12件</div>
+          <div class="stat-card-sub">うち即日対応 <strong style="color:var(--primary);">8件</strong></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">⭐ 平均評価</div>
+          <div class="stat-card-num pk">4.9</div>
+          <div class="stat-card-sub">38件のレビュー</div>
+        </div>
+      </div>
+
+      <!-- 売上チャート -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title"><span class="icon-pill">📈</span> 売上推移</div>
+          <div class="chart-period">
+            <button class="cp-btn" onclick="setPeriod(this,'week')">週</button>
+            <button class="cp-btn active" onclick="setPeriod(this,'month')">月</button>
+            <button class="cp-btn" onclick="setPeriod(this,'year')">年</button>
+          </div>
+        </div>
+        <div class="chart-area" id="chartArea">
+          <!-- JSで生成 -->
+        </div>
+      </div>
+
+      <!-- 新着注文 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:14px;font-weight:800;color:var(--text-main);display:flex;align-items:center;gap:8px;"><span class="icon-pill">🛍</span> 新着注文</div>
+          <a href="#" onclick="switchTab('items')" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:700;background:var(--primary-light);padding:5px 14px;border-radius:var(--r-pill);border:1px solid rgba(255, 75, 145, 0.2);">全て見る →</a>
+        </div>
+        <div class="orders-list">
+          <div class="order-item">
+            <div class="order-thumb">
+              <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="注文商品" class="order-img">
+            </div>
+            <div class="order-info">
+              <div class="order-name">コットンショーツ 2日着用</div>
+              <div class="order-meta">K***さん ・ 5月9日 14:22</div>
+            </div>
+            <div class="order-price">¥1,800</div>
+            <div class="order-status status-new">新規注文</div>
+          </div>
+          <div class="order-item">
+            <div class="order-thumb">
+              <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=100&q=80" alt="注文商品" class="order-img">
+            </div>
+            <div class="order-info">
+              <div class="order-name">黒のブラ&ショーツセット</div>
+              <div class="order-meta">T***さん ・ 5月8日 20:05</div>
+            </div>
+            <div class="order-price">¥3,200</div>
+            <div class="order-status status-ship">発送準備中</div>
+          </div>
+          <div class="order-item">
+            <div class="order-thumb">
+              <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=100&q=80" alt="注文商品" class="order-img">
+            </div>
+            <div class="order-info">
+              <div class="order-name">ピンクのTバック 着用写真付</div>
+              <div class="order-meta">M***さん ・ 5月7日 11:30</div>
+            </div>
+            <div class="order-price">¥2,200</div>
+            <div class="order-status status-done">取引完了</div>
+          </div>
+          <div class="order-item">
+            <div class="order-thumb">
+              <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="注文商品" class="order-img">
+            </div>
+            <div class="order-info">
+              <div class="order-name">レースショーツ 1日着用</div>
+              <div class="order-meta">R***さん ・ 5月6日 18:45</div>
+            </div>
+            <div class="order-price">¥2,000</div>
+            <div class="order-status status-done">取引完了</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ ITEMS PANEL ══ -->
+    <div class="panel" id="panel-items">
+
+      <div class="items-toolbar">
+        <div class="items-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="商品名で検索">
+        </div>
+        <select class="filter-select">
+          <option>すべて</option>
+          <option>公開中</option>
+          <option>非公開</option>
+          <option>下書き</option>
+        </select>
+        <select class="filter-select">
+          <option>新着順</option>
+          <option>売上順</option>
+          <option>閲覧数順</option>
+        </select>
+        <button class="btn-new-item">＋ 新規出品</button>
+      </div>
+
+      <div class="my-items-list">
+
+        <div class="my-item">
+          <div class="my-item-thumb">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="商品" class="my-img">
+          </div>
+          <div class="my-item-info">
+            <div class="my-item-name">コットンショーツ 2日着用</div>
+            <div class="my-item-meta">
+              <span>👁 124</span><span>♡ 18</span><span>📦 パンティ</span>
+              <span class="item-pub-toggle"><span class="pub-dot"></span>公開中</span>
+            </div>
+          </div>
+          <div class="my-item-price">¥1,800</div>
+          <div class="my-item-actions">
+            <button class="ia-btn">編集</button>
+            <button class="ia-btn">非公開</button>
+            <button class="ia-btn danger">削除</button>
+          </div>
+        </div>
+
+        <div class="my-item">
+          <div class="my-item-thumb">
+            <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=100&q=80" alt="商品" class="my-img">
+          </div>
+          <div class="my-item-info">
+            <div class="my-item-name">黒のブラ&ショーツセット</div>
+            <div class="my-item-meta">
+              <span>👁 89</span><span>♡ 12</span><span>📦 B&Pセット</span>
+              <span class="item-pub-toggle"><span class="pub-dot"></span>公開中</span>
+            </div>
+          </div>
+          <div class="my-item-price">¥3,200</div>
+          <div class="my-item-actions">
+            <button class="ia-btn">編集</button>
+            <button class="ia-btn">非公開</button>
+            <button class="ia-btn danger">削除</button>
+          </div>
+        </div>
+
+        <div class="my-item">
+          <div class="my-item-thumb">
+            <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=100&q=80" alt="商品" class="my-img">
+          </div>
+          <div class="my-item-info">
+            <div class="my-item-name">レースショーツ 1日着用</div>
+            <div class="my-item-meta">
+              <span>👁 67</span><span>♡ 9</span><span>📦 パンティ</span>
+              <span class="item-pub-toggle"><span class="pub-dot off"></span>非公開</span>
+            </div>
+          </div>
+          <div class="my-item-price">¥2,000</div>
+          <div class="my-item-actions">
+            <button class="ia-btn">編集</button>
+            <button class="ia-btn">公開する</button>
+            <button class="ia-btn danger">削除</button>
+          </div>
+        </div>
+
+        <div class="my-item">
+          <div class="my-item-thumb">
+            <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=100&q=80" alt="商品" class="my-img">
+          </div>
+          <div class="my-item-info">
+            <div class="my-item-name">ピンクのTバック 着用写真付</div>
+            <div class="my-item-meta">
+              <span>👁 203</span><span>♡ 31</span><span>📦 パンティ</span>
+              <span class="item-pub-toggle"><span class="pub-dot"></span>公開中</span>
+            </div>
+          </div>
+          <div class="my-item-price">¥2,200</div>
+          <div class="my-item-actions">
+            <button class="ia-btn">編集</button>
+            <button class="ia-btn">非公開</button>
+            <button class="ia-btn danger">削除</button>
+          </div>
+        </div>
+
+        <div class="my-item">
+          <div class="my-item-thumb">
+            <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=100&q=80" alt="商品" class="my-img">
+          </div>
+          <div class="my-item-info">
+            <div class="my-item-name">制服ソックス 3日着用</div>
+            <div class="my-item-meta">
+              <span>👁 45</span><span>♡ 6</span><span>📦 衣類系</span>
+              <span class="item-pub-toggle"><span class="pub-dot"></span>公開中</span>
+            </div>
+          </div>
+          <div class="my-item-price">¥1,200</div>
+          <div class="my-item-actions">
+            <button class="ia-btn">編集</button>
+            <button class="ia-btn">非公開</button>
+            <button class="ia-btn danger">削除</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ SALES PANEL ══ -->
+    <div class="panel" id="panel-sales">
+
+      <div class="sales-summary">
+        <div class="ss-card">
+          <div class="ss-label">今月の売上</div>
+          <div class="ss-num">¥38,400</div>
+          <div class="ss-sub">手数料後 ¥32,640</div>
+        </div>
+        <div class="ss-card">
+          <div class="ss-label">累計売上</div>
+          <div class="ss-num">¥284,700</div>
+          <div class="ss-sub">48件の取引</div>
+        </div>
+        <div class="ss-card">
+          <div class="ss-label">振込申請可能額</div>
+          <div class="ss-num">¥61,200</div>
+          <div class="ss-sub">¥3,000から申請可</div>
+        </div>
+      </div>
+
+      <!-- 振込申請 -->
+      <div class="payout-card">
+        <div class="payout-header">
+          <div class="payout-title"><span class="icon-pill">🏦</span> 振込申請</div>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600;">現在の振込可能残高</div>
+        <div class="balance-big">¥61,200</div>
+        <div class="balance-note" style="font-size:12px;color:var(--text-sub);font-weight:500;">
+          登録口座：みずほ銀行 ****1234（めい）
+        </div>
+        <button class="btn-payout">🏦 振込申請する</button>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;font-weight:500;">※ 申請後3〜5営業日でご指定口座に振込されます</div>
+      </div>
+
+      <!-- 取引履歴 -->
+      <div class="payout-card">
+        <div class="payout-header">
+          <div class="payout-title"><span class="icon-pill">📋</span> 取引・振込履歴</div>
+        </div>
+        <table class="payout-table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>内容</th>
+              <th>金額</th>
+              <th>残高</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="color:var(--text-muted);">5/9</td>
+              <td>コットンショーツ 販売</td>
+              <td class="tx-plus">+ ¥1,530</td>
+              <td>¥61,200</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted);">5/8</td>
+              <td>黒のブラ&Pセット 販売</td>
+              <td class="tx-plus">+ ¥2,720</td>
+              <td>¥59,670</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted);">5/7</td>
+              <td>ピンクTバック 販売</td>
+              <td class="tx-plus">+ ¥1,870</td>
+              <td>¥56,950</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted);">5/1</td>
+              <td>振込申請（みずほ銀行）</td>
+              <td class="tx-minus">- ¥30,000</td>
+              <td>¥55,080</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted);">4/28</td>
+              <td>レースショーツ 販売</td>
+              <td class="tx-plus">+ ¥1,700</td>
+              <td>¥85,080</td>
+            </tr>
+            <tr>
+              <td style="color:var(--text-muted);">4/25</td>
+              <td>ソックス 販売</td>
+              <td class="tx-plus">+ ¥1,020</td>
+              <td>¥83,380</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ TWEET PANEL ══ -->
+    <div class="panel" id="panel-tweet">
+
+      <!-- 投稿フォーム -->
+      <div style="background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--r);padding:20px;box-shadow:var(--glass-shadow);">
+        <div style="font-size:14px;font-weight:800;color:var(--text-main);margin-bottom:14px;display:flex;align-items:center;gap:8px;"><span class="icon-pill">✏️</span> 新しいつぶやき</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;">
+          <div class="pm-avatar" style="width:40px;height:40px;font-size:15px;flex-shrink:0;">め</div>
+          <textarea id="mpTweetText" style="flex:1;border:1px solid rgba(255, 75, 145, 0.2);border-radius:16px;padding:12px 14px;font-family:inherit;font-size:13px;color:var(--text-main);resize:none;min-height:90px;outline:none;line-height:1.7;transition:all 0.2s;background:rgba(255,255,255,0.9);" placeholder="今日のことをつぶやいてみよう🌸 出品のお知らせや日常のひとことなど気軽に投稿してね" maxlength="140" oninput="updateMpCount()"></textarea>
+        </div>
+        <!-- ツール & カウンター -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px dashed rgba(0,0,0,0.08);">
+          <div style="display:flex;gap:4px;">
+            <button onclick="mpAddImg()" class="tool-btn-circle" title="画像を追加">🖼</button>
+            <button onclick="mpAddItem()" class="tool-btn-circle" title="商品を添付">🛍</button>
+            <button onclick="mpAddTag()" class="tool-btn-circle" title="ハッシュタグ">＃</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span id="mpCount" style="font-size:12px;color:var(--text-muted);font-weight:600;">0/140</span>
+            <button id="mpPostBtn" onclick="handleMpPost()" disabled style="padding:9px 22px;border-radius:var(--r-pill);background:linear-gradient(135deg, var(--primary), #FF75A0);color:#fff;font-size:13px;font-weight:800;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(255,91,165,0.28);transition:all 0.2s;opacity:0.4;">つぶやく</button>
+          </div>
+        </div>
+        <!-- 画像プレビュー -->
+        <div id="mpImgPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+        <!-- 添付商品プレビュー -->
+        <div id="mpItemPreview"></div>
+      </div>
+
+      <!-- 過去のつぶやき一覧 -->
+      <div>
+        <div style="font-size:14px;font-weight:800;color:var(--text-main);margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span class="icon-pill">📋</span> 過去のつぶやき</div>
+        <div id="mpTweetList" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="tweet-log-item">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <span style="font-size:11px;color:var(--text-muted);font-weight:600;">5月9日 14:22</span>
+              <div style="display:flex;gap:6px;">
+                <button class="tweet-act-btn">編集</button>
+                <button onclick="deleteMpTweet(this)" class="tweet-act-btn danger">削除</button>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-sub);line-height:1.75;font-weight:500;">今日も新しいパンツ出品しました🌸 ぜひプロフィールからチェックしてね💕 <span style="color:var(--primary);font-weight:700;">#新着出品</span> <span style="color:var(--primary);font-weight:700;">#パンティ</span></div>
+            <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.06);font-size:12px;color:var(--text-muted);font-weight:600;">
+              <span>♡ 28</span><span>💬 7</span><span>👁 142</span>
+            </div>
+          </div>
+          <div class="tweet-log-item">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <span style="font-size:11px;color:var(--text-muted);font-weight:600;">5月8日 21:05</span>
+              <div style="display:flex;gap:6px;">
+                <button class="tweet-act-btn">編集</button>
+                <button onclick="deleteMpTweet(this)" class="tweet-act-btn danger">削除</button>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-sub);line-height:1.75;font-weight:500;">今日はゼミが長かった〜😂 帰ってすぐ出品準備しました！オプション希望の方はメッセージください💕 <span style="color:var(--primary);font-weight:700;">#大学生</span></div>
+            <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.06);font-size:12px;color:var(--text-muted);font-weight:600;">
+              <span>♡ 41</span><span>💬 12</span><span>👁 98</span>
+            </div>
+          </div>
+          <div class="tweet-log-item">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+              <span style="font-size:11px;color:var(--text-muted);font-weight:600;">5月6日 19:30</span>
+              <div style="display:flex;gap:6px;">
+                <button class="tweet-act-btn">編集</button>
+                <button onclick="deleteMpTweet(this)" class="tweet-act-btn danger">削除</button>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-sub);line-height:1.75;font-weight:500;">フォロワー300人超えました🎉 ありがとうございます！これからもよろしくお願いします🌸 <span style="color:var(--primary);font-weight:700;">#フォロワー300人</span></div>
+            <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.06);font-size:12px;color:var(--text-muted);font-weight:600;">
+              <span>♡ 86</span><span>💬 23</span><span>👁 310</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ MESSAGES PANEL ══ -->
+    <div class="panel" id="panel-messages">
+      <div class="msg-list">
+        <div class="msg-item unread">
+          <div class="msg-avatar">K</div>
+          <div class="msg-info">
+            <div class="msg-name">K***さん</div>
+            <div class="msg-preview">着用日数を3日に変更できますか？追加料金はどのくらいになりますか？</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="msg-time">14:22</div>
+            <div class="msg-unread-dot"></div>
+          </div>
+        </div>
+        <div class="msg-item unread">
+          <div class="msg-avatar">R</div>
+          <div class="msg-info">
+            <div class="msg-name">R***さん</div>
+            <div class="msg-preview">商品を受け取りました！梱包がとても丁寧で嬉しかったです✨ またよろしくお願いします</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="msg-time">昨日</div>
+            <div class="msg-unread-dot"></div>
+          </div>
+        </div>
+        <div class="msg-item unread">
+          <div class="msg-avatar">T</div>
+          <div class="msg-info">
+            <div class="msg-name">T***さん</div>
+            <div class="msg-preview">写真の追加は可能でしょうか？</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="msg-time">5/7</div>
+            <div class="msg-unread-dot"></div>
+          </div>
+        </div>
+        <div class="msg-item">
+          <div class="msg-avatar">M</div>
+          <div class="msg-info">
+            <div class="msg-name">M***さん</div>
+            <div class="msg-preview">ありがとうございました！また購入します😊</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="msg-time">5/5</div>
+          </div>
+        </div>
+        <div class="msg-item">
+          <div class="msg-avatar">Y</div>
+          <div class="msg-info">
+            <div class="msg-name">Y***さん</div>
+            <div class="msg-preview">発送はいつ頃になりますか？</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="msg-time">5/3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SETTINGS PANEL ══ -->
+    <div class="panel" id="panel-settings">
+
+      <!-- アカウント -->
+      <div class="settings-section">
+        <div class="settings-title"><span class="icon-pill">👤</span> アカウント情報</div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">ニックネーム</div></div>
+          <div class="setting-val">めい</div>
+          <button class="setting-btn">変更</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">メールアドレス</div></div>
+          <div class="setting-val">me***@gmail.com</div>
+          <button class="setting-btn">変更</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info"><div class="setting-name">パスワード</div></div>
+          <div class="setting-val">••••••••</div>
+          <button class="setting-btn">変更</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">本人確認（eKYC）</div>
+            <div class="setting-desc">TRUSTDOCK による本人確認</div>
+          </div>
+          <div class="kyc-status">✅ 確認済み</div>
+        </div>
+      </div>
+
+      <!-- 振込口座 -->
+      <div class="settings-section">
+        <div class="settings-title"><span class="icon-pill">🏦</span> 振込口座</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">登録口座</div>
+            <div class="setting-desc">みずほ銀行 渋谷支店 普通 ****1234</div>
+          </div>
+          <button class="setting-btn">変更</button>
+        </div>
+      </div>
+
+      <!-- 通知設定 -->
+      <div class="settings-section">
+        <div class="settings-title"><span class="icon-pill">🔔</span> 通知設定</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">新規注文の通知</div>
+            <div class="setting-desc">購入が入ったときにメール・アプリ通知</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">メッセージの通知</div>
+            <div class="setting-desc">新しいメッセージが届いたとき</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">フォロー通知</div>
+            <div class="setting-desc">新しくフォローされたとき</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">メルマガ・お知らせ</div>
+            <div class="setting-desc">キャンペーンやお知らせメール</div>
+          </div>
+          <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+        </div>
+      </div>
+
+      <!-- 退会 -->
+      <div class="settings-section" style="border-color:rgba(239,68,68,0.3);">
+        <div class="settings-title" style="color:var(--err);">⚠️ アカウント削除</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name" style="color:var(--err);">アカウントを削除する</div>
+            <div class="setting-desc">削除後は復元できません。出品中の商品・取引履歴もすべて削除されます。</div>
+          </div>
+          <button class="setting-btn" style="border-color:rgba(239,68,68,0.3);color:var(--err);">削除申請</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="mypage-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">♡ LABEL NAME</div>
+    <div class="footer-links">
+      <a href="#">利用規約</a>
+      <a href="#">プライバシーポリシー</a>
+      <a href="#">お問い合わせ</a>
+    </div>
+    <div class="footer-copy">© 2026 LABEL NAME.</div>
+  </div>
+</footer>
+
+<script>
+  // FADE IN
+  const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), { threshold: 0.05 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+  // TAB SWITCH
+  function switchTab(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+    document.querySelectorAll('.side-nav-item').forEach(i => i.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('show');
+    event.currentTarget.classList.add('active');
+  }
+
+  // CHART
+  const monthData = [
+    { label:'11月', val:18000 }, { label:'12月', val:24000 },
+    { label:'1月',  val:19500 }, { label:'2月',  val:28000 },
+    { label:'3月',  val:32000 }, { label:'4月',  val:34200 },
+    { label:'5月',  val:38400, active:true },
+  ];
+  const weekData = [
+    { label:'月', val:4200 }, { label:'火', val:6800 },
+    { label:'水', val:3100 }, { label:'木', val:7200 },
+    { label:'金', val:9400 }, { label:'土', val:5100 },
+    { label:'日', val:2600, active:true },
+  ];
+  const yearData = [
+    { label:'2024', val:180000 }, { label:'2025', val:248000 }, { label:'2026', val:284700, active:true }
+  ];
+
+  function renderChart(data) {
+    const area = document.getElementById('chartArea');
+    const max = Math.max(...data.map(d => d.val));
+    area.innerHTML = data.map(d => {
+      const h = Math.round((d.val / max) * 120);
+      return `<div class="chart-bar-wrap">
+        <div class="chart-bar${d.active ? ' active' : ''}" style="height:${h}px;">
+          <div class="chart-bar-tip">¥${d.val.toLocaleString()}</div>
+        </div>
+        <div class="chart-label">${d.label}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function setPeriod(btn, period) {
+    document.querySelectorAll('.cp-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const map = { week: weekData, month: monthData, year: yearData };
+    renderChart(map[period]);
+  }
+
+  // TWEET PANEL
+  let mpImgs = [];
+  function updateMpCount() {
+    const v = document.getElementById('mpTweetText').value;
+    const el = document.getElementById('mpCount');
+    const btn = document.getElementById('mpPostBtn');
+    el.textContent = v.length + '/140';
+    el.style.color = v.length > 120 ? '#D97706' : 'var(--text-muted)';
+    btn.disabled = v.trim().length === 0;
+    btn.style.opacity = v.trim().length === 0 ? '0.4' : '1';
+  }
+  function mpAddImg() {
+    if (mpImgs.length >= 4) return;
+    const emojis = ['🌸','📸','💕','🎀'];
+    mpImgs.push(emojis[mpImgs.length % emojis.length]);
+    const wrap = document.getElementById('mpImgPreview');
+    wrap.innerHTML = mpImgs.map((e,i) => `
+      <div style="width:64px;height:64px;border-radius:12px;background:var(--primary-light);border:1px solid rgba(255,75,145,0.3);display:flex;align-items:center;justify-content:center;font-size:24px;position:relative;">
+        ${e}
+        <div onclick="mpRemoveImg(${i})" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-weight:800;">✕</div>
+      </div>`).join('');
+  }
+  function mpRemoveImg(i) { mpImgs.splice(i,1); mpAddImg(); mpImgs.pop(); const w=document.getElementById('mpImgPreview'); w.innerHTML=mpImgs.map((e,j)=>`<div style="width:64px;height:64px;border-radius:12px;background:var(--primary-light);border:1px solid rgba(255,75,145,0.3);display:flex;align-items:center;justify-content:center;font-size:24px;position:relative;">${e}<div onclick="mpRemoveImg(${j})" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;font-weight:800;">✕</div></div>`).join(''); }
+  function mpAddItem() {
+    const prev = document.getElementById('mpItemPreview');
+    prev.innerHTML = `<div style="display:flex;align-items:center;gap:10px;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:12px;padding:10px 12px;margin-top:8px;"><div style="width:40px;height:40px;border-radius:8px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🩲</div><div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text-main);">コットンショーツ 2日着用</div><div style="font-size:12px;font-weight:900;color:var(--primary);margin-top:2px;font-family:'Plus Jakarta Sans',sans-serif;">¥1,800</div></div><span onclick="this.closest('div').remove()" style="font-size:12px;color:var(--text-muted);cursor:pointer;font-weight:700;">✕</span></div>`;
+  }
+  function mpAddTag() {
+    const ta = document.getElementById('mpTweetText');
+    ta.value += ' #'; ta.focus(); updateMpCount();
+  }
+  function handleMpPost() {
+    const text = document.getElementById('mpTweetText').value.trim();
+    if (!text) return;
+    const now = new Date();
+    const list = document.getElementById('mpTweetList');
+    const div = document.createElement('div');
+    div.className = 'tweet-log-item';
+    div.style.border = '1px solid var(--primary)';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--primary);font-weight:800;">✨ たった今</span>
+        <div style="display:flex;gap:6px;">
+          <button class="tweet-act-btn">編集</button>
+          <button onclick="deleteMpTweet(this)" class="tweet-act-btn danger">削除</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text-sub);line-height:1.75;font-weight:500;">${text.replace(/(#\S+)/g,'<span style="color:var(--primary);font-weight:700;">$1</span>')}</div>
+      <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.06);font-size:12px;color:var(--text-muted);font-weight:600;"><span>♡ 0</span><span>💬 0</span><span>👁 0</span></div>`;
+    list.prepend(div);
+    document.getElementById('mpTweetText').value = '';
+    mpImgs = [];
+    document.getElementById('mpImgPreview').innerHTML = '';
+    document.getElementById('mpItemPreview').innerHTML = '';
+    updateMpCount();
+  }
+  function deleteMpTweet(btn) {
+    if (confirm('このつぶやきを削除しますか？')) btn.closest('.tweet-log-item').remove();
+  }
+
+  renderChart(monthData);
+</script>
+</body>
+</html>

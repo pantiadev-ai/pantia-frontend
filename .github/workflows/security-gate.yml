@@ -1,0 +1,107 @@
+# セキュリティの門（28 §K）。push と PR のたびに、外部監査（2026-10-05）と同じ種類の道具を回す。
+# 落ちたら本番に出さない。master のブランチ保護で「この検査の合格」を必須にする（28 §H8）。
+# 段は5つ: 設計メモ・依存（npm）・trivy（依存の別DB・秘密。npm 以外の言語もここ）・semgrep・gitleaks。
+# 型の正本: C:\Users\OWNER\dev\ai-kakumei\_security\gate\security-gate.yml（全リポで同じ物。直したら正本から写す）
+# 外の部品は全部、版を SHA・digest で固定する（28 §H3）。上げるときは正本を直して全リポへ写す。
+name: security-gate
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  schedule:
+    - cron: "17 18 * * 1" # 毎週月曜 03:17 JST。コードが変わらなくても、新しく出た脆弱性で落とす
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  design:
+    name: 設計メモ（SECURITY.md の埋め残し）
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: node scripts/security-design-check.mjs
+
+  deps:
+    name: 依存（npm audit・本番 moderate 以上／開発用 high 以上）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      # npm を使わないアプリ（Python・静的サイトなど）は、依存を trivy の段で見る
+      - run: |
+          if [ -f package-lock.json ]; then node scripts/security-gate.mjs
+          elif [ -f package.json ]; then echo "package-lock.json がありません。npm install でロックファイルを作ってコミットする（28 §K2）"; exit 1
+          else echo "npm を使っていない: 依存は trivy の段で見る"; fi
+
+  trivy:
+    name: 依存と秘密（trivy・別の脆弱性DB）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: trivy fs
+        run: |
+          touch .trivyignore
+          docker run --rm -v "$PWD:/src" -w /src \
+            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            fs --scanners vuln,secret --severity MEDIUM,HIGH,CRITICAL \
+            --ignorefile .trivyignore --skip-dirs node_modules --exit-code 1 --no-progress .
+
+  semgrep:
+    name: コード（semgrep・ERROR で落とす）
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: semgrep scan
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src \
+            semgrep/semgrep:1.179.0@sha256:93963d9295a366f59e4850127b1550400ee7b388f04fe144e4a1f6325d96e01b \
+            semgrep scan --config p/default --config p/typescript --config p/nodejs \
+            --severity ERROR --error --metrics off --exclude node_modules .
+      - name: semgrep（WARNING 以下は一覧だけ。落とさない）
+        if: always()
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src \
+            semgrep/semgrep:1.179.0@sha256:93963d9295a366f59e4850127b1550400ee7b388f04fe144e4a1f6325d96e01b \
+            semgrep scan --config p/default --config p/typescript --config p/nodejs \
+            --severity WARNING --metrics off --exclude node_modules . || true
+
+  gitleaks:
+    name: 鍵（gitleaks・履歴の全部）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: gitleaks git
+        run: |
+          # 入れ物の中の git は持ち主の違うリポを断るので、この1回だけ safe.directory を許す
+          docker run --rm -v "$PWD:/src" -w /src \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src \
+            zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git --redact --no-banner --exit-code 1 /src

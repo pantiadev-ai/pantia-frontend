@@ -1,0 +1,42 @@
+# Vercel に上げない物。
+# `npx vercel --prod` は .gitignore を読まない。.vercelignore が無いと、隠しファイル（鍵・パスワードのメモ・.env の控え）まで上がる。
+# 型の正本: C:\Users\OWNER\Dropbox\AI関連\knowledge\core\28_security_baseline.md
+/node_modules
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+supabase/.temp/
+.branches/
+.claude/
+
+# 秘密になりうる物（.gitignore と同じ＋控え・メモの形）
+.env*
+*.bak
+*.bak-*
+*.pem
+*.key
+*.p12
+*.pfx
+KEY.txt
+*login*.txt
+*password*.txt
+.supabase-token
+.supabase-ref
+.agent-secrets.local
+client_secret*.json
+*-service-account*.json
+*.iam.gserviceaccount.com.json
+gcp-key*.json
+ai-hudousan-*.json
+
+# 作業用（ビルドに要らない）
+.data/
+/scratch/
+
+# 試験の出力と、試験用のログイン状態（cookie）。手元から vercel で上げたときに混ざらないように
+/test-results/
+/playwright-report/
+/tests/e2e/.auth/

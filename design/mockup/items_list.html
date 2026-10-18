@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品一覧・検索 - LABEL NAME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="items_list.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="list-header">
+  <a href="#" class="logo">♡ LABEL NAME</a>
+  <div class="header-search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="商品・出品者を検索" id="headerSearch">
+  </div>
+  <nav>
+    <a href="#">女の子</a>
+    <a href="#">商品</a>
+    <a href="#">つぶやき</a>
+    <a href="#">ランキング</a>
+    <div class="nav-divider"></div>
+    <a href="#" class="nav-login">ログイン</a>
+  </nav>
+</header>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a href="#">トップ</a>
+  <span class="bc-sep">›</span>
+  <span>商品一覧</span>
+</div>
+
+<!-- PAGE LAYOUT -->
+<main class="page-layout">
+
+  <!-- ── LEFT: FILTER SIDEBAR ── -->
+  <aside class="filter-sidebar fade-in">
+
+    <div class="filter-card">
+      <div class="filter-title">
+        絞り込み
+        <span class="filter-reset" onclick="resetFilters()">リセット</span>
+      </div>
+
+      <!-- カテゴリ -->
+      <div class="filter-group">
+        <div class="filter-label">カテゴリ</div>
+        <div class="filter-chips">
+          <div class="fchip active" onclick="toggleFchip(this)">すべて</div>
+          <div class="fchip" onclick="toggleFchip(this)">🩲 パンティ</div>
+          <div class="fchip" onclick="toggleFchip(this)">👙 ブラジャー</div>
+          <div class="fchip" onclick="toggleFchip(this)">💞 B&Pセット</div>
+          <div class="fchip" onclick="toggleFchip(this)">🧴 体液系</div>
+          <div class="fchip" onclick="toggleFchip(this)">👗 衣類系</div>
+          <div class="fchip" onclick="toggleFchip(this)">✨ その他</div>
+        </div>
+      </div>
+
+      <!-- 価格帯 -->
+      <div class="filter-group">
+        <div class="filter-label">価格帯</div>
+        <div class="range-wrap">
+          <div class="range-labels">
+            <span>¥<span id="priceMin">0</span></span>
+            <span>¥<span id="priceMax">10,000</span></span>
+          </div>
+          <div class="range-track"><div class="range-fill" id="rangeFill"></div></div>
+          <input type="range" min="0" max="30000" value="10000" step="500" oninput="updatePrice(this.value)">
+        </div>
+      </div>
+
+      <!-- 着用日数 -->
+      <div class="filter-group">
+        <div class="filter-label">着用日数</div>
+        <div class="filter-chips">
+          <div class="fchip" onclick="toggleFchip(this)">1日</div>
+          <div class="fchip" onclick="toggleFchip(this)">2日</div>
+          <div class="fchip" onclick="toggleFchip(this)">3日</div>
+          <div class="fchip" onclick="toggleFchip(this)">4〜5日</div>
+          <div class="fchip" onclick="toggleFchip(this)">6日〜</div>
+        </div>
+      </div>
+
+      <!-- オプション -->
+      <div class="filter-group">
+        <div class="filter-label">オプション</div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck checked">✓</div>
+          <span class="fcheck-label">即日発送のみ</span>
+          <span class="fcheck-count">142</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">着用写真付き</span>
+          <span class="fcheck-count">198</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">匿名配送対応</span>
+          <span class="fcheck-count">210</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">手紙同封あり</span>
+          <span class="fcheck-count">87</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">オプション相談可</span>
+          <span class="fcheck-count">165</span>
+        </div>
+      </div>
+
+      <!-- 出品者条件 -->
+      <div class="filter-group">
+        <div class="filter-label">出品者</div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">🟢 オンライン中</span>
+          <span class="fcheck-count">34</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">⭐ 評価4以上</span>
+          <span class="fcheck-count">189</span>
+        </div>
+        <div class="fcheck-row" onclick="toggleFcheck(this)">
+          <div class="fcheck"></div>
+          <span class="fcheck-label">📦 10件以上販売</span>
+          <span class="fcheck-count">97</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── RIGHT: MAIN CONTENT ── -->
+  <div class="main-content fade-in" style="transition-delay:0.08s;">
+
+    <!-- SEARCH TOOLBAR -->
+    <div class="search-toolbar">
+      <div class="search-big">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="キーワードで検索（例：コットン、1日着用）" id="mainSearch" oninput="handleSearch(this.value)">
+      </div>
+      <button class="search-btn">検索</button>
+      <div class="sort-wrap">
+        <span class="sort-label">並び替え：</span>
+        <select class="sort-select" onchange="handleSort(this.value)">
+          <option value="new">新着順</option>
+          <option value="pop">人気順</option>
+          <option value="price_asc">価格が安い順</option>
+          <option value="price_desc">価格が高い順</option>
+          <option value="review">評価順</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- ACTIVE FILTERS -->
+    <div class="active-filters" id="activeFilters">
+      <span class="af-label">絞り込み中：</span>
+      <span class="af-tag">即日発送 <span class="af-remove" onclick="removeFilter(this)">✕</span></span>
+      <span class="af-clear" onclick="resetFilters()">すべてクリア</span>
+    </div>
+
+    <!-- CATEGORY TABS -->
+    <div class="cat-tabs">
+      <div class="cat-tab active" onclick="setCat(this)">すべて (312)</div>
+      <div class="cat-tab" onclick="setCat(this)">🩲 パンティ (148)</div>
+      <div class="cat-tab" onclick="setCat(this)">👙 ブラジャー (42)</div>
+      <div class="cat-tab" onclick="setCat(this)">💞 B&Pセット (56)</div>
+      <div class="cat-tab" onclick="setCat(this)">🧴 体液系 (38)</div>
+      <div class="cat-tab" onclick="setCat(this)">👗 衣類系 (21)</div>
+      <div class="cat-tab" onclick="setCat(this)">✨ その他 (7)</div>
+    </div>
+
+    <!-- RESULT HEADER -->
+    <div class="result-header">
+      <div class="result-count"><strong id="resultNum">142</strong> 件の商品</div>
+      <div class="view-toggle">
+        <div class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="グリッド表示">⊞</div>
+        <div class="view-btn" id="listViewBtn" onclick="setView('list')" title="リスト表示">☰</div>
+      </div>
+    </div>
+
+    <!-- ITEMS GRID -->
+    <div class="items-grid" id="itemsGrid">
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80" alt="コットンショーツ" class="item-img">
+          <div class="item-tag">パンティ</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          <div class="item-new">NEW</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">コットンショーツ 2日着用</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> めい</div>
+          <div class="item-footer"><div class="item-price">¥1,800</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80" alt="採取ボトル" class="item-img">
+          <div class="item-tag">体液系</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">唾液 100ml 採取画像付き</div>
+          <div class="item-seller">りさ</div>
+          <div class="item-footer"><div class="item-price">¥2,500</div><div class="item-badge">画像付</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=400&q=80" alt="レースのセット" class="item-img">
+          <div class="item-tag">B&Pセット</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          <div class="item-new">NEW</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">水色レースのセット 1日着用</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> みー</div>
+          <div class="item-footer"><div class="item-price">¥2,500</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=400&q=80" alt="Tバック" class="item-img">
+          <div class="item-tag">パンティ</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">Tバック 1日着用 オプション相談可</div>
+          <div class="item-seller">なな</div>
+          <div class="item-footer"><div class="item-price">¥2,200</div><div class="item-badge">相談可</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80" alt="母乳" class="item-img">
+          <div class="item-tag">体液系</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">母乳 100ml（冷凍・クール便）</div>
+          <div class="item-seller">なな</div>
+          <div class="item-footer"><div class="item-price">¥2,000</div><div class="item-badge">冷凍便</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80" alt="スカート" class="item-img">
+          <div class="item-tag">衣類系</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">OL時代のスーツスカート 着用品</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> ゆき</div>
+          <div class="item-footer"><div class="item-price">¥3,800</div><div class="item-badge">写真付</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80" alt="レースショーツ" class="item-img">
+          <div class="item-tag">パンティ</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          <div class="item-new">NEW</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">レースショーツ 1日着用 写真付き</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> さき</div>
+          <div class="item-footer"><div class="item-price">¥1,500</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1617396900799-f4ec2b43c7ae?auto=format&fit=crop&w=400&q=80" alt="ブラックTバック" class="item-img">
+          <div class="item-tag">パンティ</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">ブラック Tバック 3日着用</div>
+          <div class="item-seller">りり</div>
+          <div class="item-footer"><div class="item-price">¥2,800</div><div class="item-badge">匿名可</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80" alt="制服ソックス" class="item-img">
+          <div class="item-tag">衣類系</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">制服ソックス 3日着用</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> めい</div>
+          <div class="item-footer"><div class="item-price">¥1,200</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1516575334481-f85287c2c82d?auto=format&fit=crop&w=400&q=80" alt="ピンクのブラ" class="item-img">
+          <div class="item-tag">ブラジャー</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">ピンクのブラ 2日着用</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> あーや</div>
+          <div class="item-footer"><div class="item-price">¥2,000</div><div class="item-badge">写真付</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=400&q=80" alt="白コットンショーツ" class="item-img">
+          <div class="item-tag">パンティ</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">白コットンショーツ 1日着用</div>
+          <div class="item-seller">みい</div>
+          <div class="item-footer"><div class="item-price">¥1,600</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+      <div class="item-card">
+        <div class="item-thumb">
+          <img src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80" alt="汗拭きシート" class="item-img">
+          <div class="item-tag">体液系</div>
+          <div class="item-heart" onclick="toggleHeart(event, this)">♡</div>
+          <div class="item-new">NEW</div>
+        </div>
+        <div class="item-info">
+          <div class="item-name">汗拭きシート 使用済み</div>
+          <div class="item-seller"><div class="item-seller-dot"></div> さき</div>
+          <div class="item-footer"><div class="item-price">¥800</div><div class="item-badge">即日</div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- NO RESULT -->
+    <div class="no-result" id="noResult">
+      <div class="no-result-icon">🔍</div>
+      <div class="no-result-text">検索結果が見つかりませんでした</div>
+      <div class="no-result-sub">キーワードや絞り込み条件を変えてみてください</div>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="pagination">
+      <div class="page-btn">‹</div>
+      <div class="page-btn active">1</div>
+      <div class="page-btn">2</div>
+      <div class="page-btn">3</div>
+      <div class="page-btn dots">…</div>
+      <div class="page-btn">12</div>
+      <div class="page-btn">›</div>
+    </div>
+
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="list-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">♡ LABEL NAME</div>
+    <div class="footer-links">
+      <a href="#">利用規約</a>
+      <a href="#">プライバシーポリシー</a>
+      <a href="#">特定商取引法</a>
+      <a href="#">お問い合わせ</a>
+    </div>
+    <div class="footer-copy">© 2026 LABEL NAME.</div>
+  </div>
+</footer>
+
+<script>
+  // FADE IN
+  const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), { threshold: 0.05 });
+  document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+
+  // CATEGORY TABS
+  function setCat(el) {
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    updateCount();
+  }
+
+  // FILTER CHIPS (サイドバー)
+  function toggleFchip(el) {
+    el.classList.toggle('active');
+    updateCount();
+  }
+
+  // FILTER CHECKBOX
+  function toggleFcheck(row) {
+    const box = row.querySelector('.fcheck');
+    const checked = box.classList.toggle('checked');
+    box.textContent = checked ? '✓' : '';
+    updateCount();
+  }
+
+  // PRICE RANGE
+  function updatePrice(val) {
+    const v = parseInt(val).toLocaleString();
+    document.getElementById('priceMax').textContent = v;
+    const pct = (val / 30000) * 100;
+    document.getElementById('rangeFill').style.right = (100 - pct) + '%';
+    updateCount();
+  }
+
+  // RESULT COUNT
+  function updateCount() {
+    const n = Math.floor(Math.random() * 200 + 50);
+    document.getElementById('resultNum').textContent = n;
+  }
+
+  // VIEW TOGGLE
+  function setView(type) {
+    const grid = document.getElementById('itemsGrid');
+    document.getElementById('gridViewBtn').classList.toggle('active', type === 'grid');
+    document.getElementById('listViewBtn').classList.toggle('active', type === 'list');
+    grid.classList.toggle('list-view', type === 'list');
+  }
+
+  // SEARCH
+  function handleSearch(val) {
+    const cards = document.querySelectorAll('.item-card');
+    let count = 0;
+    cards.forEach(card => {
+      const name = card.querySelector('.item-name').textContent.toLowerCase();
+      const show = !val || name.includes(val.toLowerCase());
+      card.style.display = show ? '' : 'none';
+      if (show) count++;
+    });
+    document.getElementById('resultNum').textContent = count;
+    document.getElementById('noResult').classList.toggle('show', count === 0);
+  }
+
+  // SORT
+  function handleSort(val) { /* サーバーサイド処理 */ }
+
+  // HEART TOGGLE
+  function toggleHeart(e, el) {
+    e.stopPropagation();
+    const on = el.textContent === '♡';
+    el.textContent = on ? '♥' : '♡';
+    el.style.color = on ? '#FF4B91' : '';
+    el.style.borderColor = on ? '#FF4B91' : '';
+  }
+
+  // ACTIVE FILTER REMOVE
+  function removeFilter(el) {
+    el.closest('.af-tag').remove();
+  }
+
+  // RESET
+  function resetFilters() {
+    document.querySelectorAll('.fchip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.fcheck').forEach(c => { c.classList.remove('checked'); c.textContent = ''; });
+    document.querySelectorAll('.item-card').forEach(c => c.style.display = '');
+    document.getElementById('resultNum').textContent = '312';
+    document.getElementById('noResult').classList.remove('show');
+    document.getElementById('activeFilters').innerHTML =
+      '<span class="af-label">絞り込み中：</span><span style="font-size:12px;color:var(--text-muted);font-weight:600;">なし</span>';
+  }
+
+  // PAGINATION
+  document.querySelectorAll('.page-btn:not(.dots)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

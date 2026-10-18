@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理者ダッシュボード - LABEL NAME</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="admin-sidebar">
+    <div class="admin-logo">
+      <div class="admin-logo-text">♡ LABEL NAME</div>
+      <div class="admin-logo-sub">Admin Dashboard</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">メイン</div>
+      <a class="nav-item active" onclick="switchPanel('dashboard', this)"><span class="nav-icon">📊</span> ダッシュボード</a>
+      <a class="nav-item" onclick="switchPanel('users', this)"><span class="nav-icon">👥</span> ユーザー管理</a>
+      <a class="nav-item" onclick="switchPanel('items', this)"><span class="nav-icon">📦</span> 商品管理</a>
+      <a class="nav-item" onclick="switchPanel('orders', this)"><span class="nav-icon">🛍</span> 注文管理</a>
+      <a class="nav-item" onclick="switchPanel('sales', this)"><span class="nav-icon">💰</span> 売上・振込管理</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">審査・安全</div>
+      <a class="nav-item" onclick="switchPanel('kyc', this)"><span class="nav-icon">🪪</span> KYC審査<span class="nav-badge yellow">8</span></a>
+      <a class="nav-item" onclick="switchPanel('reports', this)"><span class="nav-icon">🚩</span> 通報対応<span class="nav-badge">5</span></a>
+      <a class="nav-item" onclick="switchPanel('moderation', this)"><span class="nav-icon">🛡</span> モデレーション</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">システム</div>
+      <a class="nav-item" onclick="switchPanel('settings', this)"><span class="nav-icon">⚙️</span> サイト設定</a>
+      <a class="nav-item" onclick="switchPanel('logs', this)"><span class="nav-icon">📋</span> アクティビティログ</a>
+    </div>
+
+    <div class="admin-user">
+      <div class="au-avatar">A</div>
+      <div>
+        <div class="au-name">Admin</div>
+        <div class="au-role">スーパー管理者</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="admin-main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">ダッシュボード</div>
+      <div class="topbar-right">
+        <div class="topbar-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" placeholder="ユーザー・商品・注文を検索">
+        </div>
+        <div class="topbar-icon">🔔<div class="notif-dot"></div></div>
+        <div class="topbar-icon">🌐</div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ══ DASHBOARD ══ -->
+      <section class="panel show fade-in" id="panel-dashboard">
+
+        <!-- アラート -->
+        <div class="alert-banner warn">
+          ⚠️ <strong>KYC未審査が8件</strong>あります。早めにご確認ください。
+          <a onclick="switchPanel('kyc', document.querySelectorAll('.nav-item')[5])" style="margin-left:auto;color:var(--yellow2);font-weight:700;cursor:pointer;text-decoration:underline;">確認する →</a>
+        </div>
+
+        <!-- KPI -->
+        <div class="kpi-grid">
+          <div class="kpi-card pk">
+            <div class="kpi-label">💰 今月の総売上</div>
+            <div class="kpi-num pk">¥1,284,000</div>
+            <div class="kpi-sub"><span class="kpi-up">↑ 18%</span> 先月比</div>
+          </div>
+          <div class="kpi-card green">
+            <div class="kpi-label">👥 総ユーザー数</div>
+            <div class="kpi-num green">3,482</div>
+            <div class="kpi-sub"><span class="kpi-up">↑ 124人</span> 今月</div>
+          </div>
+          <div class="kpi-card yellow">
+            <div class="kpi-label">📦 今月の取引数</div>
+            <div class="kpi-num yellow">312件</div>
+            <div class="kpi-sub"><span class="kpi-up">↑ 38件</span> 先月比</div>
+          </div>
+          <div class="kpi-card blue">
+            <div class="kpi-label">⭐ 平均評価</div>
+            <div class="kpi-num blue">4.81</div>
+            <div class="kpi-sub">全取引 <strong style="color:var(--text);">1,840件</strong></div>
+          </div>
+        </div>
+
+        <!-- チャート -->
+        <div class="dual-grid">
+          <div class="chart-card">
+            <div class="card-header">
+              <div class="card-title"><span class="pill pill-pk">📈</span> 月別売上</div>
+              <div class="period-btns">
+                <button class="period-btn" onclick="setPeriod(this,'3m')">3ヶ月</button>
+                <button class="period-btn active" onclick="setPeriod(this,'6m')">6ヶ月</button>
+                <button class="period-btn" onclick="setPeriod(this,'1y')">1年</button>
+              </div>
+            </div>
+            <div class="bar-chart" id="salesChart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="card-header">
+              <div class="card-title"><span class="pill pill-green">🥧</span> カテゴリ別売上</div>
+            </div>
+            <div class="donut-wrap">
+              <svg class="donut-svg" width="110" height="110" viewBox="0 0 110 110">
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#2C1F3A" stroke-width="18"/>
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#C455E8" stroke-width="18" stroke-dasharray="100 151" stroke-dashoffset="25" transform="rotate(-90 55 55)"/>
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#2ECC71" stroke-width="18" stroke-dasharray="57 194" stroke-dashoffset="-75" transform="rotate(-90 55 55)"/>
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#F39C12" stroke-width="18" stroke-dasharray="38 213" stroke-dashoffset="-132" transform="rotate(-90 55 55)"/>
+                <circle cx="55" cy="55" r="40" fill="none" stroke="#3498DB" stroke-width="18" stroke-dasharray="26 225" stroke-dashoffset="-170" transform="rotate(-90 55 55)"/>
+                <text x="55" y="59" text-anchor="middle" font-size="11" font-weight="800" fill="#F0E8FF" font-family="Sora">312</text>
+              </svg>
+              <div class="donut-legend">
+                <div class="dl-item"><div class="dl-dot" style="background:#C455E8;"></div> パンティ <span class="dl-pct">40%</span></div>
+                <div class="dl-item"><div class="dl-dot" style="background:#2ECC71;"></div> B&Pセット <span class="dl-pct">23%</span></div>
+                <div class="dl-item"><div class="dl-dot" style="background:#F39C12;"></div> 体液系 <span class="dl-pct">15%</span></div>
+                <div class="dl-item"><div class="dl-dot" style="background:#3498DB;"></div> ブラジャー <span class="dl-pct">10%</span></div>
+                <div class="dl-item"><div class="dl-dot" style="background:#7A5A8A;"></div> その他 <span class="dl-pct">12%</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 最近のアクティビティ + 新規ユーザー -->
+        <div class="dual-grid">
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-pk">⚡</span> 最近のアクティビティ</div></div>
+            <div class="activity-list">
+              <div class="activity-item"><div class="act-icon pk">🪪</div><div class="act-text"><strong>さき</strong>さんのKYC申請が届きました</div><div class="act-time">2分前</div></div>
+              <div class="activity-item"><div class="act-icon green">💰</div><div class="act-text"><strong>めい</strong>さんが¥30,000の振込申請をしました</div><div class="act-time">14分前</div></div>
+              <div class="activity-item"><div class="act-icon red">🚩</div><div class="act-text">商品ID#1842に通報が入りました</div><div class="act-time">32分前</div></div>
+              <div class="activity-item"><div class="act-icon green">👥</div><div class="act-text">新規ユーザー<strong>K***さん</strong>が登録しました</div><div class="act-time">1時間前</div></div>
+              <div class="activity-item"><div class="act-icon yellow">📦</div><div class="act-text">注文#2241が<strong>取引完了</strong>になりました</div><div class="act-time">1時間前</div></div>
+              <div class="activity-item"><div class="act-icon blue">⭐</div><div class="act-text"><strong>T***さん</strong>が★5のレビューを投稿しました</div><div class="act-time">2時間前</div></div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-green">👥</span> 新規ユーザー（今月）</div></div>
+            <div class="bar-chart" id="userChart" style="height:110px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+              <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px;text-align:center;">
+                <div style="font-size:20px;font-weight:800;color:var(--green2);">124</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px;">出品者</div>
+              </div>
+              <div style="background:var(--surface2);border-radius:var(--r-sm);padding:12px;text-align:center;">
+                <div style="font-size:20px;font-weight:800;color:var(--blue2);">389</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px;">購入者</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ USERS ══ -->
+      <section class="panel fade-in" id="panel-users">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="tbl-search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" placeholder="名前・メールで検索"></div>
+            <select class="tbl-select"><option>全ユーザー</option><option>出品者</option><option>購入者</option></select>
+            <select class="tbl-select"><option>全ステータス</option><option>アクティブ</option><option>停止中</option><option>KYC未完了</option></select>
+            <button class="tbl-btn">CSV出力</button>
+          </div>
+          <table>
+            <thead><tr><th>ユーザー</th><th>ロール</th><th>KYC</th><th>登録日</th><th>取引数</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="td-avatar">め</span><span class="td-name">めい</span><br><span style="font-size:11px;color:var(--text3);margin-left:36px;">mei@example.com</span></td><td><span class="badge badge-new">出品者</span></td><td><span class="badge badge-active">確認済み</span></td><td style="color:var(--text3);">2024/11/12</td><td>48件</td><td><span class="badge badge-active">アクティブ</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn warn">警告</button><button class="action-btn reject">停止</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--green);">な</span><span class="td-name">なな</span><br><span style="font-size:11px;color:var(--text3);margin-left:36px;">nana@example.com</span></td><td><span class="badge badge-new">出品者</span></td><td><span class="badge badge-active">確認済み</span></td><td style="color:var(--text3);">2024/10/05</td><td>62件</td><td><span class="badge badge-active">アクティブ</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn warn">警告</button><button class="action-btn reject">停止</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:#3A2010;">K</span><span class="td-name">K***さん</span><br><span style="font-size:11px;color:var(--text3);margin-left:36px;">k***@gmail.com</span></td><td><span class="badge badge-ship">購入者</span></td><td><span class="badge badge-active">確認済み</span></td><td style="color:var(--text3);">2025/01/20</td><td>12件</td><td><span class="badge badge-active">アクティブ</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn warn">警告</button><button class="action-btn reject">停止</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--blue);">T</span><span class="td-name">T***さん</span><br><span style="font-size:11px;color:var(--text3);margin-left:36px;">t***@gmail.com</span></td><td><span class="badge badge-ship">購入者</span></td><td><span class="badge badge-pending">審査中</span></td><td style="color:var(--text3);">2025/04/08</td><td>3件</td><td><span class="badge badge-active">アクティブ</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn warn">警告</button><button class="action-btn reject">停止</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--red);">X</span><span class="td-name">X***さん</span><br><span style="font-size:11px;color:var(--text3);margin-left:36px;">x***@gmail.com</span></td><td><span class="badge badge-ship">購入者</span></td><td><span class="badge badge-reject">未完了</span></td><td style="color:var(--text3);">2025/05/01</td><td>0件</td><td><span class="badge badge-suspend">停止中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn approve">解除</button><button class="action-btn reject">削除</button></div></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer"><div class="tbl-count">全 3,482件中 1-5件表示</div><div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn active">1</div><div class="pg-btn">2</div><div class="pg-btn">3</div><div class="pg-btn">›</div></div></div>
+        </div>
+      </section>
+
+      <!-- ══ ITEMS ══ -->
+      <section class="panel fade-in" id="panel-items">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="tbl-search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" placeholder="商品名で検索"></div>
+            <select class="tbl-select"><option>全カテゴリ</option><option>パンティ</option><option>ブラジャー</option><option>B&Pセット</option><option>体液系</option><option>衣類系</option></select>
+            <select class="tbl-select"><option>全ステータス</option><option>公開中</option><option>非公開</option><option>通報あり</option></select>
+          </div>
+          <table>
+            <thead><tr><th>商品</th><th>出品者</th><th>カテゴリ</th><th>価格</th><th>出品日</th><th>閲覧数</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="td-thumb" style="background:#301040;">🩲</span><span class="td-name">コットンショーツ 2日着用</span></td><td>めい</td><td>パンティ</td><td style="color:var(--pk4);font-weight:700;">¥1,800</td><td style="color:var(--text3);">5/9</td><td>124</td><td><span class="badge badge-active">公開中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn reject">非公開</button></div></td></tr>
+              <tr><td><span class="td-thumb" style="background:#1A3020;">👙</span><span class="td-name">黒のブラ&ショーツセット</span></td><td>めい</td><td>B&Pセット</td><td style="color:var(--pk4);font-weight:700;">¥3,200</td><td style="color:var(--text3);">5/8</td><td>89</td><td><span class="badge badge-active">公開中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn reject">非公開</button></div></td></tr>
+              <tr><td><span class="td-thumb" style="background:#302010;">🧴</span><span class="td-name">唾液 100ml 採取画像付き</span></td><td>りさ</td><td>体液系</td><td style="color:var(--pk4);font-weight:700;">¥2,500</td><td style="color:var(--text3);">5/7</td><td>203</td><td><span class="badge badge-warn">通報あり</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn warn">確認</button><button class="action-btn reject">削除</button></div></td></tr>
+              <tr><td><span class="td-thumb" style="background:#102030;">🩲</span><span class="td-name">Tバック 1日着用</span></td><td>なな</td><td>パンティ</td><td style="color:var(--pk4);font-weight:700;">¥2,200</td><td style="color:var(--text3);">5/6</td><td>67</td><td><span class="badge badge-active">公開中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn reject">非公開</button></div></td></tr>
+              <tr><td><span class="td-thumb" style="background:#301040;">🩲</span><span class="td-name">レースショーツ 1日着用</span></td><td>さき</td><td>パンティ</td><td style="color:var(--pk4);font-weight:700;">¥1,500</td><td style="color:var(--text3);">5/5</td><td>45</td><td><span class="badge badge-reject" style="background:rgba(196,85,232,0.15);color:var(--pk4);">非公開</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn approve">公開</button><button class="action-btn reject">削除</button></div></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer"><div class="tbl-count">全 528件中 1-5件表示</div><div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn active">1</div><div class="pg-btn">2</div><div class="pg-btn">3</div><div class="pg-btn">›</div></div></div>
+        </div>
+      </section>
+
+      <!-- ══ ORDERS ══ -->
+      <section class="panel fade-in" id="panel-orders">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="tbl-search"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input type="text" placeholder="注文ID・ユーザーで検索"></div>
+            <select class="tbl-select"><option>全ステータス</option><option>新規注文</option><option>発送準備中</option><option>発送済み</option><option>完了</option><option>キャンセル</option></select>
+            <button class="tbl-btn">CSV出力</button>
+          </div>
+          <table>
+            <thead><tr><th>注文ID</th><th>購入者</th><th>出品者</th><th>商品</th><th>金額</th><th>日時</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#2245</td><td>K***さん</td><td>めい</td><td>コットンショーツ</td><td style="color:var(--pk4);font-weight:700;">¥1,800</td><td style="color:var(--text3);">5/9 14:22</td><td><span class="badge badge-new">新規注文</span></td><td><button class="action-btn">詳細</button></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#2244</td><td>T***さん</td><td>めい</td><td>ブラ&ショーツセット</td><td style="color:var(--pk4);font-weight:700;">¥3,200</td><td style="color:var(--text3);">5/8 20:05</td><td><span class="badge badge-ship">発送準備中</span></td><td><button class="action-btn">詳細</button></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#2243</td><td>M***さん</td><td>めい</td><td>ピンクのTバック</td><td style="color:var(--pk4);font-weight:700;">¥2,200</td><td style="color:var(--text3);">5/7 11:30</td><td><span class="badge badge-done">完了</span></td><td><button class="action-btn">詳細</button></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#2242</td><td>R***さん</td><td>なな</td><td>Tバック 1日着用</td><td style="color:var(--pk4);font-weight:700;">¥2,200</td><td style="color:var(--text3);">5/6 18:45</td><td><span class="badge badge-done">完了</span></td><td><button class="action-btn">詳細</button></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#2241</td><td>Y***さん</td><td>さき</td><td>母乳 100ml</td><td style="color:var(--pk4);font-weight:700;">¥2,000</td><td style="color:var(--text3);">5/5 09:12</td><td><span class="badge" style="background:var(--red);color:var(--red2);">キャンセル</span></td><td><button class="action-btn">詳細</button></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer"><div class="tbl-count">全 1,840件中 1-5件表示</div><div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn active">1</div><div class="pg-btn">2</div><div class="pg-btn">3</div><div class="pg-btn">›</div></div></div>
+        </div>
+      </section>
+
+      <!-- ══ SALES ══ -->
+      <section class="panel fade-in" id="panel-sales">
+        <div class="kpi-grid">
+          <div class="kpi-card pk"><div class="kpi-label">💰 今月総売上</div><div class="kpi-num pk">¥1,284,000</div><div class="kpi-sub">手数料収入 <strong style="color:var(--pk4);">¥192,600</strong></div></div>
+          <div class="kpi-card yellow"><div class="kpi-label">⏳ 振込申請中</div><div class="kpi-num yellow">¥184,200</div><div class="kpi-sub">7件の申請中</div></div>
+          <div class="kpi-card green"><div class="kpi-label">✅ 今月振込済み</div><div class="kpi-num green">¥892,000</div><div class="kpi-sub">43件完了</div></div>
+          <div class="kpi-card blue"><div class="kpi-label">📊 手数料率</div><div class="kpi-num blue">15%</div><div class="kpi-sub">固定手数料</div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="card-title" style="font-size:14px;"><span class="pill pill-yellow">🏦</span> 振込申請一覧</div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <select class="tbl-select"><option>全ステータス</option><option>申請中</option><option>振込済み</option></select>
+              <button class="tbl-btn primary">一括承認</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>出品者</th><th>申請額</th><th>口座</th><th>申請日</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="td-avatar">め</span><span class="td-name">めい</span></td><td style="color:var(--pk4);font-weight:700;">¥30,000</td><td style="color:var(--text3);">みずほ ****1234</td><td style="color:var(--text3);">5/9 10:14</td><td><span class="badge badge-pending">申請中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn approve" onclick="approvePayout(this)">承認</button><button class="action-btn reject">却下</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--green);">な</span><span class="td-name">なな</span></td><td style="color:var(--pk4);font-weight:700;">¥45,000</td><td style="color:var(--text3);">三菱 ****5678</td><td style="color:var(--text3);">5/8 15:30</td><td><span class="badge badge-pending">申請中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn approve" onclick="approvePayout(this)">承認</button><button class="action-btn reject">却下</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:#301040;">あ</span><span class="td-name">あーや</span></td><td style="color:var(--pk4);font-weight:700;">¥18,500</td><td style="color:var(--text3);">三井住友 ****9012</td><td style="color:var(--text3);">5/7 20:05</td><td><span class="badge badge-done">振込済み</span></td><td><button class="action-btn">明細</button></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--green);">り</span><span class="td-name">りり</span></td><td style="color:var(--pk4);font-weight:700;">¥22,000</td><td style="color:var(--text3);">ゆうちょ ****3456</td><td style="color:var(--text3);">5/6 09:40</td><td><span class="badge badge-done">振込済み</span></td><td><button class="action-btn">明細</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══ KYC ══ -->
+      <section class="panel fade-in" id="panel-kyc">
+        <div class="alert-banner warn">⚠️ <strong>8件の未審査申請</strong>があります。48時間以内の審査を推奨します。</div>
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="card-title" style="font-size:14px;"><span class="pill pill-yellow">🪪</span> KYC申請一覧</div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <select class="tbl-select"><option>全ステータス</option><option>未審査</option><option>審査中</option><option>承認済み</option><option>否認</option></select>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>申請者</th><th>ロール</th><th>書類種別</th><th>申請日時</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td><span class="td-avatar" style="background:#302010;">さ</span><span class="td-name">さき</span></td><td><span class="badge badge-new">出品者</span></td><td>運転免許証</td><td style="color:var(--text3);">5/9 13:44</td><td><span class="badge badge-new">未審査</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">書類確認</button><button class="action-btn approve" onclick="approveKyc(this)">承認</button><button class="action-btn reject" onclick="rejectKyc(this)">否認</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--blue);">T</span><span class="td-name">T***さん</span></td><td><span class="badge badge-ship">購入者</span></td><td>マイナンバーカード</td><td style="color:var(--text3);">5/9 11:20</td><td><span class="badge badge-new">未審査</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">書類確認</button><button class="action-btn approve" onclick="approveKyc(this)">承認</button><button class="action-btn reject" onclick="rejectKyc(this)">否認</button></div></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--green);">Y</span><span class="td-name">Y***さん</span></td><td><span class="badge badge-ship">購入者</span></td><td>パスポート</td><td style="color:var(--text3);">5/8 18:30</td><td><span class="badge badge-pending">審査中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">書類確認</button><button class="action-btn approve" onclick="approveKyc(this)">承認</button><button class="action-btn reject" onclick="rejectKyc(this)">否認</button></div></td></tr>
+              <tr><td><span class="td-avatar">め</span><span class="td-name">めい</span></td><td><span class="badge badge-new">出品者</span></td><td>運転免許証</td><td style="color:var(--text3);">2024/11/12</td><td><span class="badge badge-active">承認済み</span></td><td><button class="action-btn">詳細</button></td></tr>
+              <tr><td><span class="td-avatar" style="background:var(--red);">X</span><span class="td-name">X***さん</span></td><td><span class="badge badge-ship">購入者</span></td><td>運転免許証</td><td style="color:var(--text3);">2025/04/30</td><td><span class="badge badge-reject">否認</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">詳細</button><button class="action-btn approve">再申請受付</button></div></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer"><div class="tbl-count">全 42件中 1-5件表示</div><div class="pagination"><div class="pg-btn">‹</div><div class="pg-btn active">1</div><div class="pg-btn">2</div><div class="pg-btn">›</div></div></div>
+        </div>
+      </section>
+
+      <!-- ══ REPORTS ══ -->
+      <section class="panel fade-in" id="panel-reports">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <div class="card-title" style="font-size:14px;"><span class="pill pill-red">🚩</span> 通報一覧</div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <select class="tbl-select"><option>全種類</option><option>商品</option><option>ユーザー</option><option>つぶやき</option></select>
+              <select class="tbl-select"><option>未対応</option><option>対応中</option><option>解決済み</option></select>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>通報ID</th><th>種類</th><th>対象</th><th>通報理由</th><th>通報者</th><th>日時</th><th>ステータス</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#R045</td><td><span class="badge badge-new">商品</span></td><td>唾液 100ml…</td><td>規約違反の可能性</td><td>M***さん</td><td style="color:var(--text3);">5/9 10:12</td><td><span class="badge badge-open">未対応</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">確認</button><button class="action-btn reject">削除</button><button class="action-btn approve">却下</button></div></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#R044</td><td><span class="badge badge-ship">ユーザー</span></td><td>X***さん</td><td>なりすまし疑惑</td><td>K***さん</td><td style="color:var(--text3);">5/8 14:55</td><td><span class="badge badge-open">未対応</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">確認</button><button class="action-btn reject">停止</button><button class="action-btn approve">却下</button></div></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#R043</td><td><span class="badge" style="background:rgba(52,152,219,0.15);color:var(--blue2);">つぶやき</span></td><td>投稿ID#8821</td><td>不適切な内容</td><td>T***さん</td><td style="color:var(--text3);">5/7 09:20</td><td><span class="badge badge-pending">対応中</span></td><td><div style="display:flex;gap:4px;"><button class="action-btn">確認</button><button class="action-btn reject">削除</button></div></td></tr>
+              <tr><td style="font-family:monospace;color:var(--pk4);">#R042</td><td><span class="badge badge-new">商品</span></td><td>商品ID#1801</td><td>画像に問題あり</td><td>Y***さん</td><td style="color:var(--text3);">5/5 16:40</td><td><span class="badge badge-resolved">解決済み</span></td><td><button class="action-btn">詳細</button></td></tr>
+            </tbody>
+          </table>
+          <div class="table-footer"><div class="tbl-count">全 18件中 1-4件表示</div><div class="pagination"><div class="pg-btn active">1</div><div class="pg-btn">2</div><div class="pg-btn">›</div></div></div>
+        </div>
+      </section>
+
+      <!-- ══ MODERATION ══ -->
+      <section class="panel fade-in" id="panel-moderation">
+        <div class="dual-grid">
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-pk">🛡</span> 自動モデレーション設定</div></div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">画像スキャン（AWS Rekognition）</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">不適切画像を自動検出・保留</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">顔認識フィルター</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">顔が映っている画像を警告</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">EXIF自動削除</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">位置情報を画像から自動削除</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">スパムフィルター</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">不審な投稿・メッセージを自動保留</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">18歳未満自動ブロック</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">KYCで未成年確認時に即時停止</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-yellow">📊</span> 今月のモデレーション統計</div></div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);padding:12px 14px;border-radius:var(--r-sm);">
+                <span style="font-size:13px;color:var(--text2);">🚫 自動検出・保留</span><span style="font-size:16px;font-weight:800;color:var(--yellow2);">24件</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);padding:12px 14px;border-radius:var(--r-sm);">
+                <span style="font-size:13px;color:var(--text2);">✅ 手動承認</span><span style="font-size:16px;font-weight:800;color:var(--green2);">18件</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);padding:12px 14px;border-radius:var(--r-sm);">
+                <span style="font-size:13px;color:var(--text2);">❌ 削除</span><span style="font-size:16px;font-weight:800;color:var(--red2);">6件</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);padding:12px 14px;border-radius:var(--r-sm);">
+                <span style="font-size:13px;color:var(--text2);">👤 アカウント停止</span><span style="font-size:16px;font-weight:800;color:var(--red2);">2件</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ SETTINGS ══ -->
+      <section class="panel fade-in" id="panel-settings">
+        <div class="dual-grid">
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-pk">⚙️</span> 基本設定</div></div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div><div style="font-size:12px;color:var(--text3);margin-bottom:6px;">サービス名</div><input style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;outline:none;" value="LABEL NAME"></div>
+              <div><div style="font-size:12px;color:var(--text3);margin-bottom:6px;">手数料率（%）</div><input type="number" style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;outline:none;" value="15"></div>
+              <div><div style="font-size:12px;color:var(--text3);margin-bottom:6px;">最低振込申請額（円）</div><input type="number" style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;outline:none;" value="3000"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">新規登録受付</div><div style="font-size:11px;color:var(--text3);">ユーザー登録を受け付ける</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">メンテナンスモード</div><div style="font-size:11px;color:var(--text3);">全ユーザーへのアクセスを一時停止</div></div>
+                <label class="toggle-switch"><input type="checkbox"><span class="toggle-slider"></span></label>
+              </div>
+              <button style="padding:11px;border-radius:var(--r-pill);background:var(--pk3);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;">設定を保存</button>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="card-header"><div class="card-title"><span class="pill pill-yellow">📧</span> メール・通知設定</div></div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div><div style="font-size:12px;color:var(--text3);margin-bottom:6px;">送信元メールアドレス</div><input style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;outline:none;" value="noreply@labelname.jp"></div>
+              <div><div style="font-size:12px;color:var(--text3);margin-bottom:6px;">メールサービス</div><select style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:var(--r-pill);background:var(--surface2);color:var(--text);font-size:13px;font-family:inherit;outline:none;"><option>SendGrid</option><option>Amazon SES</option></select></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">購入完了メール</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">KYC審査結果メール</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;">
+                <div><div style="font-size:13px;font-weight:600;color:var(--text);">振込完了メール</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <button style="padding:11px;border-radius:var(--r-pill);background:var(--pk3);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;">設定を保存</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ LOGS ══ -->
+      <section class="panel fade-in" id="panel-logs">
+        <div class="chart-card">
+          <div class="card-header">
+            <div class="card-title"><span class="pill pill-blue">📋</span> アクティビティログ</div>
+            <div style="display:flex;gap:8px;">
+              <select class="tbl-select"><option>全種別</option><option>ユーザー</option><option>商品</option><option>取引</option><option>システム</option></select>
+              <button class="tbl-btn">CSV出力</button>
+            </div>
+          </div>
+          <div class="activity-list">
+            <div class="activity-item"><div class="act-icon pk">🪪</div><div class="act-text"><strong>[KYC]</strong> さきさんのKYC申請が届きました (申請ID: KYC-0892)</div><div class="act-time">5/9 13:44</div></div>
+            <div class="activity-item"><div class="act-icon green">💰</div><div class="act-text"><strong>[振込]</strong> めいさんが¥30,000の振込申請を送信 (申請ID: PAY-0441)</div><div class="act-time">5/9 10:14</div></div>
+            <div class="activity-item"><div class="act-icon red">🚩</div><div class="act-text"><strong>[通報]</strong> 商品ID#1842への通報が届きました (通報ID: R-045)</div><div class="act-time">5/9 10:12</div></div>
+            <div class="activity-item"><div class="act-icon green">👥</div><div class="act-text"><strong>[登録]</strong> 新規購入者 K***さんが登録しました (UserID: U-3482)</div><div class="act-time">5/9 09:30</div></div>
+            <div class="activity-item"><div class="act-icon pk">📦</div><div class="act-text"><strong>[出品]</strong> めいさんが「コットンショーツ 2日着用」を出品しました (ItemID: I-528)</div><div class="act-time">5/9 09:10</div></div>
+            <div class="activity-item"><div class="act-icon yellow">💳</div><div class="act-text"><strong>[購入]</strong> K***さんが¥1,800の購入を完了しました (OrderID: #2245)</div><div class="act-time">5/9 14:22</div></div>
+            <div class="activity-item"><div class="act-icon blue">⭐</div><div class="act-text"><strong>[レビュー]</strong> K***さんが★5のレビューを投稿しました (OrderID: #2243)</div><div class="act-time">5/8 22:10</div></div>
+            <div class="activity-item"><div class="act-icon red">🛡</div><div class="act-text"><strong>[モデレ]</strong> 自動スキャンで画像1点を保留しました (ItemID: I-521)</div><div class="act-time">5/8 18:05</div></div>
+            <div class="activity-item"><div class="act-icon green">✅</div><div class="act-text"><strong>[KYC]</strong> ManagerがめいさんのKYCを承認しました (AdminID: A-001)</div><div class="act-time">2024/11/12 14:30</div></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    // PANEL SWITCH
+    function switchPanel(name, el) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const panel = document.getElementById('panel-' + name);
+      if (panel) { panel.classList.add('show'); panel.classList.add('visible'); }
+      if (el) el.classList.add('active');
+      const titles = {
+        dashboard:'ダッシュボード', users:'ユーザー管理', items:'商品管理',
+        orders:'注文管理', sales:'売上・振込管理', kyc:'KYC審査',
+        reports:'通報対応', moderation:'モデレーション', settings:'サイト設定', logs:'アクティビティログ'
+      };
+      document.getElementById('topbarTitle').textContent = titles[name] || name;
+    }
+
+    // CHARTS DATA
+    const salesData6m = [
+      { label:'12月', val:820000 }, { label:'1月', val:690000 },
+      { label:'2月', val:940000 }, { label:'3月', val:1080000 },
+      { label:'4月', val:1120000 }, { label:'5月', val:1284000, active:true },
+    ];
+    const salesData3m = [
+      { label:'3月', val:1080000 }, { label:'4月', val:1120000 }, { label:'5月', val:1284000, active:true },
+    ];
+    const salesData1y = [
+      { label:'6月', val:520000 }, { label:'7月', val:640000 }, { label:'8月', val:710000 },
+      { label:'9月', val:680000 }, { label:'10月', val:780000 }, { label:'11月', val:820000 },
+      { label:'12月', val:820000 }, { label:'1月', val:690000 }, { label:'2月', val:940000 },
+      { label:'3月', val:1080000 }, { label:'4月', val:1120000 }, { label:'5月', val:1284000, active:true },
+    ];
+    const userDataWeek = [
+      { label:'月', val:18 }, { label:'火', val:24 }, { label:'水', val:12 },
+      { label:'木', val:31 }, { label:'金', val:28 }, { label:'土', val:19 }, { label:'日', val:9, active:true },
+    ];
+
+    function renderBar(id, data, color = 'var(--pk3)', height = 130) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const max = Math.max(...data.map(d => d.val));
+      el.innerHTML = data.map(d => {
+        const h = Math.round((d.val / max) * (height - 20));
+        const c = d.active ? 'linear-gradient(180deg, var(--pk4), var(--pk3))' : 'rgba(196,85,232,0.25)';
+        const tip = typeof d.val === 'number' && d.val > 1000 ? '¥' + (d.val/10000).toFixed(0) + '万' : d.val;
+        return `<div class="bar-wrap"><div class="bar" style="height:${h}px;background:${c};"><div class="bar-tip">${tip}</div></div><div class="bar-lbl">${d.label}</div></div>`;
+      }).join('');
+    }
+
+    function setPeriod(btn, period) {
+      document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const map = { '3m': salesData3m, '6m': salesData6m, '1y': salesData1y };
+      renderBar('salesChart', map[period]);
+    }
+
+    renderBar('salesChart', salesData6m);
+    renderBar('userChart', userDataWeek, 'var(--green2)', 110);
+
+    // KYC ACTIONS
+    function approveKyc(btn) {
+      const row = btn.closest('tr');
+      row.querySelector('.badge').className = 'badge badge-active';
+      row.querySelector('.badge').textContent = '承認済み';
+      row.querySelector('td:last-child').innerHTML = '<button class="action-btn">詳細</button>';
+    }
+    function rejectKyc(btn) {
+      const row = btn.closest('tr');
+      row.querySelector('.badge').className = 'badge badge-reject';
+      row.querySelector('.badge').textContent = '否認';
+      row.querySelector('td:last-child').innerHTML = '<button class="action-btn">詳細</button>';
+    }
+
+    // PAYOUT APPROVE
+    function approvePayout(btn) {
+      const row = btn.closest('tr');
+      row.querySelector('.badge').className = 'badge badge-done';
+      row.querySelector('.badge').textContent = '振込済み';
+      row.querySelector('td:last-child').innerHTML = '<button class="action-btn">明細</button>';
+    }
+
+    // INTERSECTION OBSERVER
+    const obs = new IntersectionObserver(e => e.forEach(x => { if(x.isIntersecting) x.target.classList.add('visible'); }), { threshold: 0.03 });
+    document.querySelectorAll('.fade-in').forEach(el => obs.observe(el));
+  </script>
+</body>
+</html>

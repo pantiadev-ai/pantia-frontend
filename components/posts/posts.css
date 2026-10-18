@@ -1,0 +1,389 @@
+/* つぶやき（/tweets・/tweets/[id]・/timeline・/mypage/tweets）で、見本の CSS に無い見た目だけを足す。
+   共通の styles/*.css は直さない。見本の色・角丸の変数（--primary・--r など）をそのまま使う。 */
+
+/* ── 本文: 改行を保つ・長い英数字で横にはみ出さない ── */
+.pg-tweets .tweet-body,
+.pg-timeline .tw-body,
+.pg-tweets .cmt-text,
+.pg-mypage .pp-log-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:is(.pg-tweets, .pg-timeline) .hashtag { color: var(--primary); font-weight: 700; text-decoration: none; }
+:is(.pg-tweets, .pg-timeline) .hashtag:hover { text-decoration: underline; }
+
+/* ── アイコン（画像のとき） ── */
+:is(.pg-tweets, .pg-timeline) :is(.tw-avatar, .as-avatar, .cmt-avatar, .di-avatar, .fc-avatar, .sgh-avatar, .bp-avatar) {
+  position: relative;
+}
+:is(.pg-tweets, .pg-timeline) :is(.tw-avatar, .as-avatar, .cmt-avatar, .di-avatar, .fc-avatar, .sgh-avatar, .bp-avatar) > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+.pp-author-link { flex-shrink: 0; text-decoration: none; }
+
+/* ── カードの中のリンク ── */
+:is(.pg-tweets, .pg-timeline) .tw-name,
+:is(.pg-tweets, .pg-timeline) .tw-time,
+:is(.pg-tweets, .pg-timeline) .tw-action,
+:is(.pg-tweets, .pg-timeline) .item-link,
+:is(.pg-tweets, .pg-timeline) .as-name,
+:is(.pg-tweets, .pg-timeline) .di-name,
+:is(.pg-tweets, .pg-timeline) .htag,
+.pg-timeline .fc-item,
+.pg-timeline .side-nav-item,
+.pg-timeline .tl-tab,
+.pg-timeline .seller-group-header,
+.pg-timeline .item-thumb,
+.pg-timeline .item-info,
+.pg-timeline .fc-link {
+  text-decoration: none;
+}
+:is(.pg-tweets, .pg-timeline) .tw-name:hover,
+:is(.pg-tweets, .pg-timeline) .as-name:hover,
+:is(.pg-tweets, .pg-timeline) .di-name:hover { color: var(--primary); }
+:is(.pg-tweets, .pg-timeline) .tw-time:hover { text-decoration: underline; }
+:is(.pg-tweets, .pg-timeline) button.tw-action { font-family: inherit; }
+:is(.pg-tweets, .pg-timeline) .tw-action.pp-static { cursor: default; }
+:is(.pg-tweets, .pg-timeline) .tw-action.pp-static:hover { background: transparent; color: var(--text-muted); }
+
+/* ── 右上の「通報」「···」 ── */
+:is(.pg-tweets, .pg-timeline) .tw-menu {
+  font-size: 16px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  transition: all 0.2s;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  line-height: 1.4;
+}
+:is(.pg-tweets, .pg-timeline) .tw-menu:hover { background: var(--primary-light); color: var(--primary); }
+:is(.pg-tweets, .pg-timeline) .tw-menu.pp-report { font-size: 11px; font-weight: 700; }
+
+/* ── 状態の札（確認中・非表示） ── */
+.pp-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  margin-bottom: 8px;
+  background: var(--yellow);
+  color: var(--yellow2);
+}
+.pp-state.hidden { background: var(--err-bg); color: var(--err); }
+.cmt-name .pp-state,
+.pp-log-when .pp-state { margin: 0 0 0 6px; }
+
+/* ── 固定（timeline には見本の CSS が無い） ── */
+.pg-timeline .tweet-card.pinned { border-color: rgba(255, 75, 145, 0.3); background: rgba(255, 240, 247, 0.8); }
+:is(.pg-tweets, .pg-timeline) .pin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+/* ── 画像（1枚・3枚） ── */
+.pg-tweets .tweet-imgs.one .tweet-img,
+.pg-timeline .tw-imgs.one .tw-img { height: auto; max-height: 360px; }
+.pg-tweets .tweet-imgs.one .tw-photo-img,
+.pg-timeline .tw-imgs.one .tw-photo-img { max-height: 360px; }
+.pg-timeline .tw-imgs.three { grid-template-columns: 1fr 1fr; }
+.pg-timeline .tw-imgs.three .tw-img:first-child { grid-row: 1/3; height: 200px; }
+.pg-timeline .tw-imgs.three .tw-img:not(:first-child) { height: 97px; }
+
+/* ── 商品カード ── */
+:is(.pg-tweets, .pg-timeline) .item-link :is(.item-link-thumb, .il-thumb) { overflow: hidden; }
+:is(.pg-tweets, .pg-timeline) .il-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pp-sold { background: var(--text-muted) !important; color: #fff !important; }
+
+/* ── 投稿欄（/timeline・/mypage/tweets。/tweets は見本の CSS がある） ── */
+:is(.pg-timeline, .pg-mypage) .composer {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--glass-shadow);
+}
+.pg-mypage .composer.pp-in-card {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+:is(.pg-timeline, .pg-mypage) .composer-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+:is(.pg-timeline, .pg-mypage) .comp-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+:is(.pg-timeline, .pg-mypage) .comp-textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-main);
+  line-height: 1.7;
+  resize: none;
+  background: transparent;
+  min-height: 72px;
+  font-weight: 500;
+}
+.pg-mypage .composer.pp-in-card .comp-textarea {
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  border-radius: 16px;
+  padding: 12px 14px;
+  min-height: 90px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+:is(.pg-timeline, .pg-mypage) .comp-textarea::placeholder { color: var(--text-muted); }
+:is(.pg-timeline, .pg-mypage) .comp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+:is(.pg-timeline, .pg-mypage) .comp-tools { display: flex; gap: 4px; }
+:is(.pg-timeline, .pg-mypage) .comp-tool {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+:is(.pg-timeline, .pg-mypage) .comp-tool:hover { background: var(--primary-light); color: var(--primary); }
+:is(.pg-tweets, .pg-timeline, .pg-mypage) .comp-tool.on { background: var(--primary-light); color: var(--primary); }
+:is(.pg-timeline, .pg-mypage) .comp-right { display: flex; align-items: center; gap: 10px; }
+:is(.pg-timeline, .pg-mypage) .comp-count { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+:is(.pg-timeline, .pg-mypage) .comp-count.warn { color: var(--yellow2); }
+:is(.pg-timeline, .pg-mypage) .comp-count.over { color: var(--primary-hover); }
+:is(.pg-timeline, .pg-mypage) .btn-post {
+  padding: 9px 22px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--primary), #ff75a0);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 75, 145, 0.3);
+  font-family: inherit;
+}
+:is(.pg-timeline, .pg-mypage) .btn-post:hover:not(:disabled) { transform: translateY(-1px); }
+:is(.pg-timeline, .pg-mypage) .btn-post:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+:is(.pg-tweets, .pg-timeline, .pg-mypage) .comp-img-preview { margin-top: 10px; margin-bottom: 10px; }
+.pp-comp-listing { margin-bottom: 10px; }
+.pp-note { font-size: 12px; color: var(--text-muted); font-weight: 600; margin: 0; }
+
+/* select（商品の紐づけ） */
+.pp-select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 75, 145, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-main);
+  outline: none;
+}
+.pp-select:focus { border-color: var(--primary); }
+
+/* ── 絞り込み・空・ページ送り ── */
+.pp-filter-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  background: var(--primary-light);
+  border: 1px solid rgba(255, 75, 145, 0.25);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+}
+.pp-filter-note a { margin-left: auto; color: var(--primary); text-decoration: none; font-weight: 800; }
+.pp-filter-clear { margin-left: auto; color: var(--primary); text-decoration: none; font-weight: 800; padding: 0 4px; }
+.pp-empty {
+  background: var(--glass-bg);
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border-radius: var(--r);
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pp-side-empty { font-size: 12px; color: var(--text-muted); font-weight: 600; margin: 4px 0; }
+.pp-pager { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.pp-pager .btn-load { text-decoration: none; display: inline-block; }
+.pg-mypage .pp-pager { margin-top: 14px; }
+.pg-mypage .btn-load {
+  padding: 10px 28px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 75, 145, 0.3);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+.pg-mypage .btn-load:hover { background: #fff; }
+.pp-count-note { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.pp-side-items { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── /tweets/[id] ── */
+.pg-tweets .layout.pp-detail { grid-template-columns: minmax(0, 680px); justify-content: center; }
+.pp-back a { font-size: 12px; font-weight: 700; color: var(--primary); text-decoration: none; }
+.pp-back a:hover { text-decoration: underline; }
+.pp-comments-title { font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 10px; }
+.pg-tweets .pp-comments .comments-wrap { display: flex; flex-direction: column; gap: 10px; }
+.pg-tweets .pp-comments .comment-item { display: flex; gap: 10px; align-items: flex-start; }
+.pg-tweets .comment-item.pp-by-author .cmt-bubble { background: var(--primary-light); }
+.pg-tweets .cmt-name a { color: inherit; text-decoration: none; }
+.pg-tweets .cmt-name a:hover { color: var(--primary); }
+.pp-you { font-size: 10px; color: var(--text-muted); margin-left: 4px; font-weight: 600; }
+.pp-cmt-time { font-size: 10px; color: var(--text-muted); margin-left: 8px; font-weight: 500; }
+.pp-cmt-tools { display: flex; gap: 10px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
+.pp-cmt-del,
+.pp-cmt-report {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-decoration: none;
+}
+.pp-cmt-del:hover { color: var(--err); }
+.pp-cmt-report:hover { color: var(--primary); }
+.pp-cmt-count { font-size: 11px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+.pp-cmt-count.over { color: var(--err); }
+.pp-cmt-guide { font-size: 12px; font-weight: 600; color: var(--text-sub); flex-wrap: wrap; gap: 10px; }
+.pp-cmt-guide span { flex: 1; min-width: 180px; }
+.pp-cmt-guide .cmt-send { text-decoration: none; }
+
+/* ── /timeline ── */
+.pg-timeline .item-card { position: relative; }
+.pg-timeline .item-thumb { background: var(--primary-light); }
+.pg-timeline .item-info { display: block; }
+.pg-timeline button.item-heart { font-family: inherit; padding: 0; }
+.pg-timeline .item-heart.liked { color: var(--primary); border-color: var(--primary); }
+.pp-noimg { font-size: 36px; }
+.pg-timeline .fc-item.pp-current { background: var(--primary-light); }
+.pg-timeline .seller-filter-bar { display: flex; }
+.pp-nofollow { margin-bottom: 4px; }
+.pp-nofollow-title { font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+.pp-nofollow p { font-size: 12px; color: var(--text-sub); font-weight: 600; margin: 0 0 12px; }
+.pp-nofollow .btn-follow { display: inline-block; text-decoration: none; margin-left: 0; }
+.pg-timeline .discover-item.pp-discover-wide {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  box-shadow: var(--glass-shadow);
+}
+.pp-notice-text { font-size: 12px; line-height: 1.7; color: var(--text-sub); font-weight: 600; margin: 0 0 10px; }
+.pp-online-badge { margin-left: auto; }
+.pp-settings-link { display: inline-block; text-decoration: none; margin-left: 0; }
+
+/* ── /mypage/tweets ── */
+.pp-kyc-guide { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.pp-kyc-guide p { margin: 0; flex: 1; min-width: 200px; }
+.pp-kyc-guide a { text-decoration: none; }
+.pp-total { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-left: 4px; }
+.pg-mypage .tweet-log-item.pp-pinned { border-color: rgba(255, 75, 145, 0.35); background: rgba(255, 240, 247, 0.85); }
+.pp-log-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.pp-log-when { font-size: 11px; color: var(--text-muted); font-weight: 600; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.pp-pin { color: var(--primary); font-weight: 800; margin-right: 6px; }
+.pp-log-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.pp-log-body { font-size: 13px; color: var(--text-sub); line-height: 1.75; font-weight: 500; }
+.pp-log-imgs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.pp-log-imgs img { width: 72px; height: 72px; object-fit: cover; border-radius: var(--r-sm); display: block; }
+.pp-log-listing {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  text-decoration: none;
+  background: var(--primary-light);
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+}
+.pp-log-foot {
+  display: flex;
+  gap: 14px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  align-items: center;
+}
+.pp-log-open { margin-left: auto; color: var(--primary); text-decoration: none; font-weight: 700; }
+.pp-edit { display: flex; flex-direction: column; gap: 8px; }
+.pp-edit textarea {
+  border: 1px solid rgba(255, 75, 145, 0.2);
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-main);
+  resize: vertical;
+  min-height: 90px;
+  outline: none;
+  line-height: 1.7;
+  background: rgba(255, 255, 255, 0.9);
+}
+.pp-edit textarea:focus { border-color: var(--primary); }
+.pp-edit-row { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.pp-count { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.pp-count.warn { color: var(--yellow2); }
+.pp-count.over { color: var(--err); }
+
+@media (max-width: 600px) {
+  .pp-log-head { flex-direction: column; }
+  .pg-tweets .layout.pp-detail { grid-template-columns: 1fr; }
+}
