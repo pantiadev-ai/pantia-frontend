@@ -7,8 +7,19 @@ type Fixtures = { consoleAllow: RegExp[]; browserErrors: string[] };
 export const test = base.extend<Fixtures>({
   consoleAllow: [[], { option: true }],
   browserErrors: [
-    async ({ page, consoleAllow }, use) => {
+    async ({ context, page, consoleAllow }, use) => {
       const errors: string[] = [];
+      // 見張るだけ（Report-Only）の CSP の違反は console に出ないので、securitypolicyviolation を拾う
+      await context.exposeBinding("__e2eCspViolation", (_source, v: string) => {
+        if (consoleAllow.some((re) => re.test(v))) return;
+        errors.push(`CSP の違反: ${v}`);
+      });
+      await context.addInitScript(() => {
+        document.addEventListener("securitypolicyviolation", (e) => {
+          const report = (window as unknown as { __e2eCspViolation?: (v: string) => void }).__e2eCspViolation;
+          report?.(`${e.violatedDirective} ${e.blockedURI || "inline"}（${location.pathname}）`);
+        });
+      });
       page.on("pageerror", (e) => errors.push(`画面の例外: ${e.message}`));
       page.on("console", (m) => {
         if (m.type() !== "error") return;

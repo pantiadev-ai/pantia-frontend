@@ -102,11 +102,11 @@ AI を使うなら（使わないなら「なし」）:
 
 | 守る物 | 夜間バックアップ（`C:\Users\OWNER\dev\ai-kakumei-backup\targets.json` など） | 載せる日 |
 |---|---|---|
-| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。守り方が決まった日に載せる |
+| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
 | ファイル（Storage・VPS のファイル）。無ければ「なし」 | 出品・アイコン・つぶやき・チャットの写真（本人確認の書類は7日で消すので載せない）。 仮（社長・公開前） | 本番の migration を当てた日 |
 
 - 外形監視に載せる URL（`uptime_targets.json`）: https://pantia-frontend-app.vercel.app/auth（200）・https://pantia-frontend-app.vercel.app/api/cron/health（合言葉なしで 200）・Supabase の入口。 仮（社長・客先の監視に載せるか公開前に決める）
-- cron があるなら、最後まで走った時刻の記録と `/api/cron/health`: あり。expire-orders・auto-complete・retry-refunds・cleanup（どれも1日1回。vercel.json）が cron_runs に残し、health が「最後に終わってから26時間を過ぎた物」を 503 で返す。期限切れの支払い待ちは、購入の手続きの中でもその場で取り消す（lib/order-sweep.ts）ので、1日1回でも売り場は詰まらない
+- cron があるなら、最後まで走った時刻の記録と `/api/cron/health`: あり。expire-orders・auto-complete・retry-refunds・cleanup（どれも1日1回。vercel.json）が cron_runs に残し、health が「最後に終わってから26時間を過ぎた物」を 503 で返す。期限切れの支払い待ちは、購入の手続きの中でもその場で取り消す（lib/order-sweep.ts）ので、1日1回でも売り場は詰まらない。2026-10-19 00:30 JST に retry-refunds が本番で初めて最後まで走り、cron_runs に成功が残った（サーバーの鍵と CRON_SECRET が正しい印）。health は4本が一度ずつ走るまで 503
 
 ## 8. ASVS 5.0 の章（28 §2-2）
 
@@ -116,7 +116,7 @@ AI を使うなら（使わないなら「なし」）:
 |---|---|---|
 | V1 符号化・無害化 | 該当（検索・チャット・つぶやき） | A12（escapeLike・safeSearch）・O1（シェルなし）・O2（外の値を正規表現にしない）・O3（React の自動エスケープ。dangerouslySetInnerHTML を使わない） |
 | V2 検証・業務の流れ | 該当（購入・発送・受取・振込の順序） | A7（手数料などの設定は service_role だけ）・B7・O4（zod）・O5（状態の移り方は DB の関数だけ） |
-| V3 ブラウザ側（CSP・CSRF・CORS・クッキー） | 該当 | B9（CSP は report-only から）・N1（route の POST は Origin を確かめる）・N2・N3・L4 |
+| V3 ブラウザ側（CSP・CSRF・CORS・クッキー） | 該当 | B9（CSP は report-only で出し、2026-10-19 に本番のログイン前の14画面と E2E 249 件で違反0件を確かめて強制にした。`CSP_ENFORCE=1`）・N1（route の POST は Origin を確かめる）・N2・N3・L4 |
 | V4 API・WebSocket | 該当（Realtime） | M1（Realtime は RLS が効いたまま）・M2 |
 | V5 ファイル | 該当（写真・本人確認の書類） | A8・A8-2（paths_ok）・O7（sharp で作り直し） |
 | V6 認証 | 該当 | B6・B7（回数の上限）・H6（運営者は MFA） |

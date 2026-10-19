@@ -64,7 +64,7 @@ npm run dev
 - 出したら確かめる:
   - `/api/cron/health` が 200（合言葉なし。遅れている cron の名前だけを返す。初めて出した日は、4本が1回ずつ走るまで 503）
   - `/api/cron/expire-orders` を合言葉なしで開くと 401
-  - CSP は最初 report-only（`CSP_ENFORCE` は空）。本番で違反0件・`<script>` の全部に nonce が付いていることを確かめてから `CSP_ENFORCE=1`。`next.config.ts` に同じ名前の CSP を置かない。
+  - CSP は最初 report-only（`CSP_ENFORCE` は空）。本番で違反0件・`<script>` の全部に nonce が付いていることを確かめてから `CSP_ENFORCE=1`（`pantia-frontend-app` の Production は 2026-10-19 に 1 にした）。`next.config.ts` に同じ名前の CSP を置かない。
 
 ## DB の試験（検証用の Supabase だけ）
 
