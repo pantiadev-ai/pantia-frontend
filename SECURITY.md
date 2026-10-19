@@ -116,7 +116,7 @@ AI を使うなら（使わないなら「なし」）:
 |---|---|---|
 | V1 符号化・無害化 | 該当（検索・チャット・つぶやき） | A12（escapeLike・safeSearch）・O1（シェルなし）・O2（外の値を正規表現にしない）・O3（React の自動エスケープ。dangerouslySetInnerHTML を使わない） |
 | V2 検証・業務の流れ | 該当（購入・発送・受取・振込の順序） | A7（手数料などの設定は service_role だけ）・B7・O4（zod）・O5（状態の移り方は DB の関数だけ） |
-| V3 ブラウザ側（CSP・CSRF・CORS・クッキー） | 該当 | B9（CSP は report-only から）・N1（route の POST は Origin を確かめる）・N2・N3・L4 |
+| V3 ブラウザ側（CSP・CSRF・CORS・クッキー） | 該当 | B9（CSP は report-only で出し、2026-10-19 に本番のログイン前の14画面と E2E 249 件で違反0件を確かめて強制にした。`CSP_ENFORCE=1`）・N1（route の POST は Origin を確かめる）・N2・N3・L4 |
 | V4 API・WebSocket | 該当（Realtime） | M1（Realtime は RLS が効いたまま）・M2 |
 | V5 ファイル | 該当（写真・本人確認の書類） | A8・A8-2（paths_ok）・O7（sharp で作り直し） |
 | V6 認証 | 該当 | B6・B7（回数の上限）・H6（運営者は MFA） |
