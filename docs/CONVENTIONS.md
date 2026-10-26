@@ -49,6 +49,7 @@
 | `/timeline` | フォロー中のつぶやき・投稿欄 | 要 |
 | `/auth` | ログイン（`?tab=register` で新規登録の3段）。`?next=` で戻り先 | 不要 |
 | `/auth/reset`、`/auth/update-password`、`/auth/callback`、`/auth/suspended` | 再設定・メールの戻り先・停止中 | 不要 |
+| `/auth/start?token_hash=` | 代理登録の人に送る「パスワードを決める」リンクの入口（開いただけでは使わず、ボタンで `/auth/callback` へ） | 不要 |
 | `/mypage` | マイページ（出品者はダッシュボード、購入者は購入履歴・お気に入り・フォロー中） | 要 |
 | `/mypage/items` | 自分の出品の一覧 | 出品者 |
 | `/mypage/sales` | 受けた注文・売上 | 出品者 |
@@ -63,6 +64,7 @@
 | `/kyc` | 本人確認（18歳以上の確認） | 要 |
 | `/settings` | アカウント設定（メール・パスワード・お届け先・通知・ブロック一覧・役割の変更・退会） | 要 |
 | `/admin`、`/admin/[panel]` | 管理画面（MFA 必須） | 管理者 |
+| `/admin/proxy`、`/admin/proxy/[id]` | 代理登録（本人に頼まれて運営が代わりに登録する。一覧・リンクの作成・本人確認の代理提出） | 管理者 |
 | `/terms`、`/privacy`、`/legal`、`/help`、`/contact` | 規約・プライバシー・特商法・ヘルプ・お問い合わせ | 不要 |
 
 `proxy.ts` は一覧にないパスをログイン必須に倒す。ログインなしで見せるページを足したら `proxy.ts` の `PUBLIC_EXACT`／`PUBLIC_PATTERNS` も直す（担当は全体の取りまとめ役。報告に書く）。

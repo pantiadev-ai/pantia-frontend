@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { ActionError, actionViewer, runAction, type ActionResult } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { publicEnv, serverEnv } from "@/lib/env";
 import { RECOVERY_COOKIE, RECOVERY_COOKIE_PATH, hasRecoveryGrant } from "@/lib/recovery-grant";
 import { RULES, requestIp, takeRateLimit } from "@/lib/rate-limit";
@@ -254,6 +255,10 @@ export async function updatePassword(input: unknown): Promise<ActionResult> {
     }
     // ほかの端末のログインは切る（盗まれた時の再設定を想定）。この端末はそのまま
     await supabase.auth.signOut({ scope: "others" });
+    // 運営が代わりに作ったアカウント（lib/actions/proxy.ts）なら「本人に渡した」の印を付ける。以後、運営からはリンクを作れない。
+    // 代理登録でない人には何もしない。印を付けられなくてもパスワードは変わっているので、ここでは止めない
+    const { error: handoverError } = await createServiceClient().rpc("proxy_mark_handed_over", { p_user: viewer.id });
+    if (handoverError) console.error("[update-password] 代理登録の印を付けられませんでした", handoverError.code);
     // 札は一度きり（消すと画面が描き直され、フォームは「期限切れ」の案内になるが、変えた旨の表示が先に出る）
     store.delete({ name: RECOVERY_COOKIE, path: RECOVERY_COOKIE_PATH });
     return { ok: true, message: "パスワードを変更しました。ほかの端末からはログアウトしています。" };

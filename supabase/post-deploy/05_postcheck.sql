@@ -10,7 +10,9 @@ with
     ('mail_outbox'), ('messages'), ('notifications'), ('order_addresses'), ('orders'), ('payment_events'),
     ('payouts'), ('post_comments'), ('post_likes'), ('posts'), ('profiles'), ('rate_limit_hits'),
     ('reports'), ('reviews'), ('role_change_requests'), ('saved_addresses'), ('site_settings'), ('threads'),
-    ('user_sanctions')
+    ('user_sanctions'),
+    -- 0010 代理登録
+    ('proxy_registrations')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -28,7 +30,9 @@ with
     ('quote_listing'), ('rate_limit_take'), ('request_payout'), ('request_role_change'), ('san'), ('search_listings'),
     ('seller_can_leave'), ('seller_cancel_order'), ('seller_is_public'), ('seller_stats'), ('send_message'), ('set_thread_muted'),
     ('ship_order'), ('spam_hold'), ('submit_kyc'), ('suspend_internal'), ('toggle_message_heart'), ('touch_last_seen'),
-    ('touch_updated_at'), ('trend_tags'), ('viewer_context'), ('weekly_ranking'), ('withdraw_account'), ('withdraw_internal')
+    ('touch_updated_at'), ('trend_tags'), ('viewer_context'), ('weekly_ranking'), ('withdraw_account'), ('withdraw_internal'),
+    -- 0010 代理登録
+    ('admin_proxy_link_issued'), ('admin_proxy_register'), ('admin_proxy_submit_kyc'), ('proxy_mark_handed_over')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -58,7 +62,7 @@ with
   missing_buckets as (select id from new_buckets b where not exists (select 1 from storage.buckets s where s.id = b.id))
 select 1 as no, '新しい表が全部ある' as item,
   case when exists (select 1 from missing_tables) then 'NG' else 'OK' end as result,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '31 表') as detail
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '32 表') as detail
 union all
 select 2, '新しい表は全部 RLS が入っている',
   case when exists (select 1 from no_rls) then 'NG' else 'OK' end,
@@ -66,7 +70,7 @@ select 2, '新しい表は全部 RLS が入っている',
 union all
 select 3, '関数が全部ある',
   case when exists (select 1 from missing_functions) then 'NG' else 'OK' end,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '96 個')
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '100 個')
 union all
 select 4, 'SECURITY DEFINER の関数は search_path が固定',
   case when exists (select 1 from open_definer) then 'NG' else 'OK' end,
@@ -112,4 +116,18 @@ select 13, '旧表 sellers・items の鍵（新アプリを確かめたあと 10
 union all
 select 14, '前からある表で RLS が切れている物（今回は触らない）', '記録',
   coalesce((select string_agg(name, ', ' order by name) from old_no_rls), 'なし')
+union all
+select 15, '代理で出した運営の列（kyc_applications.submitted_by）は利用者から読めない',
+  case when not exists (select 1 from information_schema.columns
+                        where table_schema = 'public' and table_name = 'kyc_applications' and column_name = 'submitted_by') then 'NG'
+       when has_column_privilege('authenticated', 'public.kyc_applications', 'submitted_by', 'SELECT') then 'NG'
+       else 'OK' end, ''
+union all
+select 16, '代理登録の台帳（proxy_registrations）は関数からしか書けない',
+  case when to_regclass('public.proxy_registrations') is null then 'NG'
+       when has_table_privilege('service_role', 'public.proxy_registrations', 'INSERT')
+         or has_table_privilege('service_role', 'public.proxy_registrations', 'UPDATE')
+         or has_table_privilege('authenticated', 'public.proxy_registrations', 'SELECT')
+         or has_table_privilege('anon', 'public.proxy_registrations', 'SELECT') then 'NG'
+       else 'OK' end, ''
 order by no;

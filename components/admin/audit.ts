@@ -100,6 +100,12 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🔄", "green", "ロール", `${by}ロールの変更を承認しました`);
     case "user.role_reject":
       return v("🔄", "red", "ロール", `${by}ロールの変更を却下しました`);
+    case "user.proxy_register":
+      return v("🤝", "blue", "代理登録", `${by}${d.role === "seller" ? "出品者" : "購入者"}を代理で登録しました`);
+    case "user.proxy_link":
+      return v("🔗", "blue", "代理登録", `${by}パスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
+    case "user.proxy_handover":
+      return v("🤝", "green", "代理登録", `${by}パスワードを決めました（本人に渡りました）`);
     case "listing.publish":
       return v("📦", "pk", "出品", `${by}「${str(d.title)}」を出品しました`);
     case "listing.hidden":
@@ -136,6 +142,8 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
     }
     case "kyc.submit":
       return v("🪪", "pk", "KYC", `${by}本人確認を申請しました`);
+    case "kyc.proxy_submit":
+      return v("🪪", "blue", "KYC", `${by}本人確認を代理で提出しました${d.status === "rejected_underage" ? "（18歳未満のため否認・停止）" : ""}`);
     case "kyc.view_documents":
       return v("👁", "blue", "KYC", `${by}本人確認の書類を見ました`);
     case "kyc.approve":

@@ -40,7 +40,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   if (!p) notFound();
 
   const head = { count: "exact" as const, head: true };
-  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders] = await Promise.all([
+  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy] = await Promise.all([
     service.auth.admin.getUserById(id),
     service.from("orders").select("id", head).eq("seller_id", id),
     service.from("orders").select("id", head).eq("buyer_id", id),
@@ -63,8 +63,10 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
       .or(`seller_id.eq.${id},buyer_id.eq.${id}`)
       .order("created_at", { ascending: false })
       .limit(10),
+    // 運営が代理で登録した人か（lib/actions/proxy.ts）
+    service.from("proxy_registrations").select("user_id, handed_over_at").eq("user_id", id).maybeSingle(),
   ]);
-  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders })) {
+  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy })) {
     if (r.error) console.error(`[admin] user ${name}`, r.error.message);
   }
   const user = auth.data?.user ?? null;
@@ -84,6 +86,14 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
 
       {p.status === "suspended" && <div className="alert-banner danger">⛔ この利用者は利用停止中です。</div>}
       {p.status === "withdrawn" && <div className="alert-banner warn">この利用者は退会済みです。</div>}
+      {proxy.data && (
+        <div className="alert-banner warn">
+          🤝 運営が代理で登録した人です（{proxy.data.handed_over_at ? `本人に渡し済み・${dateJst(proxy.data.handed_over_at)}` : "まだ本人に渡していません"}）。{" "}
+          <Link href={`/admin/proxy/${p.id}`} className="adm-link">
+            代理登録の詳細
+          </Link>
+        </div>
+      )}
 
       <div className="dual-grid">
         <Card icon="👤" title={name} right={<Badge b={userStatusBadge(p.status)} />}>

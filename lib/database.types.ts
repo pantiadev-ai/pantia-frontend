@@ -323,6 +323,7 @@ export type Database = {
           reject_reason: string | null
           resubmit_allowed: boolean
           status: string
+          submitted_by: string | null
           user_id: string
         }
         Insert: {
@@ -340,6 +341,7 @@ export type Database = {
           reject_reason?: string | null
           resubmit_allowed?: boolean
           status?: string
+          submitted_by?: string | null
           user_id: string
         }
         Update: {
@@ -357,6 +359,7 @@ export type Database = {
           reject_reason?: string | null
           resubmit_allowed?: boolean
           status?: string
+          submitted_by?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1253,6 +1256,47 @@ export type Database = {
         }
         Relationships: []
       }
+      proxy_registrations: {
+        Row: {
+          consent_confirmed_at: string
+          created_at: string
+          handed_over_at: string | null
+          link_issue_count: number
+          link_issued_at: string | null
+          note: string
+          registered_by: string | null
+          user_id: string
+        }
+        Insert: {
+          consent_confirmed_at?: string
+          created_at?: string
+          handed_over_at?: string | null
+          link_issue_count?: number
+          link_issued_at?: string | null
+          note?: string
+          registered_by?: string | null
+          user_id: string
+        }
+        Update: {
+          consent_confirmed_at?: string
+          created_at?: string
+          handed_over_at?: string | null
+          link_issue_count?: number
+          link_issued_at?: string | null
+          note?: string
+          registered_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proxy_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_hits: {
         Row: {
           bucket: string
@@ -1740,6 +1784,24 @@ export type Database = {
         Args: { p_admin: string; p_payout: string; p_reason: string }
         Returns: undefined
       }
+      admin_proxy_link_issued: {
+        Args: { p_admin: string; p_user: string }
+        Returns: number
+      }
+      admin_proxy_register: {
+        Args: { p_admin: string; p_note: string; p_user: string }
+        Returns: undefined
+      }
+      admin_proxy_submit_kyc: {
+        Args: {
+          p_admin: string
+          p_birth_date: string
+          p_doc_type: string
+          p_paths: string[]
+          p_user: string
+        }
+        Returns: Json
+      }
       admin_report_update: {
         Args: {
           p_admin: string
@@ -2018,6 +2080,7 @@ export type Database = {
         Returns: undefined
       }
       prepare_order: { Args: { p_order: string }; Returns: undefined }
+      proxy_mark_handed_over: { Args: { p_user: string }; Returns: boolean }
       quote_listing: {
         Args: { p_listing: string; p_opts: Json }
         Returns: Json
