@@ -1,11 +1,4 @@
 {
   "_読み方": "依存の門（scripts/security-gate.mjs）が通す例外。package・advisory・reason・expires（最長3か月）が必須。期限が過ぎると門が落ちる。型は 28 §K2",
-  "exceptions": [
-    {
-      "package": "braces",
-      "advisory": "GHSA-vfj7-8cjw-p6xm",
-      "reason": "開発用だけ（eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces）。直った版がまだ出ていない（3.0.3 が最新で全版が対象）。本番の依存には入らず、外から来た文字を braces に渡す経路も無い。2026-10-15 確認",
-      "expires": "2027-01-15"
-    }
-  ]
+  "exceptions": []
 }
