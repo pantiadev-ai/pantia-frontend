@@ -111,7 +111,7 @@ AI を使うなら（使わないなら「なし」）:
 
 | 守る物 | 夜間バックアップ（`C:\Users\OWNER\dev\ai-kakumei-backup\targets.json` など） | 載せる日 |
 |---|---|---|
-| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
+| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。代理登録の 0010 は 2026-10-27 に当てた（事後確認 NG 0・Advisors の ERROR 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
 | ファイル（Storage・VPS のファイル）。無ければ「なし」 | 出品・アイコン・つぶやき・チャットの写真（本人確認の書類は7日で消すので載せない）。 仮（社長・公開前） | 本番の migration を当てた日 |
 
 - 外形監視に載せる URL（`uptime_targets.json`）: https://pantia-frontend-app.vercel.app/auth（200）・https://pantia-frontend-app.vercel.app/api/cron/health（合言葉なしで 200）・Supabase の入口。 仮（社長・客先の監視に載せるか公開前に決める）
