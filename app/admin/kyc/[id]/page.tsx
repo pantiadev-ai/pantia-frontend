@@ -17,14 +17,14 @@ import { createServiceClient } from "@/lib/supabase/service";
 export const metadata: Metadata = { title: "本人確認の審査" };
 
 export default async function AdminKycDetailPage({ params }: PageProps<"/admin/kyc/[id]">) {
-  await requireAdminPage();
+  const me = await requireAdminPage();
   const { id } = await params;
   if (!isUuid(id)) notFound();
 
   const service = createServiceClient();
   const { data: a, error } = await service
     .from("kyc_applications")
-    .select("id, app_no, user_id, provider, provider_ref, doc_type, document_paths, birth_date, status, reject_reason, resubmit_allowed, documents_purged_at, created_at, decided_at, decided_by")
+    .select("id, app_no, user_id, provider, provider_ref, doc_type, document_paths, birth_date, status, reject_reason, resubmit_allowed, documents_purged_at, created_at, decided_at, decided_by, submitted_by")
     .eq("id", id)
     .maybeSingle();
   if (error) console.error("[admin] kyc app", error.message);
@@ -34,7 +34,9 @@ export default async function AdminKycDetailPage({ params }: PageProps<"/admin/k
     service.from("profiles").select("id, nickname, role, status, kyc_status, created_at").eq("id", a.user_id).maybeSingle(),
     service.from("kyc_applications").select("id, app_no, status, reject_reason, created_at").eq("user_id", a.user_id).neq("id", id).order("created_at", { ascending: false }).limit(10),
   ]);
-  const names = await nicknamesOf(service, [a.decided_by]);
+  const names = await nicknamesOf(service, [a.decided_by, a.submitted_by]);
+  // 運営が代理で出した申請（lib/actions/proxy.ts）。出した本人が審査するときは注意を出す（止めはしない。運営が1人でも回るように）
+  const selfSubmitted = !!a.submitted_by && a.submitted_by === me.id;
   const p = profile.data;
   const age = ageOf(a.birth_date);
   const open = a.status === "pending" || a.status === "reviewing";
@@ -50,6 +52,12 @@ export default async function AdminKycDetailPage({ params }: PageProps<"/admin/k
       {age != null && age < 18 && (
         <div className="alert-banner danger">
           ⛔ <strong>申告の生年月日では{age}歳です。</strong>18歳未満は承認できません。却下して「18歳未満」にチェックを入れてください。
+        </div>
+      )}
+
+      {selfSubmitted && open && (
+        <div className="alert-banner warn">
+          この申請は、あなたが代理で出しました。できれば別の運営に審査してもらってください（書類と本人が同じ人か、出した人とは別の目で確かめるため）。
         </div>
       )}
 
@@ -71,6 +79,16 @@ export default async function AdminKycDetailPage({ params }: PageProps<"/admin/k
                 ),
               ],
               ["申請日時", dateTimeJst(a.created_at)],
+              [
+                "提出した人",
+                a.submitted_by ? (
+                  <Link key="by" href={`/admin/proxy/${a.user_id}`} className="adm-link">
+                    運営が代理で提出（{names.get(a.submitted_by) ?? "管理者"}）
+                  </Link>
+                ) : (
+                  "本人"
+                ),
+              ],
               ["書類の枚数", purged ? (a.documents_purged_at ? `消去済み（${dateTimeJst(a.documents_purged_at)}）` : "なし") : `${paths.length}枚`],
               ["審査した日時", a.decided_at ? dateTimeJst(a.decided_at) : ""],
               ["審査した人", a.decided_by ? (names.get(a.decided_by) ?? "管理者") : ""],

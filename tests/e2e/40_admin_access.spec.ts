@@ -12,6 +12,8 @@ const ADMIN_PAGES = [
   "/admin",
   "/admin/users",
   `/admin/users/${ZERO}`,
+  "/admin/proxy",
+  `/admin/proxy/${ZERO}`,
   "/admin/kyc",
   `/admin/kyc/${ZERO}`,
   "/admin/items",

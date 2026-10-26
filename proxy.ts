@@ -16,6 +16,8 @@ const PUBLIC_EXACT = new Set([
   "/auth/reset",
   "/auth/update-password",
   "/auth/suspended",
+  // 代理登録した人への「パスワードを決めるリンク」の入口（開いただけではトークンを使わない）
+  "/auth/start",
   "/contact",
   "/items",
   "/sellers",

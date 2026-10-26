@@ -13,6 +13,7 @@ import { FlashProvider } from "./Flash";
 export type AdminPanel =
   | "dashboard"
   | "users"
+  | "proxy"
   | "items"
   | "orders"
   | "sales"
@@ -53,6 +54,7 @@ export default async function AdminShell({ active, title, children }: { active: 
       items: [
         { key: "dashboard", href: "/admin", icon: "📊", label: "ダッシュボード" },
         { key: "users", href: "/admin/users", icon: "👥", label: "ユーザー管理", count: c.roles, tone: "blue" },
+        { key: "proxy", href: "/admin/proxy", icon: "🤝", label: "代理登録" },
         { key: "items", href: "/admin/items", icon: "📦", label: "商品管理" },
         { key: "orders", href: "/admin/orders", icon: "🛍", label: "注文管理", count: c.refunds, tone: "" },
         { key: "sales", href: "/admin/sales", icon: "💰", label: "売上・振込管理", count: c.payouts, tone: "yellow" },

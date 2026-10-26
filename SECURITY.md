@@ -21,6 +21,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | 取引・お金 | 注文・売上の台帳・振込申請 | 業務 | orders・ledger_entries・payouts | 7年残す（帳簿の保存）。退会しても取引の相手のために消さない | 開発（法人税法の保存期間）。 仮（社長・公開前に税理士と確認） |
 | やりとり | チャット・つぶやき・コメント・レビュー | 個人情報（本人が書いた物） | messages・posts・post_comments・reviews・chat-images の箱 | 退会でつぶやき・画像を消す。チャットは相手の控えとして残す（名前は「退会したユーザー」） | 開発（相手の取引の証拠） |
 | 通報・制裁 | 通報の中身・警告・停止の理由 | 業務 | reports・user_sanctions・audit_logs | 操作の記録は2年で消す | 開発 |
+| 代理登録の台帳 | 登録した運営・同意を確かめた時刻・リンクを作った回数・本人に渡した時刻・運営のメモ（200字まで） | 業務 | proxy_registrations（運営者だけ。利用者からは読めない） | 利用者の行（profiles）と同じく残す（退会しても、だれが代わりに作ったかの控えにする）。メモには連絡の経路などだけを書き、住所・電話・書類の中身は書かない（画面の決まりに出す） | 開発 |
 | 決済の受け取り記録 | 決済会社からの通知の中身 | 業務 | payment_events | 400日で消す | 開発（チャージバックの期限） |
 | 送ったお知らせの控え | メールの件名・本文 | 個人情報 | mail_outbox | 180日で消す | 開発 |
 | お知らせ | 注文・メッセージの通知 | 業務 | notifications | 既読は90日・未読も1年で消す | 開発 |
@@ -34,7 +35,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | ログインなし | 公開の出品・出品者・つぶやき・ランキング・規約 | なし | anon は RLS の公開の行だけ。profiles は列ごとの許可で公開の列だけ |
 | 購入者（buyer） | 上に加えて、自分の注文・カート・お気に入り・フォロー・チャット・お知らせ | 購入（本人確認済み）・レビュー・コメント・いいね・フォロー・通報・チャット | RLS の `= auth.uid()`。お金と状態の変更は DB の関数の中で本人と状態を確かめる |
 | 出品者（seller） | 上に加えて、自分の売上・振込・出品の管理・自分宛ての注文の配送先（支払い後〜発送まで。匿名配送は見えない） | 出品（公開は本人確認済み）・つぶやき・発送・振込申請 | 出品・つぶやきは seller/author = auth.uid() を方針と関数で二重に。配送先は order_addresses の方針で期間を絞る |
-| 運営者（admin_users） | 全部（本人確認の書類は期限つきURL） | 本人確認の審査・停止・警告・退会・出品の非表示・取消と返金・振込・設定 | 管理の関数は service_role だけが呼べ、最初に assert_admin(p_admin) で確かめる。画面は requireAdmin() で、運営者でなければ 404 |
+| 運営者（admin_users） | 全部（本人確認の書類は期限つきURL） | 本人確認の審査・停止・警告・退会・出品の非表示・取消と返金・振込・設定・代理登録（本人に頼まれたときだけ。下の「代理登録」） | 管理の関数は service_role だけが呼べ、最初に assert_admin(p_admin) で確かめる。画面は requireAdmin() で、運営者でなければ 404 |
 
 役割・所属・運営者の印を、利用者が自分で書き換えられない仕組み（28 §A2）: profiles の更新の許可は列ごと（ニックネーム・自己紹介など）で、role・kyc_status・status は許可に無い。役割の変更は申請（request_role_change）→運営者の承認だけ。運営者の印は別の表 admin_users にあり、利用者からは読めも書けもしない。
 
@@ -43,7 +44,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | 入口（画面・API・cron・webhook・WebSocket・共有URL） | ログインの要否 | 所属・役割の確認 | 回数の上限 | 備考 |
 |---|---|---|---|---|
 | 公開の画面（/・/items・/items/[id]・/sellers・/sellers/[id]・/ranking・/tweets・/tweets/[id]・/terms・/privacy・/legal・/help・/contact） | 不要 | なし（RLS の公開の行だけ） | なし | proxy.ts の一覧に無いパスはログインが要る側に倒す |
-| ログイン・登録・再設定（/auth・/auth/reset・/auth/update-password・/auth/callback・/auth/suspended） | 不要 | なし | loginEmail・loginIp・signupIp・resetEmail・resetIp | 戻り先は safeNext で自サイトの中だけ |
+| ログイン・登録・再設定（/auth・/auth/reset・/auth/update-password・/auth/callback・/auth/start・/auth/suspended） | 不要 | なし | loginEmail・loginIp・signupIp・resetEmail・resetIp | 戻り先は safeNext で自サイトの中だけ。/auth/start（代理登録の人に送るリンク）は開いただけではトークンを使わず、ボタン（GET のフォーム）で /auth/callback へ送る。noindex・no-referrer |
 | 利用者の画面（/mypage・/timeline・/messages・/cart・/checkout・/orders/[id]・/notifications・/kyc・/listings/new・/listings/[id]/edit） | 要 | requireViewer（停止・退会は /auth/suspended へ） | 操作ごと（下） | 他人の注文などは RLS で 0 件 → 404 |
 | server action（出品・カート・購入・発送・受取・レビュー・つぶやき・コメント・いいね・フォロー・ブロック・通報・チャット・本人確認・振込申請・プロフィール・退会・画像の上げ） | 要 | actionViewer＋役割・本人確認（assertKyc）。DB の関数でも同じ確認 | listingUser・checkoutUser・messageUser・postUser・commentUser・reactUser・reportUser・kycUser・payoutUser・uploadUser | 入力は zod で形を確かめる。formData をそのまま DB に書かない（O4） |
 | 管理画面（/admin 以下）と管理の server action | 要（運営者は MFA） | requireAdmin／actionAdmin → service_role で管理の関数（中で assert_admin） | なし（運営者だけ） | 管理画面があること自体を見せない（404） |
@@ -57,6 +58,14 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 セッションの期限と、停止・退会のあとに止まる仕組み（28 §L）: Supabase Auth の既定（アクセス用1時間・更新用は使い切り）。「ログインしたままにする」を外すと、クッキーをブラウザを閉じるまでにする。停止・退会は profiles.status で、ページ・action・DB の関数（is_end_user）の全部が毎回見るので、次の操作から止まる。退会は Auth の利用者も消す。
 
 パスワードの変更（28 §L・ASVS V6）: 今のパスワードを知らない人（ログインしたままの端末を借りた人）に変えさせないため、変更は再設定のメールのリンクを通った時だけ。/auth/callback が再設定のリンクの時だけ、人の id と期限（15分）を HMAC-SHA256 で署名した札を httpOnly の cookie（pt_pw_reset・path /auth）に置き、updatePassword と画面がそれを確かめる（lib/recovery-grant.ts）。札は一度きり（変えたら消す）。変えたあとは、ほかの端末のログインを切る。設定の画面からの変更（changePassword）は、今のパスワードを確かめてから変える。
+
+代理登録（本人に頼まれて、運営が代わりにアカウントを作る。2026-10-26 に追加）: 運営のアカウントや架空の人（サクラ）は作らない。年齢の確認は省かない。
+- 作り方はふつうの登録と同じ（auth.users・profiles。サイトの見た目でも区別しない）。作った直後に admin_proxy_register で台帳に載せる。作って10分を超えた人・一度でもログインした人・運営者・自分自身・本人確認が済んだ人は載せられない（ふつうに登録した人を後から「代理」にしない）。登録の受付を止めている間は代理でも作れない。
+- 本人確認は「未提出」で始まり、書類を出して審査で承認されるまで、出品も購入もできない（ふつうの人と同じ assertKyc と DB の関数の確認）。
+- パスワードは運営が決めない。管理画面で再設定のリンク（generateLink の recovery）を作り、運営が LINE などで本人だけに送る。リンクの値は記録に残さない（記録は回数だけ）。作り直すと前のリンクは使えない。本人がパスワードを決めると proxy_mark_handed_over で「渡した」の印が付き、そのあとは運営からリンクを作れない（渡したアカウントに運営が入り直せる道を残さない）。リンクは LINE などのプレビューが先に開いても使われないよう、/auth/start を挟む。
+- 本人確認の代理提出は、書類を目で見る受け方（KYC_MODE=manual）のときだけ。「本人の同意を得た」の印が必須。中身は submit_kyc と同じ道（写真は sharp で作り直す・18歳未満なら止めて書類を消し、利用を止める）。出した運営を kyc_applications.submitted_by に残す（本人の画面には出さない。列の権限を渡さない）。審査はふつうどおりで、出した運営が審査を開くと「別の運営に審査してもらう」の注意を出す（運営が1人でも回るよう、止めはしない）。
+- 台帳の表には service_role でも直接書けない（書くのは上の関数だけ。関数は service_role だけが呼べ、中で assert_admin）。登録・リンクの作成・引き渡し・代理提出は、すべて audit_logs に残る。
+- 確かめ方: supabase/tests/06_proxy.sql（関数の許可・拒否・記録）と tests/e2e/43_admin_proxy.spec.ts（画面の流れ・プレビューで使われないこと・引き渡し後にリンクを作れないこと）。
 
 ## 4. 秘密（鍵・パスワード。28 §C・§J）
 
@@ -80,7 +89,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | アイコン・表紙（avatars・公開） | 同上 | 同上 | 各1枚 | 同上 | `<本人のid>/<uuid>.webp`（profiles の check 制約） |
 | つぶやきの写真（post-images・公開） | 同上 | 同上 | 1投稿4枚 | 同上 | `<投稿者のid>/<uuid>.webp` |
 | チャットの写真（chat-images・非公開） | 同上。当事者かを確かめてから置く | 同上 | 1通4枚 | 同上 | `<会話のid>/<uuid>.webp`。見せるときは当事者だけに60分の期限つきURL |
-| 本人確認の書類（kyc-documents・非公開） | 同上 | 同上 | 1回3枚 | 同上 | `<本人のid>/<uuid>.webp`。運営者だけに5分の期限つきURL。結果から7日で消す |
+| 本人確認の書類（kyc-documents・非公開） | 同上 | 同上 | 1回3枚 | 同上 | `<本人のid>/<uuid>.webp`。運営者だけに5分の期限つきURL。結果から7日で消す。運営が代理で出すときも同じ道（lib/kyc-submit.ts）で、置き場は本人のフォルダ |
 
 写り込み・録り込み（顔・表札・車のナンバー・他人の声など）の扱いと、利用者への案内: 出品とつぶやきの画面に「顔・住所・他人が写らないように」と出す。通報の理由に「画像」を置き、運営者が非表示にできる。顔の自動ぼかし・画像の自動判定は付けない。 仮（社長・公開前に外部の画像判定を入れるか決める）。
 
@@ -102,7 +111,7 @@ AI を使うなら（使わないなら「なし」）:
 
 | 守る物 | 夜間バックアップ（`C:\Users\OWNER\dev\ai-kakumei-backup\targets.json` など） | 載せる日 |
 |---|---|---|
-| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
+| DB | 客先の Supabase（swqrhatsooeqoqfzugaj）。客先の契約の PITR か、当社の夜間バックアップに載せるか。2026-10-18 の時点で、客先の契約は日次バックアップ0件・PITR なし（Management API で確認）。 仮（社長・公開前） | 本番の migration は 2026-10-18 に当てた（10本・事後確認 NG 0）。代理登録の 0010 は 2026-10-27 に当てた（事後確認 NG 0・Advisors の ERROR 0）。アプリは 2026-10-19 に https://pantia-frontend-app.vercel.app へ出した。守り方が決まった日に載せる |
 | ファイル（Storage・VPS のファイル）。無ければ「なし」 | 出品・アイコン・つぶやき・チャットの写真（本人確認の書類は7日で消すので載せない）。 仮（社長・公開前） | 本番の migration を当てた日 |
 
 - 外形監視に載せる URL（`uptime_targets.json`）: https://pantia-frontend-app.vercel.app/auth（200）・https://pantia-frontend-app.vercel.app/api/cron/health（合言葉なしで 200）・Supabase の入口。 仮（社長・客先の監視に載せるか公開前に決める）
