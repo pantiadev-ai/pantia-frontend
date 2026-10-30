@@ -2,21 +2,26 @@
    ・中身の先頭（マジックバイト）で JPEG・PNG・WebP だけを通す（拡張子・Content-Type は信じない）
    ・sharp で読み直して WebP に作り直す。EXIF（撮った場所の緯度経度・機種）などのメタデータは全部落ちる
      （sharp は withMetadata を付けない限り書き出さない。向きだけは rotate() で先に画素へ焼き込む）
-   ・大きさ: 受け取りは 8MB まで、画素数は 4,000万まで（巨大な画像で落とす攻撃を止める）、長辺は用途ごとに縮める */
+   ・大きさ: 受け取りは 8MB まで、画素数は 4,000万まで（巨大な画像で落とす攻撃を止める）、長辺は用途ごとに縮める
+   ・出品とつぶやきの写真は、綺麗に見えすぎないよう、わざと少し粗くする（2026-10-30 運営の依頼。見比べて「ほどほど」を選んだ）。
+     粗さは長辺と画質だけで出す（見本に付けた sharp の blur(0.5) は弱すぎて画素が1つも変わっていなかった） */
 import "server-only";
 import sharp from "sharp";
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-export type ImageKind = "listing" | "avatar" | "post" | "chat" | "kyc";
+export type ImageKind = "listing" | "cover" | "avatar" | "post" | "chat" | "kyc";
 
-const MAX_SIDE: Record<ImageKind, number> = {
-  listing: 1600,
-  avatar: 600,
-  post: 1600,
-  chat: 1600,
+/** 用途ごとの作り直し方。side は長辺、quality は WebP の画質 */
+export const IMAGE_SPEC: Record<ImageKind, { side: number; quality: number }> = {
+  listing: { side: 1080, quality: 55 },
+  post: { side: 1080, quality: 55 },
+  // カバーは横長で大きめに見せるので、粗くせずに大きく残す
+  cover: { side: 1600, quality: 82 },
+  avatar: { side: 600, quality: 82 },
+  chat: { side: 1600, quality: 82 },
   // 本人確認の書類は文字が読めるよう大きめに残す
-  kyc: 2400,
+  kyc: { side: 2400, quality: 90 },
 };
 
 export class ImageError extends Error {}
@@ -35,11 +40,11 @@ export async function processImage(file: unknown, kind: ImageKind): Promise<{ da
   const input = Buffer.from(await file.arrayBuffer());
   if (!sniff(input)) throw new ImageError("JPEG・PNG・WebP の画像だけ使えます。");
   try {
-    const side = MAX_SIDE[kind];
+    const { side, quality } = IMAGE_SPEC[kind];
     const { data, info } = await sharp(input, { limitInputPixels: 40_000_000, failOn: "error" })
       .rotate()
       .resize({ width: side, height: side, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: kind === "kyc" ? 90 : 82 })
+      .webp({ quality })
       .toBuffer({ resolveWithObject: true });
     return { data, width: info.width, height: info.height };
   } catch {

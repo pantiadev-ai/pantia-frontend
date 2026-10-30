@@ -42,6 +42,9 @@
 .pg-timeline .fc-link {
   text-decoration: none;
 }
+/* 左の切り替えは <nav> なので、見本のヘッダー用の `.pg-timeline nav`（横に並べる）がかかって切れていた。見本どおり縦に並べる */
+.pg-timeline nav.side-nav { display: block; }
+.pg-timeline nav.side-nav a { border-radius: 0; white-space: normal; }
 :is(.pg-tweets, .pg-timeline) .tw-name:hover,
 :is(.pg-tweets, .pg-timeline) .as-name:hover,
 :is(.pg-tweets, .pg-timeline) .di-name:hover { color: var(--primary); }
@@ -331,6 +334,9 @@
 .pp-kyc-guide { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; font-weight: 600; color: var(--text-sub); }
 .pp-kyc-guide p { margin: 0; flex: 1; min-width: 200px; }
 .pp-kyc-guide a { text-decoration: none; }
+/* /tweets・/timeline では、投稿欄の場所に枠つきで出す（components/posts/PostKycGuide.tsx） */
+.pp-kyc-card { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--glass-shadow); }
+.pp-kyc-card .tweet-act-btn { display: inline-flex; align-items: center; padding: 8px 18px; border-radius: var(--r-pill); background: linear-gradient(135deg, var(--primary), #FF75A0); color: #fff; font-size: 12px; font-weight: 800; box-shadow: 0 4px 12px rgba(255, 75, 145, 0.3); }
 .pp-total { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-left: 4px; }
 .pg-mypage .tweet-log-item.pp-pinned { border-color: rgba(255, 75, 145, 0.35); background: rgba(255, 240, 247, 0.85); }
 .pp-log-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }

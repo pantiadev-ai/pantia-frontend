@@ -8,6 +8,7 @@ import "@/components/posts/posts.css";
 import MypageShell from "@/components/mypage/MypageShell";
 import MyPostItem, { type MyPost } from "@/components/posts/MyPostItem";
 import PostComposer from "@/components/posts/PostComposer";
+import PostKycGuide from "@/components/posts/PostKycGuide";
 import { PAGE_SIZE, pageOf } from "@/components/posts/data";
 import { requireViewer } from "@/lib/auth";
 import { dateTimeJst } from "@/lib/format";
@@ -104,16 +105,7 @@ export default async function MypageTweetsPage({ searchParams }: PageProps<"/myp
         <div style={{ ...TITLE_STYLE, marginBottom: 14 }}>
           <span className="icon-pill">✏️</span> 新しいつぶやき
         </div>
-        {canPost ? (
-          <PostComposer listings={listings} className="pp-in-card" />
-        ) : (
-          <div className="pp-kyc-guide">
-            <p>つぶやきの投稿には、本人確認（18歳以上の確認）が必要です。</p>
-            <Link href="/kyc" className="tweet-act-btn">
-              本人確認へ →
-            </Link>
-          </div>
-        )}
+        {canPost ? <PostComposer listings={listings} className="pp-in-card" /> : <PostKycGuide status={viewer.kycStatus} />}
       </div>
 
       {/* 過去のつぶやき一覧 */}

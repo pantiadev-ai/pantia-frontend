@@ -2,7 +2,7 @@
 import type { Page } from "@playwright/test";
 import { freshUser, loginAs, seedListing, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
-import { overflowOf, setListingStatus, tok } from "./_a";
+import { clippedItems, overflowOf, setListingStatus, tok } from "./_a";
 
 async function expectNoOverflow(page: Page, path: string) {
   const res = await page.goto(path);
@@ -55,6 +55,21 @@ test.describe("横にはみ出さない（ログイン中）", () => {
       await expectNoOverflow(page, path);
     });
   }
+
+  test("マイページとタイムラインの左のメニューは、スマホでも項目が全部枠の中に見える（出品者・購入者）", async ({ page, context }) => {
+    for (const user of [seller, buyer]) {
+      await loginAs(context, user);
+      for (const [path, name] of [
+        ["/mypage", "マイページのメニュー"],
+        ["/timeline", "タイムラインの切り替え"],
+      ] as const) {
+        await page.goto(path);
+        const nav = page.getByRole("navigation", { name });
+        await expect(nav.getByRole("link").first()).toBeVisible();
+        expect(await clippedItems(nav), `${user.role} ${path}`).toEqual([]);
+      }
+    }
+  });
 });
 
 test.describe("スマホのメニュー", () => {

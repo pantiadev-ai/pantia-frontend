@@ -10,6 +10,7 @@ import { FavoriteButton, FollowButton } from "@/components/ToggleButtons";
 import Avatar from "@/components/posts/Avatar";
 import PostCard from "@/components/posts/PostCard";
 import PostComposer from "@/components/posts/PostComposer";
+import PostKycGuide from "@/components/posts/PostKycGuide";
 import { PAGE_SIZE, POST_COLUMNS, daysAgoIso, enrichPosts, loadRecommendedSellers, loadTrendTags, pageOf, type Supa } from "@/components/posts/data";
 import { requireViewer } from "@/lib/auth";
 import { displayName, isOnline, ratingAvg, san, yen } from "@/lib/format";
@@ -224,6 +225,7 @@ export default async function TimelinePage({ searchParams }: PageProps<"/timelin
           )}
 
           {tab === "posts" && canPost && <PostComposer listings={composerListings} />}
+          {tab === "posts" && !canPost && viewer.role === "seller" && <PostKycGuide status={viewer.kycStatus} className="pp-kyc-card" />}
 
           {noFollow ? (
             <div className="tl-panel show">

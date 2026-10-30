@@ -11,6 +11,7 @@ import { FollowButton } from "@/components/ToggleButtons";
 import Avatar from "@/components/posts/Avatar";
 import PostCard from "@/components/posts/PostCard";
 import PostComposer from "@/components/posts/PostComposer";
+import PostKycGuide from "@/components/posts/PostKycGuide";
 import {
   PAGE_SIZE,
   POST_COLUMNS,
@@ -94,7 +95,11 @@ export default async function TweetsPage({ searchParams }: PageProps<"/tweets">)
 
       <main className="layout">
         <div className="feed fade-in">
-          {canPost && <PostComposer listings={myListings.data ?? []} />}
+          {canPost ? (
+            <PostComposer listings={myListings.data ?? []} />
+          ) : viewer?.role === "seller" ? (
+            <PostKycGuide status={viewer.kycStatus} className="pp-kyc-card" />
+          ) : null}
 
           <nav className="filter-row" aria-label="つぶやきの絞り込み">
             <Link href={hrefWith(base, { sort: null, category: null })} className={`ftab${sort === "new" && !category ? " active" : ""}`}>

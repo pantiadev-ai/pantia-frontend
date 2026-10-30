@@ -18,8 +18,7 @@ export type UploadKind = "listing" | "avatar" | "cover" | "post" | "chat";
 const TARGET: Record<UploadKind, { bucket: PublicBucket | "chat-images"; image: ImageKind }> = {
   listing: { bucket: "listing-images", image: "listing" },
   avatar: { bucket: "avatars", image: "avatar" },
-  // カバーは横長で大きめに見せるので出品と同じ大きさで作る
-  cover: { bucket: "avatars", image: "listing" },
+  cover: { bucket: "avatars", image: "cover" },
   post: { bucket: "post-images", image: "post" },
   chat: { bucket: "chat-images", image: "chat" },
 };

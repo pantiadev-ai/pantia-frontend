@@ -1,7 +1,7 @@
 /* 出品（担当 B）: 新しく出品する・入力の誤り・写真・下書き・編集・非公開・削除・本人確認・権限・出品管理のタブ */
 import { cast, freshUser, lit, loginAs, seedListing, sql, userClient } from "./_db";
 import { e2eEnv } from "./_env";
-import { EXIF_MARK, formAlert, freshPair, jpegWithExif, listingStatus, pngImage, rand, seedPendingOrder } from "./_b";
+import { EXIF_MARK, formAlert, freshPair, imageSize, jpegWithExif, listingStatus, pngImage, rand, seedPendingOrder } from "./_b";
 import { expect, test } from "./_fixtures";
 
 /** 出品の行（出品管理の一覧） */
@@ -32,7 +32,7 @@ test.describe("出品する", () => {
     await page.goto("/listings/new");
 
     await fileInput(page).setInputFiles([
-      { name: "a.png", mimeType: "image/png", buffer: await pngImage() },
+      { name: "a.png", mimeType: "image/png", buffer: await pngImage("#f9c", 1600, 1200) },
       { name: "b.jpg", mimeType: "image/jpeg", buffer: await jpegWithExif() },
     ]);
     await expect(page.getByRole("img", { name: "画像 2" })).toBeVisible();
@@ -60,6 +60,11 @@ test.describe("出品する", () => {
     expect(body.subarray(0, 4).toString("latin1")).toBe("RIFF");
     expect(body.subarray(8, 12).toString("latin1")).toBe("WEBP");
     expect(body.includes(Buffer.from(EXIF_MARK))).toBe(false);
+
+    // 綺麗に見えすぎないよう、大きい写真は長辺1080pxまで落とす（小さい写真は大きくしない）
+    const big = await request.get(`${e2eEnv().url}/storage/v1/object/public/listing-images/${row.image_paths[0]}`);
+    expect(await imageSize(await big.body())).toEqual([1080, 810]);
+    expect(await imageSize(body)).toEqual([48, 48]);
 
     await page.goto(`/items/${row.id}`);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();

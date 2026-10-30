@@ -9,7 +9,7 @@
     "lint": "eslint",
     "security:deps": "node scripts/security-gate.mjs",
     "security:design": "node scripts/security-design-check.mjs",
-    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/unit/*.test.ts\"",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --conditions=react-server --test \"tests/unit/*.test.ts\"",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
