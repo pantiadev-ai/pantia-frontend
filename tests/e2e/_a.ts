@@ -3,7 +3,7 @@
    ・回数の上限は、台帳（rate_limit_hits）に先に数を入れておき、少ない操作で上限の手前まで進める
    ・画像は sharp でその場で作る（ファイルを置かない） */
 import { randomBytes } from "node:crypto";
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page } from "@playwright/test";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
@@ -144,6 +144,20 @@ export async function overflowOf(page: Page): Promise<{ scrollWidth: number; inn
       if (culprits.length >= 5) break;
     }
     return { scrollWidth: document.documentElement.scrollWidth, innerWidth, culprits };
+  });
+}
+
+/** 枠（nav など）の外に出て切れているリンク・ボタンの文字（全部見えていれば空）。
+    overflow: hidden の枠では、外に出た項目は人には見えないのに toBeVisible も overflowOf も通るので、枠との位置で比べる */
+export async function clippedItems(box: Locator): Promise<string[]> {
+  return box.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return Array.from(el.querySelectorAll<HTMLElement>("a, button"))
+      .filter((a) => {
+        const b = a.getBoundingClientRect();
+        return b.left < r.left - 1 || b.right > r.right + 1 || b.top < r.top - 1 || b.bottom > r.bottom + 1;
+      })
+      .map((a) => a.textContent?.trim() ?? "");
   });
 }
 

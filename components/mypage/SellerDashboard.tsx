@@ -51,6 +51,17 @@ export default async function SellerDashboard({ viewer, period }: { viewer: View
 
   return (
     <>
+      {/* つぶやきの入り口。つぶやく所が分からないと言われたので、いちばん上に置く */}
+      <div className="mp-tweet-cta">
+        <div className="mp-tweet-cta-text">
+          <div className="mp-tweet-cta-title">💬 つぶやき</div>
+          <p>{kycOk ? "近況をつぶやくと、フォロワーのタイムラインとつぶやき一覧に届きます。" : "本人確認が済むと、ここからつぶやけます。"}</p>
+        </div>
+        <Link href="/mypage/tweets" className="btn-payout mp-tweet-cta-btn">
+          ✏️ つぶやく
+        </Link>
+      </div>
+
       {/* 数字のカード */}
       <div className="stats-grid">
         <div className="stat-card">

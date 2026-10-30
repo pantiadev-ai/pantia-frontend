@@ -1,10 +1,10 @@
 /* 担当 C: つぶやき（投稿・写真・字数・いいね・編集・削除・保留）とタイムライン・フォロー */
 import { BASE_URL, lit, loginAs, sql, userClient } from "./_db";
+import { e2eEnv } from "./_env";
+import { imageSize, pngImage } from "./_b";
+import { clippedItems } from "./_a";
 import { acceptDialogs, freshBuyer, freshSeller, rnd, seedPost } from "./_c";
 import { expect, test } from "./_fixtures";
-
-// 1×1 の PNG（写真の投稿に使う。サーバーが作り直す）
-const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
 async function postIdOf(authorId: string, body: string): Promise<{ id: string; status: string; image_paths: string[] }> {
   const rows = await sql<{ id: string; status: string; image_paths: string[] }>(
@@ -18,7 +18,12 @@ test.describe("つぶやく", () => {
   test("本人確認済みの出品者がつぶやくと、自分の管理画面・一覧・個別のページに出る", async ({ page, context }) => {
     const seller = await freshSeller("po-new");
     await loginAs(context, seller);
-    await page.goto("/mypage/tweets");
+    // マイページのいちばん上の入り口から、つぶやく画面へ行ける
+    await page.goto("/mypage");
+    const cta = page.locator(".mp-tweet-cta");
+    await expect(cta).toContainText("近況をつぶやくと、フォロワーのタイムラインとつぶやき一覧に届きます。");
+    await cta.getByRole("link", { name: "✏️ つぶやく" }).click();
+    await expect(page).toHaveURL(/\/mypage\/tweets$/);
     const body = `今日のひとこと ${rnd()}`;
     await page.getByRole("textbox", { name: "つぶやきの本文" }).fill(body);
     await page.getByRole("button", { name: "つぶやく" }).click();
@@ -34,19 +39,23 @@ test.describe("つぶやく", () => {
     await expect(page.getByText(body, { exact: true })).toBeVisible();
   });
 
-  test("写真を付けてつぶやくと、個別のページに写真が出る", async ({ page, context }) => {
+  test("写真を付けてつぶやくと、個別のページに写真が出て、置き場の写真は長辺1080pxに落ちている", async ({ page, context, request }) => {
     const seller = await freshSeller("po-img");
     await loginAs(context, seller);
     await page.goto("/mypage/tweets");
     const body = `写真つき ${rnd()}`;
     await page.getByRole("textbox", { name: "つぶやきの本文" }).fill(body);
     await page.getByRole("button", { name: "画像を追加" }).click();
-    await page.locator('input[type="file"]').setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
+    // 縦長の大きい写真（サーバーが長辺1080pxの WebP に作り直す）
+    await page.locator('input[type="file"]').setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: await pngImage("#9cf", 1200, 1600) });
     await expect(page.locator(".pt-uploader-item")).toHaveCount(1);
     await page.getByRole("button", { name: "つぶやく" }).click();
     await expect(page.getByRole("status")).toContainText("つぶやきました。");
     const post = await postIdOf(seller.id, body);
     expect(post.image_paths).toHaveLength(1);
+    const res = await request.get(`${e2eEnv().url}/storage/v1/object/public/post-images/${post.image_paths[0]}`);
+    expect(res.status()).toBe(200);
+    expect(await imageSize(await res.body())).toEqual([810, 1080]);
     await page.goto(`/tweets/${post.id}`);
     await expect(page.getByRole("img", { name: "写真1" })).toBeVisible();
   });
@@ -58,6 +67,8 @@ test.describe("つぶやく", () => {
     await loginAs(context, buyer);
     await page.goto("/tweets");
     await expect(page.getByRole("textbox", { name: "つぶやきの本文" })).toHaveCount(0);
+    // 購入者には本人確認の案内も出さない（つぶやけるのは出品者だけ）
+    await expect(page.locator(".pp-kyc-guide")).toHaveCount(0);
     await page.goto("/mypage/tweets");
     await expect(page).toHaveURL(/\/mypage$/);
     const asBuyer = await userClient(buyer);
@@ -68,9 +79,39 @@ test.describe("つぶやく", () => {
     await page.goto("/mypage/tweets");
     await expect(page.getByText("つぶやきの投稿には、本人確認（18歳以上の確認）が必要です。")).toBeVisible();
     await expect(page.getByRole("textbox", { name: "つぶやきの本文" })).toHaveCount(0);
+    // メニューの2番目が「つぶやく」
+    const side = page.getByRole("navigation", { name: "マイページのメニュー" });
+    await expect(side.getByRole("link").nth(1)).toHaveText(/つぶやく/);
+    // 一覧・タイムラインでも、欄の代わりに本人確認への案内が出る
+    for (const path of ["/tweets", "/timeline"]) {
+      await page.goto(path);
+      const guide = page.locator(".pp-kyc-card");
+      await expect(guide, path).toContainText("つぶやきの投稿には、本人確認（18歳以上の確認）が必要です。");
+      await expect(guide.getByRole("link", { name: "本人確認へ →" }), path).toHaveAttribute("href", "/kyc");
+      await expect(page.getByRole("textbox", { name: "つぶやきの本文" }), path).toHaveCount(0);
+    }
+    // マイページの入り口は、本人確認が済めばつぶやけることを伝える
+    await page.goto("/mypage");
+    await expect(page.locator(".mp-tweet-cta")).toContainText("本人確認が済むと、ここからつぶやけます。");
     const asPending = await userClient(pending);
     const p = await asPending.from("posts").insert({ body: `確認前のつぶやき ${rnd()}` }).select("id");
     expect(p.error?.code).toBe("42501");
+  });
+
+  test("マイページとタイムラインの左のメニューは、項目が全部枠の中に見える（出品者・購入者）", async ({ page, context }) => {
+    // 横一列に並んで3つ目から先が切れ、「つぶやく」「プロフィール」が見つからなかった（2026-10-30）
+    for (const user of [await freshSeller("po-nav"), await freshBuyer("po-nav")]) {
+      await loginAs(context, user);
+      for (const [path, name] of [
+        ["/mypage", "マイページのメニュー"],
+        ["/timeline", "タイムラインの切り替え"],
+      ] as const) {
+        await page.goto(path);
+        const nav = page.getByRole("navigation", { name });
+        await expect(nav.getByRole("link").first()).toBeVisible();
+        expect(await clippedItems(nav), `${user.role} ${path}`).toEqual([]);
+      }
+    }
   });
 
   test("140字を超えると『つぶやく』が押せず、DB も141字を断る", async ({ page, context }) => {

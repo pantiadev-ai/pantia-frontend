@@ -132,11 +132,17 @@ export async function seedBank(user: Cast): Promise<void> {
     on conflict (user_id) do nothing`);
 }
 
-/** 試験用の小さな画像（PNG） */
-export function pngImage(color = "#f9c"): Promise<Buffer> {
-  return sharp({ create: { width: 48, height: 48, channels: 3, background: color } })
+/** 試験用の画像（PNG）。大きさを省くと 48×48 */
+export function pngImage(color = "#f9c", width = 48, height = 48): Promise<Buffer> {
+  return sharp({ create: { width, height, channels: 3, background: color } })
     .png()
     .toBuffer();
+}
+
+/** 画像の縦横（置き場から読んだ写真の大きさを確かめる） */
+export async function imageSize(buf: Buffer): Promise<[number, number]> {
+  const m = await sharp(buf).metadata();
+  return [m.width ?? 0, m.height ?? 0];
 }
 
 /** 印（EXIF の Artist）を埋めた JPEG。位置情報などが消えるかの確かめに使う */

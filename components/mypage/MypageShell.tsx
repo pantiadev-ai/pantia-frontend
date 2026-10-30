@@ -48,10 +48,11 @@ function navFor(v: Viewer, unread: { notifications: number; messages: number }, 
   if (v.role === "seller") {
     return [
       { tab: "dashboard", href: "/mypage", icon: "📊", label: "ダッシュボード" },
+      // つぶやく所が分からないと言われたので、2番目に置き、書く所だと分かる名前にする
+      { tab: "tweets", href: "/mypage/tweets", icon: "✏️", label: "つぶやく" },
       { tab: "items", href: "/mypage/items", icon: "📦", label: "出品管理" },
       { tab: "sales", href: "/mypage/sales", icon: "💰", label: "売上" },
       { tab: "payout", href: "/payout", icon: "🏦", label: "振込" },
-      { tab: "tweets", href: "/mypage/tweets", icon: "💬", label: "つぶやき" },
       messages,
       { tab: "orders", href: "/orders", icon: "🛍", label: "注文", badge: openOrders },
       ...tail,

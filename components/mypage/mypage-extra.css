@@ -47,6 +47,14 @@
 .pg-mypage .kyc-badge.mp-kyc-badge-wait { background: var(--secondary-light); color: var(--secondary); }
 .pg-mypage .kyc-badge.mp-kyc-badge-warn { background: var(--yellow); color: var(--yellow2); text-decoration: none; }
 .pg-mypage .side-nav-item { text-decoration: none; }
+/* 左のメニューは <nav> なので、見本では上のヘッダー用だった `.pg-mypage nav`（横に並べる）と `nav a`（丸い札・折り返さない）がかかり、
+   3つ目から先が枠の外に出て見えなかった（2026-10-30 に運営から指摘）。見本（div.side-nav）どおり縦に並べ直す */
+.pg-mypage nav.side-nav { display: block; }
+.pg-mypage nav.side-nav a { border-radius: 0; white-space: normal; }
+@media (max-width: 768px) {
+  /* スマホでは本文の上に来るので、2列にして短くする */
+  .pg-mypage nav.side-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 /* ── 見本の div/button を a にした所の下線を消す ── */
 .pg-mypage a.order-item,
@@ -313,3 +321,10 @@
 .pg-mypage .mp-stat-down { color: var(--err); font-weight: 700; }
 .pg-mypage .mp-table-wrap { overflow-x: auto; }
 .pg-mypage .mp-muted { color: var(--text-muted); }
+
+/* ── ダッシュボードの上の、つぶやきの入り口（SellerDashboard） ── */
+.pg-mypage .mp-tweet-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: var(--r); padding: 16px 20px; box-shadow: var(--glass-shadow); }
+.pg-mypage .mp-tweet-cta-text { flex: 1; min-width: 200px; }
+.pg-mypage .mp-tweet-cta-title { font-size: 14px; font-weight: 800; color: var(--text-main); margin-bottom: 4px; }
+.pg-mypage .mp-tweet-cta-text p { margin: 0; font-size: 12px; font-weight: 600; color: var(--text-sub); line-height: 1.6; }
+.pg-mypage a.btn-payout.mp-tweet-cta-btn { margin-top: 0; }
