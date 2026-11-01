@@ -6,6 +6,7 @@ import { z } from "zod";
 import { actionViewer, ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { throwDb } from "@/lib/db-errors";
 import { RULES, takeRateLimit } from "@/lib/rate-limit";
+import { PAID_OPTION_ID, PAID_OPTION_MAX } from "@/lib/paid-options";
 import { isUuid } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,6 +17,12 @@ const Options = z
     letter: z.boolean().optional(),
     anonymous: z.boolean().optional(),
     video: z.boolean().optional(),
+    // 出品者が決めた有料オプションの id（出品に無い id は DB が bad_options で断る）
+    extras: z
+      .array(z.string().regex(PAID_OPTION_ID))
+      .max(PAID_OPTION_MAX)
+      .refine((a) => new Set(a).size === a.length)
+      .optional(),
   })
   .strict();
 

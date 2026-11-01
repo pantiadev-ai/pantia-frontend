@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionViewer, assertKyc, ActionError, runAction, type ActionResult, type Viewer } from "@/lib/auth";
 import { throwDb } from "@/lib/db-errors";
+import { PAID_OPTION_ID, PAID_OPTION_MAX, PAID_OPTION_NAME_MAX, paidOptionsError } from "@/lib/paid-options";
 import { RULES, takeRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
@@ -61,6 +62,18 @@ const ListingSchema = z
     cool_shipping: z.boolean(),
     ship_estimate: z.enum(["same_next", "d1_2", "d2_3", "d3_5"]),
     ng_note: z.string().trim().max(200),
+    // 出品者が決める有料オプション（名前と料金）。細かい決まりは paidOptionsError と DB の paid_options_ok
+    paid_options: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(PAID_OPTION_ID),
+            name: z.string().max(PAID_OPTION_NAME_MAX * 2),
+            price: z.number(),
+          })
+          .strict(),
+      )
+      .max(PAID_OPTION_MAX),
     image_paths: z.array(z.string().regex(IMAGE_PATH)).max(5),
   })
   .strict();
@@ -125,6 +138,8 @@ export async function saveListing(
     if (maxWorn !== null && (d.worn_days === null || maxWorn < d.worn_days)) {
       throw new ActionError("延長できる最大の日数は、着用日数と同じか、それより長くしてください。");
     }
+    const optionsError = paidOptionsError(d.paid_options);
+    if (optionsError) throw new ActionError(optionsError);
 
     const limit = await takeRateLimit([{ rule: RULES.listingUser, kind: "user", id: v.id }], { failClosed: true });
     if (!limit.ok) throw new ActionError(limit.message);
@@ -186,6 +201,7 @@ export async function saveListing(
       cool_shipping: d.cool_shipping,
       ship_estimate: d.ship_estimate,
       ng_note: d.ng_note,
+      paid_options: d.paid_options,
       image_paths: d.image_paths,
     };
 

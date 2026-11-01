@@ -3,12 +3,13 @@
    ・値段とオプションは画面から受け取らない。カートの中身（RLS で本人の分だけ）を読み、create_checkout がその時の値段で計算する。
    ・注文は service_role で作る（create_checkout は service_role だけ）。その前に、ログイン・購入者・本人確認・回数を確かめる。
    ・決済会社の画面へは、画面が URL を受け取って移る（外へのリダイレクトを server action で返さない。CSP の form-action に触れない）。
-   ・決済会社の準備に失敗したら、作った支払い待ちをその場で取り消す（1点物を押さえたままにしない）。 */
+   ・決済会社の準備に失敗したら、作った支払い待ちをその場で取り消す（1点物を押さえたままにしない）。
+   ・運営の口座への振込（transfer）は決済会社を通さない。create_checkout が振込名義の番号を決め、案内の画面へ移る。 */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
-  availableMethods,
   cancelProviderPayment,
+  checkoutMethods,
   mockAllowed,
   settleGroup,
   startPayment,
@@ -44,7 +45,7 @@ const Address = z
 const PlaceInput = z
   .object({
     listingIds: z.array(z.string().refine(isUuid)).min(1).max(10),
-    method: z.enum(["card", "bank", "paypay", "mock"]),
+    method: z.enum(["card", "bank", "paypay", "transfer", "mock"]),
     address: Address,
     saveAddress: z.boolean().optional(),
   })
@@ -52,7 +53,7 @@ const PlaceInput = z
 
 export type PlaceOrderInput = z.input<typeof PlaceInput>;
 
-/** 注文を作って、決済会社の画面（テスト決済なら /checkout/mock）の URL を返す */
+/** 注文を作って、決済会社の画面（テスト決済なら /checkout/mock、振込なら /checkout/transfer）の URL を返す */
 export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<{ url: string }>> {
   return runAction(async () => {
     const v = await actionViewer();
@@ -64,7 +65,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<{
       throw new ActionError(field === "address" ? "お届け先を確かめてください。" : "カートの中身と支払い方法を確かめてください。");
     }
     const { listingIds, method, address, saveAddress } = parsed.data;
-    if (!availableMethods().includes(method)) throw new ActionError("この支払い方法は、いまは使えません。");
+    if (!(await checkoutMethods()).includes(method)) throw new ActionError("この支払い方法は、いまは使えません。");
     const limit = await takeRateLimit([{ rule: RULES.checkoutUser, kind: "user", id: v.id }], { failClosed: true });
     if (!limit.ok) throw new ActionError(limit.message);
 
@@ -99,6 +100,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<{
       const { error: saveErr } = await supabase.from("saved_addresses").upsert(address, { onConflict: "user_id" });
       // 住所の保存に失敗しても、購入は止めない
       if (saveErr) console.error("[checkout] お届け先を保存できませんでした", saveErr.code, saveErr.message);
+    }
+
+    if (method === "transfer") {
+      // 振込名義の番号と振込先の案内は DB が作った（payment_ref も結び済み）
+      revalidatePath("/cart");
+      revalidatePath("/orders");
+      return { ok: true, data: { url: `/checkout/transfer?group=${groupId}` } };
     }
 
     const started = await startPayment({ groupId, total: created.total, method, buyerId: v.id, buyerEmail: v.email });

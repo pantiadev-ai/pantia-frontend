@@ -2,6 +2,7 @@
    お届け先: 購入者は自分の分。出品者は匿名配送でなければ発送まで（RLS）、匿名配送なら運営の転送先（service_role で読む）。 */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import "@/styles/app.css";
 import { BuyerReceive, ContactButton, ReviewForm, SellerActions } from "@/components/commerce/OrderActions";
@@ -10,7 +11,7 @@ import { publicNames } from "@/components/mypage/data";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
 import { requireViewer } from "@/lib/auth";
-import { cancelReasonLabel, optionLabels, ORDER_COLUMNS } from "@/lib/commerce";
+import { cancelReasonLabel, optionLabels, ORDER_COLUMNS, orderExtras } from "@/lib/commerce";
 import { dateTimeJst, displayName, maskName, orderNo, stars, yen } from "@/lib/format";
 import { CARRIERS, labelOf, ORDER_STATUS, PAYMENT_METHODS } from "@/lib/labels";
 import { refreshGroupForBuyer, resumeUrlForBuyer } from "@/lib/order-view";
@@ -72,6 +73,7 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
   const otherName = otherId ? (isBuyer ? displayName(names.get(otherId)) : maskName(names.get(otherId))) : "退会したユーザー";
   const img = listingImage(order.image_path);
   const opts = optionLabels(order.options);
+  const extras = orderExtras(order.options);
   const autoDue = order.shipped_at ? new Date(new Date(order.shipped_at).getTime() + settings.autoCompleteDays * 86_400_000) : null;
   const autoNote = autoDue
     ? `受け取りの連絡がないときは、${dateTimeJst(autoDue)}ごろに自動で取引を完了します。`
@@ -155,6 +157,12 @@ export default async function OrderDetailPage({ params }: PageProps<"/orders/[id
                     <dd>{yen(order.anonymous_fee)}</dd>
                   </>
                 )}
+                {extras.map((x) => (
+                  <Fragment key={x.id}>
+                    <dt>{x.name}</dt>
+                    <dd>{yen(x.price)}</dd>
+                  </Fragment>
+                ))}
                 <dt>合計（送料・税込）</dt>
                 <dd className="strong">{yen(order.total)}</dd>
                 {isSeller && (

@@ -5,8 +5,10 @@
 import { useCallback, useState, useTransition } from "react";
 import {
   cancelOrder,
+  confirmTransfer,
   decideRoleChange,
   kycAllowResubmit,
+  markTransferRefunded,
   moderate,
   payPayout,
   rejectPayout,
@@ -33,6 +35,8 @@ export type AdminOp =
   | "listing.private"
   | "order.cancel"
   | "order.refund"
+  | "order.refund_manual"
+  | "transfer.confirm"
   | "payout.pay"
   | "payout.reject"
   | "report.open"
@@ -67,6 +71,10 @@ function call(op: AdminOp, id: string, sub: string, reason: string): Promise<Act
       return cancelOrder(id, reason);
     case "order.refund":
       return retryRefund(id);
+    case "order.refund_manual":
+      return markTransferRefunded(id, reason);
+    case "transfer.confirm":
+      return confirmTransfer(id, reason);
     case "payout.pay":
       return payPayout(id);
     case "payout.reject":

@@ -1,4 +1,5 @@
 /* 商品・出品者の表示に使う形。サーバーとブラウザの両方から読む（ここには型だけを置く） */
+import type { PaidOption } from "@/lib/paid-options";
 
 /** 一覧のカード1枚（search_listings・weekly_ranking の1件を読みやすい名前にした物） */
 export type ListingCard = {
@@ -32,6 +33,8 @@ export type QuoteOptions = {
   letter?: boolean;
   anonymous?: boolean;
   video?: boolean;
+  /** 出品者が決めた有料オプションのうち、選んだ物の id */
+  extras?: string[];
 };
 
 /** quote_listing の答え */
@@ -41,6 +44,9 @@ export type Quote = {
   wornSurcharge: number;
   videoFee: number;
   anonymousFee: number;
+  /** 選んだ有料オプション（名前と料金は DB が出品から写した物） */
+  extras: PaidOption[];
+  extrasFee: number;
   subtotal: number;
   total: number;
 };

@@ -7,6 +7,7 @@ import { ActionError, getViewer, runAction, type ActionResult } from "@/lib/auth
 import { toQuote } from "@/lib/catalogue";
 import { throwDb } from "@/lib/db-errors";
 import { requestIp, RULES, takeRateLimit, type LimitCheck } from "@/lib/rate-limit";
+import { PAID_OPTION_ID, PAID_OPTION_MAX } from "@/lib/paid-options";
 import { isUuid } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import type { Quote } from "@/components/catalogue/types";
@@ -18,6 +19,12 @@ const Options = z
     letter: z.boolean().optional(),
     anonymous: z.boolean().optional(),
     video: z.boolean().optional(),
+    // 出品者が決めた有料オプションの id（出品に無い id は DB が bad_options で断る）
+    extras: z
+      .array(z.string().regex(PAID_OPTION_ID))
+      .max(PAID_OPTION_MAX)
+      .refine((a) => new Set(a).size === a.length)
+      .optional(),
   })
   .strict();
 
@@ -37,12 +44,14 @@ export async function quoteListing(listingId: string, options: unknown): Promise
 
     // 渡すのは zod で確かめた key だけ（受け取った object をそのまま渡さない）
     const o = parsed.data;
-    const opts: { worn_days?: number; photo?: boolean; letter?: boolean; anonymous?: boolean; video?: boolean } = {};
+    const opts: { worn_days?: number; photo?: boolean; letter?: boolean; anonymous?: boolean; video?: boolean; extras?: string[] } =
+      {};
     if (o.worn_days !== undefined) opts.worn_days = o.worn_days;
     if (o.photo) opts.photo = true;
     if (o.letter) opts.letter = true;
     if (o.anonymous) opts.anonymous = true;
     if (o.video) opts.video = true;
+    if (o.extras?.length) opts.extras = o.extras;
 
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("quote_listing", { p_listing: listingId, p_opts: opts });

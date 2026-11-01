@@ -9,6 +9,7 @@ import { describeAudit } from "@/components/admin/audit";
 import { orderBadge } from "@/components/admin/badges";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
+import { orderExtras } from "@/lib/commerce";
 import { dateTimeJst, num, orderNo, yen } from "@/lib/format";
 import { CARRIERS, categoryLabel, labelOf, LEDGER_KINDS, PAYMENT_METHODS } from "@/lib/labels";
 import { isUuid } from "@/lib/search";
@@ -26,12 +27,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
   const { data: o, error } = await service
     .from("orders")
     .select(
-      "id, order_no, group_id, listing_id, seller_id, buyer_id, title, category, image_path, total, subtotal, fee, fee_rate, seller_net, base_price, worn_days, worn_surcharge, video_fee, anonymous, anonymous_fee, payment_method, payment_ref, refund_ref, needs_refund, refunded_at, status, cancel_reason, cancelled_at, paid_at, preparing_at, shipped_at, completed_at, auto_completed, carrier, tracking_no, expires_at, created_at",
+      "id, order_no, group_id, listing_id, seller_id, buyer_id, title, category, image_path, total, subtotal, fee, fee_rate, seller_net, base_price, worn_days, worn_surcharge, video_fee, anonymous, anonymous_fee, options, extras_fee, payment_method, payment_ref, refund_ref, needs_refund, refunded_at, status, cancel_reason, cancelled_at, paid_at, preparing_at, shipped_at, completed_at, auto_completed, carrier, tracking_no, expires_at, created_at",
     )
     .eq("id", id)
     .maybeSingle();
   if (error) console.error("[admin] order", error.message);
   if (!o) notFound();
+  const extras = orderExtras(o.options);
 
   const [ledger, logs, siblings] = await Promise.all([
     service.from("ledger_entries").select("id, user_id, amount, kind, note, created_at").eq("order_id", id).order("created_at", { ascending: true }).limit(50),
@@ -104,6 +106,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
               ["着用日数", o.worn_days > 0 ? `${num(o.worn_days)}日` : ""],
               ["匿名配送", o.anonymous ? "あり" : "なし"],
               ["動画オプション", o.video_fee > 0 ? "あり" : "なし"],
+              ["追加オプション", extras.map((x) => x.name).join("・")],
               ["支払いの期限", o.status === "pending" ? dateTimeJst(o.expires_at) : ""],
               ["キャンセルの理由", o.cancel_reason ? <span className="adm-pre" key="cr">{o.cancel_reason}</span> : ""],
               [
@@ -150,6 +153,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps<"/admin
               <b>{yen(o.anonymous_fee)}</b>
             </div>
           )}
+          {extras.map((x) => (
+            <div className="adm-statline" key={x.id}>
+              <span>{x.name}</span>
+              <b>{yen(x.price)}</b>
+            </div>
+          ))}
           <div className="adm-statline">
             <span>小計</span>
             <b>{yen(o.subtotal)}</b>

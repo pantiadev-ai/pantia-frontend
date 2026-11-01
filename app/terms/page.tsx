@@ -41,8 +41,8 @@ const TOC = [
 export default async function TermsPage() {
   const s = await getSettings();
   const feePct = `${Math.round(s.feeRate * 1000) / 10}%`;
-  const methods = payMethods();
-  const payLimit = payLimitText();
+  const methods = await payMethods();
+  const payLimit = payLimitText(methods);
 
   return (
     <StaticShell toc={TOC} updated={TERMS_UPDATED}>

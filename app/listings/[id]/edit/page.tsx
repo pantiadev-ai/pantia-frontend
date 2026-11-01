@@ -14,12 +14,13 @@ import { CATEGORIES, COLORS, MATERIALS, SHIP_ESTIMATES, SIZES } from "@/lib/labe
 import { isUuid } from "@/lib/search";
 import { getSettings } from "@/lib/settings";
 import { listingImage } from "@/lib/storage";
+import { toPaidOptions } from "@/lib/paid-options";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "出品を編集する", robots: { index: false, follow: false } };
 
 const COLUMNS =
-  "id, status, title, description, category, worn_days, material, color, size, price, stock_mode, opt_photo, opt_letter, opt_ziplock, opt_card, opt_video, opt_extend, max_worn_days, request_only, same_day, anonymous_ok, pre_message_ok, followers_only, cool_shipping, ship_estimate, ng_note, image_paths";
+  "id, status, title, description, category, worn_days, material, color, size, price, stock_mode, opt_photo, opt_letter, opt_ziplock, opt_card, opt_video, opt_extend, max_worn_days, request_only, same_day, anonymous_ok, pre_message_ok, followers_only, cool_shipping, ship_estimate, ng_note, paid_options, image_paths";
 
 /** DB の文字を、決まった値の一覧の中の物に（無ければ null） */
 function pick<T extends string>(list: readonly { value: T }[], v: string | null): T | null {
@@ -104,6 +105,7 @@ export default async function EditListingPage({ params, searchParams }: PageProp
     cool_shipping: l.cool_shipping,
     ship_estimate: pick(SHIP_ESTIMATES, l.ship_estimate) ?? "same_next",
     ng_note: l.ng_note ?? "",
+    paid_options: toPaidOptions(l.paid_options),
   };
   const images = (l.image_paths ?? []).flatMap((path) => {
     const url = listingImage(path);

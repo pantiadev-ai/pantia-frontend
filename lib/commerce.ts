@@ -5,13 +5,22 @@ import type { Quote } from "@/components/catalogue/types";
 import { authorsOf, toQuote } from "@/lib/catalogue";
 import { dbMessage } from "@/lib/db-errors";
 import { displayName } from "@/lib/format";
+import { PAID_OPTION_ID, PAID_OPTION_MAX, toPaidOptions, type PaidOption } from "@/lib/paid-options";
 import { listingImage } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
 /** 1回の購入でまとめられる数（create_checkout と同じ） */
 export const MAX_PER_CHECKOUT = 10;
 
-export type ItemOptions = { worn_days?: number; photo?: boolean; letter?: boolean; anonymous?: boolean; video?: boolean };
+export type ItemOptions = {
+  worn_days?: number;
+  photo?: boolean;
+  letter?: boolean;
+  anonymous?: boolean;
+  video?: boolean;
+  /** 選んだ有料オプションの id（カートは id の並び、注文は名前と料金つきの写しで持つ） */
+  extras?: string[];
+};
 
 export type CartLine = {
   listingId: string;
@@ -31,7 +40,20 @@ function toOptions(v: unknown): ItemOptions {
   const out: ItemOptions = {};
   if (typeof o.worn_days === "number" && Number.isInteger(o.worn_days)) out.worn_days = o.worn_days;
   for (const k of ["photo", "letter", "anonymous", "video"] as const) if (o[k] === true) out[k] = true;
+  if (Array.isArray(o.extras)) {
+    const ids = o.extras
+      .map((x) => (typeof x === "string" ? x : x && typeof x === "object" ? (x as Record<string, unknown>).id : null))
+      .filter((x): x is string => typeof x === "string" && PAID_OPTION_ID.test(x));
+    const uniq = [...new Set(ids)].slice(0, PAID_OPTION_MAX);
+    if (uniq.length) out.extras = uniq;
+  }
   return out;
+}
+
+/** 注文の options に写した有料オプション（名前と料金。注文のあとに出品者が変えても、買った時の物が残る） */
+export function orderExtras(v: unknown): PaidOption[] {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return [];
+  return toPaidOptions((v as Record<string, unknown>).extras);
 }
 
 /** 本人のカート。値段は今の値段で DB に見積もらせる（画面では足し算しない） */
@@ -91,10 +113,10 @@ export async function savedAddress(userId: string) {
 
 /** 注文の列（payment_ref・refund_ref は利用者から読めないので入れない） */
 export const ORDER_COLUMNS =
-  "id, order_no, group_id, buyer_id, seller_id, listing_id, title, category, image_path, base_price, worn_days, worn_surcharge, options, video_fee, anonymous_fee, subtotal, total, fee, seller_net, anonymous, payment_method, status, needs_refund, refunded_at, cancel_reason, cancelled_at, paid_at, preparing_at, shipped_at, completed_at, auto_completed, carrier, tracking_no, expires_at, created_at";
+  "id, order_no, group_id, buyer_id, seller_id, listing_id, title, category, image_path, base_price, worn_days, worn_surcharge, options, video_fee, anonymous_fee, extras_fee, subtotal, total, fee, seller_net, anonymous, payment_method, status, needs_refund, refunded_at, cancel_reason, cancelled_at, paid_at, preparing_at, shipped_at, completed_at, auto_completed, carrier, tracking_no, expires_at, created_at";
 
-/** 選んだオプションの短い言い方 */
-export function optionLabels(v: unknown): string[] {
+/** 選んだオプションの短い言い方。有料オプションの名前は extras（カートは見積もりの物）か、注文の写しから */
+export function optionLabels(v: unknown, extras?: PaidOption[]): string[] {
   const o = toOptions(v);
   const out: string[] = [];
   if (o.worn_days) out.push(`着用${o.worn_days}日`);
@@ -102,6 +124,7 @@ export function optionLabels(v: unknown): string[] {
   if (o.letter) out.push("手紙付き");
   if (o.video) out.push("動画付き");
   if (o.anonymous) out.push("匿名配送");
+  for (const x of extras ?? orderExtras(v)) out.push(x.name);
   return out;
 }
 

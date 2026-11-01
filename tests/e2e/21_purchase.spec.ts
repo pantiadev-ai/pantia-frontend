@@ -16,6 +16,7 @@ import {
   seedPendingOrder,
   seedShipped,
 } from "./_b";
+import { asAdmin, notificationsOf, rowOf } from "./_d";
 import { expect, test } from "./_fixtures";
 
 const cron = (path: string) => ({ path, headers: { authorization: `Bearer ${e2eEnv().cronSecret}` } });
@@ -455,5 +456,113 @@ test.describe("注文の見え方と権限", () => {
     const db = await userClient(seller);
     const { data } = await db.from("order_addresses").select("order_id").eq("order_id", orderId);
     expect(data ?? []).toHaveLength(0);
+  });
+});
+
+/** 銀行振込を受け付ける（実在しない試験用の口座）。終わったら transferOff で必ず戻す */
+async function transferOn(): Promise<void> {
+  await sql(`update public.site_settings set transfer_bank = 'E2E銀行', transfer_branch = '本店', transfer_type = 'ordinary',
+               transfer_number = '1234567', transfer_holder = 'E2E ウンエイ', transfer_enabled = true where id`);
+}
+async function transferOff(): Promise<void> {
+  await sql(`update public.site_settings set transfer_enabled = false, transfer_bank = '', transfer_branch = '',
+               transfer_number = '', transfer_holder = '' where id`);
+}
+
+test.describe("有料オプションと銀行振込", () => {
+  test("出品者が決めた有料オプションを選んで買うと、料金が小計に足され、注文に名前と料金の写しが残る", async ({ page, context }) => {
+    const { seller, buyer } = await freshPair();
+    const id = await seedListing(seller, {
+      price: 3000,
+      set: `paid_options = '[{"id":"e2ephoto","name":"着用写真集","price":2000},{"id":"e2emovie","name":"おな動画","price":5000}]'::jsonb`,
+    });
+    await loginAs(context, buyer);
+    await page.goto(`/items/${id}`);
+    const chips = page.getByRole("group", { name: "有料オプション", exact: true });
+    await expect(chips.getByRole("button")).toHaveCount(2);
+    const photo = chips.getByRole("button", { name: "着用写真集 (+¥2,000)" });
+    await photo.click();
+    await expect(photo).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "💳 今すぐ購入する" }).click();
+    await expect(page).toHaveURL(new RegExp(`/checkout\\?items=${id}$`));
+    await fillAndPlace(page);
+    await expect(page).toHaveURL(/\/checkout\/mock\?group=[0-9a-f-]{36}$/);
+    const group = new URL(page.url()).searchParams.get("group")!;
+    const [o] = await sql<{ id: string; extras_fee: number; subtotal: number; options: { extras?: unknown } }>(
+      `select id, extras_fee, subtotal, options from public.orders where group_id = ${lit(group)}`,
+    );
+    expect(o.extras_fee).toBe(2000);
+    expect(o.subtotal).toBe(5000);
+    expect(o.options.extras).toEqual([{ id: "e2ephoto", name: "着用写真集", price: 2000 }]);
+
+    await page.getByRole("button", { name: "支払う（テスト）" }).click();
+    await expect(page).toHaveURL(new RegExp(`/orders\\?group=${group}`));
+    expect((await orderRow(o.id)).status).toBe("paid");
+
+    // あとで出品者が名前を変えても、注文の写しは買ったときのまま
+    await sql(`update public.listings set paid_options = '[{"id":"e2ephoto","name":"写真集（新）","price":9000}]'::jsonb where id = ${lit(id)}`);
+    await page.goto(`/orders/${o.id}`);
+    await expect(page.getByText(/着用写真集/).first()).toBeVisible();
+    await expect(page.getByText(/写真集（新）/)).toHaveCount(0);
+  });
+
+  test("銀行振込を選ぶと振込の案内が出て、入金を待つ間は取引中になり、運営が入金額を確かめると支払い済みになる", async ({ page, context }) => {
+    const { seller, buyer } = await freshPair();
+    const other = await freshUser("b-buy", { role: "buyer" });
+    const title = `E2E振込 ${rand()}`;
+    const id = await seedListing(seller, { title, price: 3000 });
+    await transferOn();
+    try {
+      await seedCart(buyer, id);
+      await loginAs(context, buyer);
+      await page.goto(`/checkout?items=${id}`);
+      await expect(page.getByRole("radiogroup", { name: "お支払い方法" }).getByRole("radio")).toHaveCount(2);
+      await page.getByRole("radio", { name: /銀行振込/ }).check();
+      await fillAndPlace(page);
+      await expect(page).toHaveURL(/\/checkout\/transfer\?group=[0-9a-f-]{36}$/);
+      await expect(page.getByRole("heading", { level: 1, name: "お振込のご案内" })).toBeVisible();
+      await expect(page.getByTestId("transfer-account")).toContainText("E2E銀行");
+      const code = (await page.getByTestId("transfer-code").innerText()).trim();
+      expect(code).toMatch(/^[A-HJ-NP-Z][0-9]{5}$/);
+      const group = new URL(page.url()).searchParams.get("group")!;
+      const [o] = await sql<{ id: string; status: string; payment_method: string; total: number }>(
+        `select id, status, payment_method, total from public.orders where group_id = ${lit(group)}`,
+      );
+      expect(o).toMatchObject({ status: "pending", payment_method: "transfer" });
+      await expect(page.getByTestId("transfer-amount")).toHaveText(`¥${o.total.toLocaleString("ja-JP")}`);
+
+      // 入金を待つ間、ほかの人には取引中と出て買えない
+      await loginAs(context, other);
+      await page.goto(`/items/${id}`);
+      await expect(page.getByText("⏳ 取引中")).toBeVisible();
+      await expect(page.getByRole("button", { name: "💳 今すぐ購入する" })).toHaveCount(0);
+
+      // 運営が入金を確かめる。額が違えば確定しない
+      await asAdmin(context);
+      await page.goto("/admin/orders");
+      const table = page.getByTestId("transfer-table");
+      await rowOf(page, code).getByRole("button", { name: "入金を確認", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("heading", { name: "振込の入金を確認しますか？" })).toBeVisible();
+      await dialog.getByRole("textbox").fill(String(o.total - 100));
+      await dialog.getByRole("button", { name: "確認する", exact: true }).click();
+      await expect(dialog.getByRole("alert")).toHaveText(
+        `入金額が請求額（${o.total.toLocaleString("ja-JP")}円）と違うため、確定していません。金額を確かめてください。`,
+      );
+      expect((await orderRow(o.id)).status).toBe("pending");
+
+      await dialog.getByRole("textbox").fill(String(o.total));
+      await dialog.getByRole("button", { name: "確認する", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.locator(".adm-toasts").getByText("入金を確認しました。出品者に「発送してください」とお知らせしました。")).toBeVisible();
+      await expect(table.getByText(code)).toHaveCount(0);
+
+      expect((await orderRow(o.id)).status).toBe("paid");
+      expect(await listingStatus(id)).toBe("sold");
+      const notes = await notificationsOf(seller.id);
+      expect(notes.some((n) => n.title === "入金が確認できました。発送してください")).toBe(true);
+    } finally {
+      await transferOff();
+    }
   });
 });

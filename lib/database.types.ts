@@ -100,6 +100,47 @@ export type Database = {
           },
         ]
       }
+      bank_transfers: {
+        Row: {
+          amount: number
+          buyer_id: string
+          code: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          group_id: string
+          received_amount: number | null
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          code: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          group_id: string
+          received_amount?: number | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          code?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          group_id?: string
+          received_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transfers_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -467,6 +508,7 @@ export type Database = {
           opt_photo: boolean
           opt_video: boolean
           opt_ziplock: boolean
+          paid_options: Json
           pre_message_ok: boolean
           price: number | null
           published_at: string | null
@@ -503,6 +545,7 @@ export type Database = {
           opt_photo?: boolean
           opt_video?: boolean
           opt_ziplock?: boolean
+          paid_options?: Json
           pre_message_ok?: boolean
           price?: number | null
           published_at?: string | null
@@ -539,6 +582,7 @@ export type Database = {
           opt_photo?: boolean
           opt_video?: boolean
           opt_ziplock?: boolean
+          paid_options?: Json
           pre_message_ok?: boolean
           price?: number | null
           published_at?: string | null
@@ -784,6 +828,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           expires_at: string
+          extras_fee: number
           fee: number
           fee_rate: number
           group_id: string
@@ -826,6 +871,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at: string
+          extras_fee?: number
           fee: number
           fee_rate: number
           group_id: string
@@ -868,6 +914,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
+          extras_fee?: number
           fee?: number
           fee_rate?: number
           group_id?: string
@@ -1590,6 +1637,12 @@ export type Database = {
           notice: string
           payout_fee: number
           registration_open: boolean
+          transfer_bank: string
+          transfer_branch: string
+          transfer_enabled: boolean
+          transfer_holder: string
+          transfer_number: string
+          transfer_type: string
           updated_at: string
           updated_by: string | null
           video_fee: number
@@ -1610,6 +1663,12 @@ export type Database = {
           notice?: string
           payout_fee?: number
           registration_open?: boolean
+          transfer_bank?: string
+          transfer_branch?: string
+          transfer_enabled?: boolean
+          transfer_holder?: string
+          transfer_number?: string
+          transfer_type?: string
           updated_at?: string
           updated_by?: string | null
           video_fee?: number
@@ -1630,6 +1689,12 @@ export type Database = {
           notice?: string
           payout_fee?: number
           registration_open?: boolean
+          transfer_bank?: string
+          transfer_branch?: string
+          transfer_enabled?: boolean
+          transfer_holder?: string
+          transfer_number?: string
+          transfer_type?: string
           updated_at?: string
           updated_by?: string | null
           video_fee?: number
@@ -1734,6 +1799,10 @@ export type Database = {
         Args: { p_admin: string; p_order: string; p_reason: string }
         Returns: Json
       }
+      admin_confirm_transfer: {
+        Args: { p_admin: string; p_amount: number; p_group: string }
+        Returns: Json
+      }
       admin_dashboard: {
         Args: { p_admin: string; p_months?: number }
         Returns: Json
@@ -1765,6 +1834,10 @@ export type Database = {
           p_order?: string
           p_user: string
         }
+        Returns: undefined
+      }
+      admin_mark_refunded_manual: {
+        Args: { p_admin: string; p_note: string; p_order: string }
         Returns: undefined
       }
       admin_moderate: {
@@ -1960,6 +2033,7 @@ export type Database = {
         }
         Returns: Json
       }
+      listing_reserved: { Args: { p_listing: string }; Returns: boolean }
       looks_spammy: { Args: { p_text: string }; Returns: boolean }
       mark_group_paid: {
         Args: { p_amount: number; p_group: string; p_ref: string }
@@ -2056,6 +2130,7 @@ export type Database = {
         Returns: undefined
       }
       open_thread: { Args: { p_other: string }; Returns: string }
+      paid_options_ok: { Args: { p: Json }; Returns: boolean }
       paths_ok: {
         Args: { p_max: number; p_owner: string; p_paths: string[] }
         Returns: boolean

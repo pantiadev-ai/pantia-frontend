@@ -7,7 +7,7 @@ import { FormMessage, useAction } from "@/components/useAction";
 import { placeOrder } from "@/lib/actions/checkout";
 
 export type AddressValue = { name: string; postal: string; prefecture: string; address1: string; address2: string; phone: string };
-export type MethodChoice = { value: "card" | "bank" | "paypay" | "mock"; label: string; note: string };
+export type MethodChoice = { value: "card" | "bank" | "paypay" | "transfer" | "mock"; label: string; note: string };
 
 const EMPTY: AddressValue = { name: "", postal: "", prefecture: "", address1: "", address2: "", phone: "" };
 

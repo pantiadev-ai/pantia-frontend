@@ -18,6 +18,7 @@ import {
   getSellerProfile,
   initialQuote,
   isFollowing,
+  listingReserved,
   searchListings,
   sellerReviews,
   type ListingDetail,
@@ -31,6 +32,7 @@ import Gallery from "@/components/catalogue/Gallery";
 import MessageButton from "@/components/catalogue/MessageButton";
 import PurchasePanel, { type PurchaseMode } from "@/components/catalogue/PurchasePanel";
 import { categoryIcon, initialOf } from "@/components/catalogue/card-helpers";
+import { payMethods } from "@/components/static/facts";
 import { itemsHref, parseItemsQuery } from "@/components/catalogue/items-query";
 
 /** 同じ出品者の他の商品の数 */
@@ -88,7 +90,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
 
   const viewer = await getViewer();
   const own = viewer?.id === item.sellerId;
-  const [seller, quote, settings, favs, following, reviews, related] = await Promise.all([
+  const [seller, quote, settings, favs, following, reviews, related, , reserved, methods] = await Promise.all([
     getSellerProfile(item.sellerId),
     item.status === "published" ? initialQuote(item.id) : Promise.resolve(null),
     getSettings(),
@@ -98,7 +100,12 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
     searchListings({ seller: item.sellerId, limit: RELATED + 1, sort: "new" }),
     // 見られた数（自分の出品・非公開は DB 側で数えない）。失敗しても表示は続ける
     own ? Promise.resolve() : bumpListingView(item.id, viewer?.id ?? null),
+    // 1点物が支払い待ちの注文で押さえられているか（他人が見るときだけ）
+    !own && item.status === "published" && item.stockMode !== "multiple" ? listingReserved(item.id) : Promise.resolve(false),
+    payMethods(),
   ]);
+  // 「クレジットカード・銀行振込」の形（決済会社の名前は省き、同じ名前は1つに）
+  const payText = [...new Set(methods.map((m) => m.name.replace(/（Stripe）$/, "")))].join("・");
 
   // 誰が見ているかで、購入欄の出し方を決める
   let mode: PurchaseMode;
@@ -107,6 +114,9 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
   else if (item.status !== "published") {
     mode = "unavailable";
     blockedText = unavailableText(item.status);
+  } else if (reserved) {
+    mode = "unavailable";
+    blockedText = "この商品は取引中です（お支払いを待っています）。期限までにお支払いがないと、また購入できるようになります。";
   } else if (!viewer) mode = "login";
   else if (viewer.status !== "active") {
     mode = "unavailable";
@@ -129,6 +139,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
   const online = isOnline(seller?.lastSeenAt);
 
   const badges = [
+    reserved && <span key="rs" className="badge badge-yellow">⏳ 取引中</span>,
     item.sameDay && <span key="sd" className="badge badge-green">⚡ 即日発送</span>,
     item.optPhoto && <span key="ph" className="badge badge-pk">📸 写真付き</span>,
     item.anonymousOk && <span key="an" className="badge badge-lilac">📦 匿名配送可</span>,
@@ -229,6 +240,12 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
               <span className="dl">オプション</span>
               <span className="dv">{optionText(item)}</span>
             </div>
+            {item.paidOptions.length > 0 ? (
+              <div className="detail-row">
+                <span className="dl">有料オプション</span>
+                <span className="dv">{item.paidOptions.map((o) => `${o.name}（+${yen(o.price)}）`).join("・")}</span>
+              </div>
+            ) : null}
             <div className="detail-row">
               <span className="dl">発送方法</span>
               <span className="dv">{[item.anonymousOk ? "匿名配送可" : "通常配送", item.coolShipping ? "冷凍便" : ""].filter(Boolean).join(" / ")}</span>
@@ -277,6 +294,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
             videoFee={settings.videoFee}
             anonymousFee={settings.anonymousFee}
             supports={{ photo: item.optPhoto, letter: item.optLetter, anonymous: item.anonymousOk, video: item.optVideo }}
+            paidOptions={item.paidOptions}
             initialQuote={quote}
             fallbackPrice={item.price}
             kycApproved={viewer?.kycStatus === "approved"}
@@ -284,6 +302,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
             canMessage={canMessage}
             loggedIn={!!viewer}
             badges={badges.length ? <div className="badges-row">{badges}</div> : null}
+            payText={payText}
           />
 
           {!own ? (

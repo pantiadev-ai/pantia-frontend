@@ -1,5 +1,6 @@
 /* お知らせのメールの件名と本文（lib/mail-dispatch.ts から使う）。
    ・注文のメールには商品名を載せない（受信箱の一覧を人に見られても困らないように）。件名と注文を開くリンクだけ。
+     振込のご案内（/checkout/transfer?…）だけは本文を載せる。中身は振込先・振込名義・金額・期限で、商品名は入らない（DB の create_checkout が作る）。
    ・サーバーの部品を読まない形にしてある（tests/unit から直に試すため）。 */
 import type { Database } from "./database.types.ts";
 import { SITE_NAME } from "./site.ts";
@@ -9,7 +10,8 @@ type MailRow = Database["public"]["Functions"]["claim_mail_batch"]["Returns"][nu
 /** メールの件名と本文。本文に載せるのは、お知らせの題・（注文以外は）中身・サイトの中のリンクだけ */
 export function composeMail(row: Pick<MailRow, "kind" | "title" | "body" | "link">, siteUrl: string): { subject: string; text: string } {
   const lines = [row.title, ""];
-  if (row.kind !== "order" && row.body.trim()) lines.push(row.body.trim(), "");
+  const transferGuide = row.kind === "order" && (row.link ?? "").startsWith("/checkout/transfer?");
+  if ((row.kind !== "order" || transferGuide) && row.body.trim()) lines.push(row.body.trim(), "");
   // link は DB の制約でサイトの中のパスだけ（外の URL は入らない）。念のためここでも確かめる
   const link = row.link && row.link.startsWith("/") && !row.link.startsWith("//") && !row.link.startsWith("/\\") ? row.link : "/notifications";
   lines.push(`くわしくは、ログインしてご確認ください。`, `${siteUrl}${link}`, "");

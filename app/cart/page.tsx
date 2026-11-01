@@ -42,7 +42,7 @@ export default async function CartPage() {
               title: l.title,
               imageUrl: l.imageUrl,
               sellerName: l.sellerName,
-              optionText: optionLabels(l.options),
+              optionText: optionLabels(l.options, l.quote?.extras),
               total: l.quote?.total ?? null,
               problem: l.problem,
             }))}
