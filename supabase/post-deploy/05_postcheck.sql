@@ -12,7 +12,9 @@ with
     ('reports'), ('reviews'), ('role_change_requests'), ('saved_addresses'), ('site_settings'), ('threads'),
     ('user_sanctions'),
     -- 0010 代理登録
-    ('proxy_registrations')
+    ('proxy_registrations'),
+    -- 0011 銀行振込
+    ('bank_transfers')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -32,7 +34,9 @@ with
     ('ship_order'), ('spam_hold'), ('submit_kyc'), ('suspend_internal'), ('toggle_message_heart'), ('touch_last_seen'),
     ('touch_updated_at'), ('trend_tags'), ('viewer_context'), ('weekly_ranking'), ('withdraw_account'), ('withdraw_internal'),
     -- 0010 代理登録
-    ('admin_proxy_link_issued'), ('admin_proxy_register'), ('admin_proxy_submit_kyc'), ('proxy_mark_handed_over')
+    ('admin_proxy_link_issued'), ('admin_proxy_register'), ('admin_proxy_submit_kyc'), ('proxy_mark_handed_over'),
+    -- 0011 銀行振込・有料オプション
+    ('admin_confirm_transfer'), ('admin_mark_refunded_manual'), ('listing_reserved'), ('paid_options_ok')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -62,7 +66,7 @@ with
   missing_buckets as (select id from new_buckets b where not exists (select 1 from storage.buckets s where s.id = b.id))
 select 1 as no, '新しい表が全部ある' as item,
   case when exists (select 1 from missing_tables) then 'NG' else 'OK' end as result,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '32 表') as detail
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '33 表') as detail
 union all
 select 2, '新しい表は全部 RLS が入っている',
   case when exists (select 1 from no_rls) then 'NG' else 'OK' end,
@@ -70,7 +74,7 @@ select 2, '新しい表は全部 RLS が入っている',
 union all
 select 3, '関数が全部ある',
   case when exists (select 1 from missing_functions) then 'NG' else 'OK' end,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '100 個')
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '104 個')
 union all
 select 4, 'SECURITY DEFINER の関数は search_path が固定',
   case when exists (select 1 from open_definer) then 'NG' else 'OK' end,
@@ -130,4 +134,26 @@ select 16, '代理登録の台帳（proxy_registrations）は関数からしか�
          or has_table_privilege('authenticated', 'public.proxy_registrations', 'SELECT')
          or has_table_privilege('anon', 'public.proxy_registrations', 'SELECT') then 'NG'
        else 'OK' end, ''
+union all
+select 17, '振込先の口座の列（site_settings.transfer_*）は利用者から読めない',
+  case when (select count(*) from information_schema.columns
+             where table_schema = 'public' and table_name = 'site_settings' and column_name like 'transfer\_%') <> 6 then 'NG'
+       when exists (select 1 from information_schema.columns c, unnest(array['anon', 'authenticated']) r
+                    where c.table_schema = 'public' and c.table_name = 'site_settings' and c.column_name like 'transfer\_%'
+                      and has_column_privilege(r, 'public.site_settings', c.column_name, 'SELECT')) then 'NG'
+       else 'OK' end, ''
+union all
+select 18, '振込の台帳（bank_transfers）は関数からしか書けず、運営の列は購入者から読めない',
+  case when to_regclass('public.bank_transfers') is null then 'NG'
+       when has_table_privilege('service_role', 'public.bank_transfers', 'INSERT')
+         or has_table_privilege('service_role', 'public.bank_transfers', 'UPDATE')
+         or has_table_privilege('service_role', 'public.bank_transfers', 'DELETE')
+         or has_table_privilege('anon', 'public.bank_transfers', 'SELECT')
+         or has_table_privilege('authenticated', 'public.bank_transfers', 'SELECT')
+         or has_column_privilege('authenticated', 'public.bank_transfers', 'confirmed_by', 'SELECT')
+         or has_column_privilege('authenticated', 'public.bank_transfers', 'received_amount', 'SELECT') then 'NG'
+       else 'OK' end, ''
+union all
+select 19, '振込の受付（社長が /admin/settings で口座を入れてオンにする）', '記録',
+  coalesce((select 'transfer_enabled=' || transfer_enabled::text from public.site_settings limit 1), '行なし')
 order by no;
