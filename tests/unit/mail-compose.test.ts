@@ -31,3 +31,16 @@ test("リンクが無いときもお知らせの一覧へ", () => {
   const m = composeMail({ kind: "payout", title: "振込しました", body: "", link: null as unknown as string }, SITE);
   assert.ok(m.text.includes(`${SITE}/notifications`));
 });
+
+test("振込のご案内だけは、注文のメールでも本文（振込先・振込名義・金額）を載せる", () => {
+  const body = "振込名義：P12345＋お名前\n金額：3,825円\n振込先：テスト銀行 本店 普通 1234567 パンティア";
+  const m = composeMail({ kind: "order", title: "お振込のご案内（11/04 12:00 まで）", body, link: "/checkout/transfer?group=g1" }, SITE);
+  assert.ok(m.text.includes("振込名義：P12345"));
+  assert.ok(m.text.includes("金額：3,825円"));
+  assert.ok(m.text.includes(`${SITE}/checkout/transfer?group=g1`));
+  // 似たパスや他の注文のお知らせは、今までどおり本文を載せない
+  for (const link of ["/checkout/transferx?group=g1", "/orders/abc", "/checkout/transfer"]) {
+    const o = composeMail({ kind: "order", title: "購入がありました", body: "ピンクのショーツ", link }, SITE);
+    assert.ok(!o.text.includes("ピンク"), link);
+  }
+});

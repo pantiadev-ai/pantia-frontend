@@ -13,6 +13,7 @@ import { maskName } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { ListingCard, Quote } from "@/components/catalogue/types";
+import { toPaidOptions, type PaidOption } from "@/lib/paid-options";
 
 /* ───────── jsonb を読む小さな道具 ───────── */
 
@@ -349,6 +350,8 @@ export type ListingDetail = {
   coolShipping: boolean;
   shipEstimate: string;
   ngNote: string;
+  /** 出品者が決めた有料オプション */
+  paidOptions: PaidOption[];
   imagePaths: string[];
   status: string;
   likeCount: number;
@@ -364,7 +367,7 @@ export const getListingDetail = cache(async (id: string): Promise<ListingDetail 
   const { data, error } = await supabase
     .from("listings")
     .select(
-      "id, seller_id, title, description, category, worn_days, material, color, size, price, stock_mode, opt_photo, opt_letter, opt_ziplock, opt_card, opt_video, opt_extend, max_worn_days, request_only, same_day, anonymous_ok, pre_message_ok, followers_only, cool_shipping, ship_estimate, ng_note, image_paths, status, like_count, sales_count, published_at, created_at",
+      "id, seller_id, title, description, category, worn_days, material, color, size, price, stock_mode, opt_photo, opt_letter, opt_ziplock, opt_card, opt_video, opt_extend, max_worn_days, request_only, same_day, anonymous_ok, pre_message_ok, followers_only, cool_shipping, ship_estimate, ng_note, paid_options, image_paths, status, like_count, sales_count, published_at, created_at",
     )
     .eq("id", id)
     .neq("status", "deleted")
@@ -398,6 +401,7 @@ export const getListingDetail = cache(async (id: string): Promise<ListingDetail 
     coolShipping: data.cool_shipping,
     shipEstimate: data.ship_estimate ?? "",
     ngNote: data.ng_note ?? "",
+    paidOptions: toPaidOptions(data.paid_options),
     imagePaths: (data.image_paths ?? []).filter((p) => typeof p === "string" && p !== ""),
     status: data.status,
     likeCount: data.like_count ?? 0,
@@ -417,6 +421,8 @@ export function toQuote(v: unknown): Quote | null {
     wornSurcharge: int(o.worn_surcharge),
     videoFee: int(o.video_fee),
     anonymousFee: int(o.anonymous_fee),
+    extras: toPaidOptions(o.extras),
+    extrasFee: int(o.extras_fee),
     subtotal: int(o.subtotal),
     total: int(o.total),
   };
@@ -429,6 +435,15 @@ export async function initialQuote(listingId: string): Promise<Quote | null> {
   const { data, error } = await supabase.rpc("quote_listing", { p_listing: listingId, p_opts: {} });
   if (error) return null;
   return toQuote(data);
+}
+
+/** 1点物の出品が、支払い待ちの注文で押さえられているか（振込の入金待ちなど）。読めない・失敗は false */
+export async function listingReserved(listingId: string): Promise<boolean> {
+  if (!isUuid(listingId)) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("listing_reserved", { p_listing: listingId });
+  if (error) return false;
+  return data === true;
 }
 
 /** 見られた数を1つ足す（公開中・他人の出品だけ DB 側で数える）。同じ回線・同じ商品は6時間に1回だけ。

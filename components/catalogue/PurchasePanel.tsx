@@ -8,6 +8,7 @@ import { addToCart } from "@/lib/actions/cart";
 import { quoteListing } from "@/lib/actions/catalogue";
 import { FormMessage, useAction } from "@/components/useAction";
 import { yen } from "@/lib/format";
+import type { PaidOption } from "@/lib/paid-options";
 import MessageButton from "./MessageButton";
 import type { Quote, QuoteOptions } from "./types";
 
@@ -31,6 +32,8 @@ type Props = {
   videoFee: number;
   anonymousFee: number;
   supports: Record<AddKey, boolean>;
+  /** 出品者が決めた有料オプション（名前と料金） */
+  paidOptions: PaidOption[];
   initialQuote: Quote | null;
   /** 見積もりが取れない（売り切れ・非公開）ときに出す、出品の値段 */
   fallbackPrice: number | null;
@@ -41,6 +44,8 @@ type Props = {
   loggedIn: boolean;
   /** 値段の下に並べる札（即日発送など。サーバーで作る） */
   badges: ReactNode;
+  /** 今選べる支払い方法の名前（「銀行振込」など。サーバーで作る）。空なら出さない */
+  payText: string;
 };
 
 const ADDS: { key: AddKey; label: string }[] = [
@@ -60,6 +65,7 @@ export default function PurchasePanel(p: Props) {
   const router = useRouter();
   const [days, setDays] = useState<number | null>(p.wornDays);
   const [adds, setAdds] = useState<Record<AddKey, boolean>>({ photo: false, letter: false, anonymous: false, video: false });
+  const [extras, setExtras] = useState<string[]>([]);
   const [quote, setQuote] = useState<Quote | null>(p.initialQuote);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoting, startQuote] = useTransition();
@@ -69,16 +75,20 @@ export default function PurchasePanel(p: Props) {
   const selectable = p.mode !== "unavailable";
   const fee = (k: AddKey) => (k === "anonymous" ? p.anonymousFee : k === "video" ? p.videoFee : 0);
 
-  function optionsOf(d: number | null, a: Record<AddKey, boolean>): QuoteOptions {
+  function optionsOf(d: number | null, a: Record<AddKey, boolean>, x: string[]): QuoteOptions {
     const o: QuoteOptions = {};
     if (d !== null) o.worn_days = d;
     for (const k of Object.keys(a) as AddKey[]) if (a[k] && p.supports[k]) o[k] = true;
+    // 出品の並びの順で渡す（選んだ順にしない）
+    const picked = p.paidOptions.filter((po) => x.includes(po.id)).map((po) => po.id);
+    if (picked.length) o.extras = picked;
     return o;
   }
 
-  function requote(d: number | null, a: Record<AddKey, boolean>) {
+  function requote(d: number | null, a: Record<AddKey, boolean>, x: string[]) {
     setDays(d);
     setAdds(a);
+    setExtras(x);
     setQuoteError(null);
     cart.setError(null);
     cart.setMessage(null);
@@ -86,7 +96,7 @@ export default function PurchasePanel(p: Props) {
     const mine = ++seq.current;
     startQuote(async () => {
       try {
-        const r = await quoteListing(p.listingId, optionsOf(d, a));
+        const r = await quoteListing(p.listingId, optionsOf(d, a, x));
         if (mine !== seq.current) return;
         if (r.ok && r.data) setQuote(r.data);
         else if (!r.ok) setQuoteError(r.error);
@@ -96,7 +106,7 @@ export default function PurchasePanel(p: Props) {
     });
   }
 
-  const opts = optionsOf(days, adds);
+  const opts = optionsOf(days, adds, extras);
   const canOrder = p.mode === "buy" && !!quote && !quoteError && !quoting;
 
   // DB の listing_quote と同じ範囲: 延長できる出品は 1〜上限、できない出品は標準の日数だけ
@@ -108,12 +118,13 @@ export default function PurchasePanel(p: Props) {
   }
 
   const breakdown =
-    quote && (quote.wornSurcharge || quote.videoFee || quote.anonymousFee)
+    quote && (quote.wornSurcharge || quote.videoFee || quote.anonymousFee || quote.extrasFee)
       ? [
           `本体 ${yen(quote.basePrice)}`,
           quote.wornSurcharge ? `日数の延長 ${yen(quote.wornSurcharge)}` : "",
           quote.videoFee ? `動画 ${yen(quote.videoFee)}` : "",
           quote.anonymousFee ? `匿名配送 ${yen(quote.anonymousFee)}` : "",
+          quote.extrasFee ? `有料オプション ${yen(quote.extrasFee)}` : "",
         ]
           .filter(Boolean)
           .join(" ＋ ")
@@ -127,7 +138,7 @@ export default function PurchasePanel(p: Props) {
       </div>
       {p.badges}
 
-      {selectable && (dayChoices.length > 0 || ADDS.some((a) => p.supports[a.key])) ? (
+      {selectable && (dayChoices.length > 0 || ADDS.some((a) => p.supports[a.key]) || p.paidOptions.length > 0) ? (
         <div className="options-card">
           <div className="opt-title">オプションを選択</div>
           {dayChoices.length > 0 && std !== null ? (
@@ -144,7 +155,7 @@ export default function PurchasePanel(p: Props) {
                     role="radio"
                     aria-checked={days === d}
                     className={`opt-chip${days === d ? " selected" : ""}`}
-                    onClick={() => days !== d && requote(d, adds)}
+                    onClick={() => days !== d && requote(d, adds, extras)}
                   >
                     {dayLabel(d, std, p.extendFee)}
                   </button>
@@ -170,7 +181,7 @@ export default function PurchasePanel(p: Props) {
                     disabled={!ok}
                     title={ok ? undefined : "この商品では選べません"}
                     className={`opt-chip${on ? " selected" : ""}${ok ? "" : " disabled"}`}
-                    onClick={() => ok && requote(days, { ...adds, [a.key]: !adds[a.key] })}
+                    onClick={() => ok && requote(days, { ...adds, [a.key]: !adds[a.key] }, extras)}
                   >
                     {a.label} ({ok ? (f ? `+${yen(f)}` : "無料") : "対応なし"})
                   </button>
@@ -178,6 +189,30 @@ export default function PurchasePanel(p: Props) {
               })}
             </div>
           </div>
+          {p.paidOptions.length > 0 ? (
+            <div className="opt-group">
+              <div className="opt-label">
+                有料オプション
+                <span className="opt-optional">任意・複数可</span>
+              </div>
+              <div className="opt-chips" role="group" aria-label="有料オプション">
+                {p.paidOptions.map((po) => {
+                  const on = extras.includes(po.id);
+                  return (
+                    <button
+                      key={po.id}
+                      type="button"
+                      aria-pressed={on}
+                      className={`opt-chip${on ? " selected" : ""}`}
+                      onClick={() => requote(days, adds, on ? extras.filter((x) => x !== po.id) : [...extras, po.id])}
+                    >
+                      {po.name} (+{yen(po.price)})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -275,9 +310,11 @@ export default function PurchasePanel(p: Props) {
         ) : null}
 
         <div className="purchase-notes">
-          <div className="purchase-note">
-            🔒 <span>決済はクレジットカード・PayPay・銀行振込に対応しています</span>
-          </div>
+          {p.payText ? (
+            <div className="purchase-note">
+              🔒 <span>お支払いは{p.payText}に対応しています</span>
+            </div>
+          ) : null}
           <div className="purchase-note">
             📦 <span>発送後に追跡番号をお知らせします</span>
           </div>

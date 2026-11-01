@@ -86,3 +86,239 @@
   color: var(--primary);
   font-weight: 800;
 }
+
+/* 確認の画面を出している間、フォームを隠す（.layout は display:grid なので hidden だけでは消えない） */
+.pg-item-form .layout[hidden] {
+  display: none;
+}
+
+/* ── 確認の画面（ListingPreview） ── */
+.pg-item-form .lf-pv-banner {
+  background: var(--secondary-light);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.pg-item-form .lf-pv-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text-main);
+  outline: none;
+}
+.pg-item-form .lf-pv-banner p {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.6;
+}
+.pg-item-form .lf-pv-back {
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+  cursor: pointer;
+}
+.pg-item-form .lf-pv-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.pg-item-form .lf-pv-main {
+  aspect-ratio: 1 / 1;
+  max-height: 420px;
+  border-radius: var(--r-sm);
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.pg-item-form .lf-pv-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pg-item-form .lf-pv-thumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pg-item-form .lf-pv-thumb {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--primary-light);
+  cursor: pointer;
+}
+.pg-item-form .lf-pv-thumb.on {
+  border-color: var(--primary);
+}
+.pg-item-form .lf-pv-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pg-item-form .lf-pv-cat {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--secondary);
+}
+.pg-item-form .lf-pv-title {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.pg-item-form .lf-pv-price {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--primary);
+  font-family: var(--font-jakarta), sans-serif;
+}
+.pg-item-form .lf-pv-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pg-item-form .lf-pv-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--secondary-light);
+  color: var(--secondary);
+}
+.pg-item-form .lf-pv-seller {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pg-item-form .lf-pv-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 75, 145, 0.08);
+  font-size: 13px;
+}
+.pg-item-form .lf-pv-row:last-of-type {
+  border-bottom: none;
+}
+.pg-item-form .lf-pv-dl {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.pg-item-form .lf-pv-dv {
+  color: var(--text-main);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pg-item-form .lf-pv-fee {
+  color: var(--primary);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.pg-item-form .lf-pv-desc {
+  font-size: 13px;
+  color: var(--text-main);
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pg-item-form .lf-pv-ng {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--err);
+  background: var(--err-bg);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+
+/* ── 自分で決める有料オプション ── */
+.pg-item-form .lf-po-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pg-item-form .lf-po-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 36px;
+  gap: 8px;
+  align-items: center;
+}
+.pg-item-form .lf-po-price {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.pg-item-form .lf-po-del {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.pg-item-form .lf-po-del:hover {
+  color: var(--err);
+  border-color: var(--err);
+}
+.pg-item-form .lf-po-suggest {
+  margin-top: 10px;
+}
+.pg-item-form .lf-po-add {
+  margin-top: 10px;
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--primary);
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--primary);
+  cursor: pointer;
+}
+.pg-item-form .lf-po-err {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--err);
+}
+@media (max-width: 480px) {
+  .pg-item-form .lf-po-row {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+  .pg-item-form .lf-po-name {
+    grid-column: 1 / -1;
+  }
+}

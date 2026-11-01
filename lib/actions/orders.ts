@@ -84,6 +84,9 @@ export async function sellerCancelOrder(orderId: string, reason: string): Promis
     throwDb(error);
     const refund = await refundOrder(id);
     refresh(id);
+    if (!refund.ok && refund.manual) {
+      return { ok: true, message: "注文を取り消しました。銀行振込の注文なので、運営が購入者へ返金の振込をします。" };
+    }
     if (!refund.ok) {
       console.error("[orders] 取り消しのあとの返金に失敗（cron でやり直し）", id, refund.error);
       return { ok: true, message: "注文を取り消しました。返金の手続きは自動でやり直します。" };

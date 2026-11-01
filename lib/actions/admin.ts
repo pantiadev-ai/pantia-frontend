@@ -277,6 +277,12 @@ export async function cancelOrder(orderId: string, reason: string): Promise<Acti
     const r = await refundOrder(input.orderId);
     refresh();
     if (r.ok) return { ok: true, message: `注文 ${no} をキャンセルし、返金しました。` };
+    if (r.manual) {
+      return {
+        ok: true,
+        message: `注文 ${no} をキャンセルしました。銀行振込の注文なので、購入者の口座へ返金の振込をしてから、「返金待ち」で「返金済みにする」を押してください。`,
+      };
+    }
     return {
       ok: true,
       message: `注文 ${no} をキャンセルしました。ただし、返金の手続きが要る状態です（${r.error}）。「返金待ち」から返金をやり直してください。`,
@@ -300,8 +306,79 @@ export async function retryRefund(orderId: string): Promise<ActionResult> {
     if (!o.needs_refund) throw new ActionError("この注文は返金待ちではありません。");
     const r = await refundOrder(o.id);
     refresh();
+    if (!r.ok && r.manual) {
+      throw new ActionError("銀行振込の注文は自動では返金できません。購入者の口座へ振り込んでから「返金済みにする」を押してください。");
+    }
     if (!r.ok) throw new ActionError(`返金できませんでした（${r.error}）。返金の手続きが要る状態のままです。`);
     return { ok: true, message: `注文 #${o.order_no} を返金しました。` };
+  });
+}
+
+/** 銀行振込の注文の返金を、運営が購入者の口座へ振り込んで済ませたあとの印（メモは任意） */
+export async function markTransferRefunded(orderId: string, note: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const input = parse(z.object({ orderId: Id, note: optional(100, "メモ") }), { orderId, note });
+    const { error } = await createServiceClient().rpc("admin_mark_refunded_manual", {
+      p_admin: v.id,
+      p_order: input.orderId,
+      p_note: input.note,
+    });
+    adminThrowDb(error);
+    refresh();
+    revalidatePath(`/orders/${input.orderId}`);
+    return { ok: true, message: "返金済みにしました。購入者にお知らせしました。" };
+  });
+}
+
+/** 「3,825」「３８２５円」などを円の整数にする（読めなければ null） */
+function yenAmount(text: string): number | null {
+  const s = text
+    .normalize("NFKC")
+    .replace(/[,\s円¥]/g, "");
+  if (!/^[0-9]{1,9}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 1 && n <= 100_000_000 ? n : null;
+}
+
+/** 運営の口座への振込を確かめる（通帳で見た入金額を入れる）。金額が請求額と違えば確定しない */
+export async function confirmTransfer(groupId: string, amountText: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const input = parse(z.object({ groupId: Id, amount: z.string().max(20, "入金額を確かめてください。") }), {
+      groupId,
+      amount: amountText,
+    });
+    const amount = yenAmount(input.amount);
+    if (amount === null) throw new ActionError("入金額を半角の数字で入れてください（例：3825）。");
+    const { data, error } = await createServiceClient().rpc("admin_confirm_transfer", {
+      p_admin: v.id,
+      p_group: input.groupId,
+      p_amount: amount,
+    });
+    adminThrowDb(error);
+    const out = record(data);
+    const expected = typeof out.expected === "number" ? `${out.expected.toLocaleString("ja-JP")}円` : "請求額";
+    refresh();
+    revalidatePath("/orders", "layout");
+    revalidatePath("/checkout/transfer");
+    switch (out.result) {
+      case "paid":
+        return { ok: true, message: "入金を確認しました。出品者に「発送してください」とお知らせしました。" };
+      case "revived":
+        return { ok: true, message: "期限のあとの入金でしたが、商品がまだ売れていなかったので注文を生き返らせました。" };
+      case "refund_needed":
+        return {
+          ok: true,
+          message: "期限のあとの入金で、商品はもう売れていました。「返金待ち」に入れたので、購入者へ返金の振込をしてください。",
+        };
+      case "already":
+        return { ok: true, message: "この振込は、もう確認済みです。" };
+      case "amount_mismatch":
+        throw new ActionError(`入金額が請求額（${expected}）と違うため、確定していません。金額を確かめてください。`);
+      default:
+        throw new ActionError("入金を確かめられませんでした。画面を読み込み直してください。");
+    }
   });
 }
 
@@ -547,7 +624,19 @@ const SettingsSchema = z.object({
   mailPayout: z.boolean(),
   modSpamFilter: z.boolean(),
   forwardingAddress: optional(300, "匿名配送の転送先"),
-});
+  transferEnabled: z.boolean(),
+  transferBank: optional(30, "銀行名"),
+  transferBranch: optional(30, "支店名"),
+  transferType: z.enum(["ordinary", "checking"], "口座の種別を選んでください。"),
+  transferNumber: z
+    .string()
+    .trim()
+    .regex(/^([0-9]{7})?$/, "口座番号は7桁の数字で入れてください。"),
+  transferHolder: optional(40, "口座名義"),
+}).refine(
+  (s) => !s.transferEnabled || (s.transferBank !== "" && s.transferBranch !== "" && s.transferNumber !== "" && s.transferHolder !== ""),
+  "振込の受付をオンにするには、振込先をすべて入れてください。",
+);
 
 export type SettingsInput = z.input<typeof SettingsSchema>;
 
@@ -573,6 +662,13 @@ export async function updateSettings(raw: SettingsInput): Promise<ActionResult> 
       mail_payout: s.mailPayout,
       mod_spam_filter: s.modSpamFilter,
       forwarding_address: s.forwardingAddress,
+      // 運営の口座（振込の受付）。監査ログには口座番号を残さない（DB が「変えた」だけ書く）
+      transfer_enabled: s.transferEnabled,
+      transfer_bank: s.transferBank,
+      transfer_branch: s.transferBranch,
+      transfer_type: s.transferType,
+      transfer_number: s.transferNumber,
+      transfer_holder: s.transferHolder,
     };
     const { error } = await createServiceClient().rpc("admin_update_settings", { p_admin: v.id, p_patch: patch });
     adminThrowDb(error);

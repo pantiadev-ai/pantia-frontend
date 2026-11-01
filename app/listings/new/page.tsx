@@ -47,6 +47,7 @@ export default async function NewListingPage() {
     cool_shipping: false,
     ship_estimate: ship,
     ng_note: "",
+    paid_options: [],
   };
 
   return (

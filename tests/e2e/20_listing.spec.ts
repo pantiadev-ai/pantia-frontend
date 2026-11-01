@@ -357,3 +357,76 @@ test.describe("出品の権限", () => {
     expect(row.title).toBe(title);
   });
 });
+
+test.describe("プレビュー確認と有料オプション", () => {
+  test("「プレビュー確認」で購入者から見た形に切り替わり、編集に戻ると値が残り、確認の画面から出品すると有料オプションも保存される", async ({ page, context }) => {
+    const seller = await freshUser("b-sel", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await fileInput(page).setInputFiles({ name: "a.png", mimeType: "image/png", buffer: await pngImage() });
+    await expect(page.getByRole("img", { name: "画像 1" })).toBeVisible();
+    const title = `E2E確認 ${rand()}`;
+    await fillListing(page, { title, price: "3000" });
+
+    // 候補から足す。使った候補は並びから消える
+    const suggest = page.getByRole("group", { name: "有料オプションの候補" });
+    await suggest.getByRole("button", { name: "＋ おもらし" }).click();
+    await expect(page.getByLabel("有料オプション1の名前")).toHaveValue("おもらし");
+    await expect(suggest.getByRole("button", { name: "＋ おもらし" })).toHaveCount(0);
+    await page.getByLabel("有料オプション1の料金（円）").fill("1500");
+
+    await page.getByRole("button", { name: "👁 プレビュー確認" }).click();
+    const heading = page.getByRole("heading", { name: "👁 プレビュー確認" });
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeFocused();
+    await expect(page.getByLabel("商品タイトル")).toBeHidden();
+    const pv = page.locator(".lf-pv");
+    await expect(pv.locator(".lf-pv-title")).toHaveText(title);
+    await expect(pv.locator(".lf-pv-price")).toHaveText("¥3,000");
+    await expect(pv.locator(".lf-pv-dv", { hasText: "おもらし" })).toContainText("+¥1,500");
+
+    // 編集に戻ると、入れた値はそのまま
+    await page.getByRole("button", { name: "← 編集に戻る" }).click();
+    await expect(heading).toHaveCount(0);
+    await expect(page.getByLabel("商品タイトル")).toHaveValue(title);
+    await expect(page.getByLabel("有料オプション1の料金（円）")).toHaveValue("1500");
+
+    // 確認の画面の右の欄からも出品できる
+    await page.getByRole("button", { name: "👁 プレビュー確認" }).click();
+    await page.getByRole("button", { name: "🎀 出品する" }).click();
+    await expect(page.getByRole("dialog", { name: "出品完了！" })).toBeVisible();
+    await expect.poll(async () => (await listingByTitle(title))[0]?.status).toBe("published");
+    const [row] = await sql<{ paid_options: { id: string; name: string; price: number }[] }>(
+      `select paid_options from public.listings where title = ${lit(title)}`,
+    );
+    expect(row.paid_options).toHaveLength(1);
+    expect(row.paid_options[0]).toMatchObject({ name: "おもらし", price: 1500 });
+    expect(row.paid_options[0].id).toMatch(/^[a-z0-9]{1,12}$/);
+  });
+
+  test("有料オプションの料金が決まりに合わないと、誤りが出て保存されず、直に書き込んでも断られる", async ({ page, context }) => {
+    const seller = await freshUser("b-sel", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await fileInput(page).setInputFiles({ name: "a.png", mimeType: "image/png", buffer: await pngImage() });
+    await expect(page.getByRole("img", { name: "画像 1" })).toBeVisible();
+    const title = `E2E料金誤り ${rand()}`;
+    await fillListing(page, { title, price: "3000" });
+    await page.getByRole("button", { name: "＋ 自由に追加する" }).click();
+    await page.getByLabel("有料オプション1の名前").fill("手書きの手紙");
+    await page.getByLabel("有料オプション1の料金（円）").fill("50");
+    await page.getByRole("button", { name: "🎀 出品する" }).click();
+    await expect(formAlert(page)).toHaveText("有料オプションの料金は¥100〜¥50,000の間で、100円単位で入れてください。");
+    expect(await listingByTitle(title)).toHaveLength(0);
+
+    // DB の決まりでも断る（100円単位でない・上限を超える）
+    const own = await seedListing(seller, { status: "draft" });
+    const db = await userClient(seller);
+    for (const price of [150, 60000]) {
+      const { error } = await db.from("listings").update({ paid_options: [{ id: "x1", name: "手紙", price }] }).eq("id", own);
+      expect(error?.code).toBe("23514");
+    }
+    const [r] = await sql<{ paid_options: unknown[] }>(`select paid_options from public.listings where id = ${lit(own)}`);
+    expect(r.paid_options).toEqual([]);
+  });
+});

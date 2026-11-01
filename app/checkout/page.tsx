@@ -7,7 +7,7 @@ import "@/styles/app.css";
 import CheckoutForm, { type MethodChoice } from "@/components/commerce/CheckoutForm";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
-import { availableMethods } from "@/lib/adapters/payment";
+import { checkoutMethods } from "@/lib/adapters/payment";
 import { requireViewer } from "@/lib/auth";
 import { loadCart, MAX_PER_CHECKOUT, optionLabels, savedAddress } from "@/lib/commerce";
 import { yen } from "@/lib/format";
@@ -18,7 +18,11 @@ export const metadata: Metadata = { title: "購入手続き", robots: { index: f
 
 const METHOD_TEXT: Record<MethodChoice["value"], Omit<MethodChoice, "value">> = {
   card: { label: "クレジットカード", note: "Stripe の画面で入力します。30分以内にお支払いください。" },
-  bank: { label: "銀行振込", note: "振込先の口座をお知らせします。72時間以内にお振り込みください（振込手数料はご負担ください）。" },
+  bank: { label: "銀行振込（Stripe）", note: "振込先の口座をお知らせします。72時間以内にお振り込みください（振込手数料はご負担ください）。" },
+  transfer: {
+    label: "銀行振込",
+    note: "注文のあとに振込先と振込名義をお知らせします。3日（72時間）以内にお振り込みください（振込手数料はご負担ください）。入金を確かめてから発送されます。",
+  },
   paypay: { label: "PayPay", note: "PayPay の画面でお支払いください。30分以内にお支払いください。" },
   mock: { label: "テスト決済", note: "試験用です。本物のお金は動きません（本番では使えません）。" },
 };
@@ -30,14 +34,19 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const viewer = await requireViewer(`/checkout${ids.length ? `?items=${ids.join(",")}` : ""}`);
   if (ids.length === 0) redirect("/cart");
 
-  const [cart, settings, address] = await Promise.all([loadCart(viewer.id), getSettings(), savedAddress(viewer.id)]);
+  const [cart, settings, address, available] = await Promise.all([
+    loadCart(viewer.id),
+    getSettings(),
+    savedAddress(viewer.id),
+    checkoutMethods(),
+  ]);
   const lines = cart.filter((l) => ids.includes(l.listingId));
   // カートから消えた・買えなくなった物があれば、カートで確かめてもらう
   if (lines.length !== ids.length || lines.some((l) => l.problem || !l.quote)) redirect("/cart");
 
   const total = lines.reduce((s, l) => s + (l.quote?.total ?? 0), 0);
   const canBuy = viewer.role === "buyer" && viewer.kycStatus === "approved";
-  const methods: MethodChoice[] = availableMethods().map((m) => ({ value: m, ...METHOD_TEXT[m] }));
+  const methods: MethodChoice[] = available.map((m) => ({ value: m, ...METHOD_TEXT[m] }));
   const anonymous = lines.some((l) => l.options.anonymous);
 
   return (
@@ -65,7 +74,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                   <div className="strong ellipsis">{l.title}</div>
                   <div className="muted">
                     {l.sellerName}
-                    {optionLabels(l.options).length > 0 && `　${optionLabels(l.options).join("・")}`}
+                    {optionLabels(l.options, l.quote!.extras).length > 0 && `　${optionLabels(l.options, l.quote!.extras).join("・")}`}
                   </div>
                   <div className="row between">
                     <span className="sub">
@@ -73,6 +82,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                       {l.quote!.wornSurcharge > 0 && ` ＋ 着用延長 ${yen(l.quote!.wornSurcharge)}`}
                       {l.quote!.videoFee > 0 && ` ＋ 動画 ${yen(l.quote!.videoFee)}`}
                       {l.quote!.anonymousFee > 0 && ` ＋ 匿名配送 ${yen(l.quote!.anonymousFee)}`}
+                      {l.quote!.extrasFee > 0 && ` ＋ 追加オプション ${yen(l.quote!.extrasFee)}`}
                     </span>
                     <span className="strong">{yen(l.quote!.total)}</span>
                   </div>

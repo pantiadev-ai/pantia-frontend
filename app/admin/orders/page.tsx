@@ -1,5 +1,5 @@
-/* 注文管理（見本の panel-orders）。返金待ちの注文（やり直し）と、注文の一覧・絞り込み・検索。
-   送り先の住所はここでは読まない。 */
+/* 注文管理（見本の panel-orders）。入金待ちの銀行振込（入金額を入れて確かめる）、返金待ちの注文（やり直し・振込は手で返金）、
+   注文の一覧・絞り込み・検索。送り先の住所はここでは読まない。 */
 import type { Metadata } from "next";
 import Link from "next/link";
 import ActionButton from "@/components/admin/ActionButton";
@@ -16,6 +16,39 @@ export const metadata: Metadata = { title: "注文管理" };
 
 const STATUSES = ["", ...Object.keys(ORDER_STATUS)];
 const METHODS = ["", ...PAYMENT_METHODS.map((m) => m.value)];
+/** 入金待ちの表に出す振込（期限のあとに振り込まれることもあるので、取り消し済みも30日までは残す） */
+const TRANSFER_DAYS = 30;
+
+function transferSince(): string {
+  return new Date(Date.now() - TRANSFER_DAYS * 86_400_000).toISOString();
+}
+
+type TransferGroup = { state: "waiting" | "expired" | "cancelled"; nos: number[]; expiresAt: string | null };
+
+/** 振込の group ごとに、注文の番号と状態をまとめる */
+function transferGroups(
+  rows: { group_id: string; order_no: number; status: string; expires_at: string | null; cancel_reason: string | null }[],
+) {
+  const out = new Map<string, TransferGroup>();
+  for (const r of rows) {
+    const g = out.get(r.group_id) ?? { state: "cancelled", nos: [], expiresAt: null };
+    g.nos.push(r.order_no);
+    if (r.status === "pending") {
+      g.state = "waiting";
+      g.expiresAt = r.expires_at;
+    } else if (g.state !== "waiting" && r.cancel_reason === "expired") {
+      g.state = "expired";
+    }
+    out.set(r.group_id, g);
+  }
+  return out;
+}
+
+const TRANSFER_STATE = {
+  waiting: { cls: "badge-pending", label: "入金待ち" },
+  expired: { cls: "badge-reject", label: "期限切れ" },
+  cancelled: { cls: "badge-reject", label: "取り消し済み" },
+} as const;
 
 export default async function AdminOrdersPage({ searchParams }: PageProps<"/admin/orders">) {
   await requireAdminPage();
@@ -41,20 +74,108 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
     else query = query.ilike("title", `%${escapeLike(q)}%`);
   }
 
-  const [orders, refunds] = await Promise.all([
+  const since = transferSince();
+  const [orders, refunds, openTransfers] = await Promise.all([
     query.order("created_at", { ascending: false }).range(from, to),
     service.from("orders").select(cols).eq("needs_refund", true).is("refunded_at", null).order("cancelled_at", { ascending: true }).limit(50),
+    service
+      .from("bank_transfers")
+      .select("group_id, code, buyer_id, amount, created_at")
+      .is("confirmed_at", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: true })
+      .limit(100),
   ]);
   if (orders.error) console.error("[admin] orders", orders.error.message);
   if (refunds.error) console.error("[admin] refunds", refunds.error.message);
+  if (openTransfers.error) console.error("[admin] transfers", openTransfers.error.message);
   const rows = orders.data ?? [];
   const waiting = refunds.data ?? [];
-  const names = await nicknamesOf(service, [...rows, ...waiting].flatMap((o) => [o.seller_id, o.buyer_id]).concat(user));
+  const transfers = openTransfers.data ?? [];
+  const transferOrders = transfers.length
+    ? await service
+        .from("orders")
+        .select("group_id, order_no, status, expires_at, cancel_reason")
+        .in(
+          "group_id",
+          transfers.map((t) => t.group_id),
+        )
+        .order("order_no")
+    : null;
+  if (transferOrders?.error) console.error("[admin] transfer orders", transferOrders.error.message);
+  const groups = transferGroups(transferOrders?.data ?? []);
+  const names = await nicknamesOf(
+    service,
+    [...rows, ...waiting].flatMap((o) => [o.seller_id, o.buyer_id]).concat(user, transfers.map((t) => t.buyer_id)),
+  );
   const who = (id: string | null) => (id ? (names.get(id) ?? "退会したユーザー") : "—");
   const filter = { q, status, method, user };
 
   return (
     <AdminShell active="orders" title="注文管理">
+      {transfers.length > 0 && (
+        <div className="table-card" data-testid="transfer-table">
+          <div className="table-toolbar">
+            <TableTitle icon="🏦" tone="yellow">
+              入金待ちの銀行振込（{num(transfers.length)}件）
+            </TableTitle>
+          </div>
+          <div className="alert-banner warn" style={{ margin: "0 16px 12px" }}>
+            🏦 口座の入金を見て、振込名義の先頭の番号が合う行の「入金を確認」を押し、入金額を入れてください。金額が請求額と違うときは確定しません。
+            期限切れの行も、あとから振り込まれたら確認できます（商品が売れていれば返金待ちに入ります）。
+          </div>
+          <div className="adm-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>振込名義</th>
+                  <th>購入者</th>
+                  <th>注文</th>
+                  <th>請求額</th>
+                  <th>期限</th>
+                  <th>状態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transfers.map((t) => {
+                  const g = groups.get(t.group_id);
+                  const st = TRANSFER_STATE[g?.state ?? "cancelled"];
+                  return (
+                    <tr key={t.group_id}>
+                      <td className="adm-mono adm-price">{t.code}</td>
+                      <td>{who(t.buyer_id)}</td>
+                      <td className="adm-mono">{(g?.nos ?? []).map((n) => orderNo(n)).join("・") || "—"}</td>
+                      <td className="adm-price">{yen(t.amount)}</td>
+                      <td className="adm-muted">{g?.expiresAt ? dateTimeJst(g.expiresAt) : "—"}</td>
+                      <td>
+                        <Badge b={st} />
+                      </td>
+                      <td>
+                        <div className="adm-actions">
+                          <ActionButton
+                            op="transfer.confirm"
+                            id={t.group_id}
+                            label="入金を確認"
+                            className="approve"
+                            title="振込の入金を確認しますか？"
+                            body={`振込名義「${t.code}」の入金を確かめます。口座で見た入金額を入れてください（請求額 ${yen(t.amount)}）。`}
+                            reason="required"
+                            reasonLabel="入金額（円）"
+                            reasonMax={20}
+                            confirmLabel="確認する"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {waiting.length > 0 && (
         <div className="table-card">
           <div className="table-toolbar">
@@ -64,6 +185,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
           </div>
           <div className="alert-banner danger" style={{ margin: "0 16px 12px" }}>
             ⚠️ キャンセルしたのに、決済の返金が済んでいません。「返金をやり直す」を押してください。何度やっても失敗するときは、決済会社の管理画面で返金してください。
+            銀行振込の注文は、購入者に返金先の口座を聞いて振り込み、「返金済みにする」を押してください。
           </div>
           <div className="adm-scroll">
             <table>
@@ -93,15 +215,30 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                     <td className="adm-muted">{dateTimeJst(o.cancelled_at)}</td>
                     <td>
                       <div className="adm-actions">
-                        <ActionButton
-                          op="order.refund"
-                          id={o.id}
-                          label="返金をやり直す"
-                          className="warn"
-                          title="返金をやり直しますか？"
-                          body={`${orderNo(o.order_no)}（${yen(o.total)}）の返金を、決済会社にもう一度頼みます。`}
-                          confirmLabel="返金する"
-                        />
+                        {o.payment_method === "transfer" ? (
+                          <ActionButton
+                            op="order.refund_manual"
+                            id={o.id}
+                            label="返金済みにする"
+                            className="warn"
+                            title="返金済みにしますか？"
+                            body={`${orderNo(o.order_no)}（${yen(o.total)}）を、購入者の口座へ振り込んだあとに押してください。購入者にお知らせが届きます。`}
+                            reason="optional"
+                            reasonLabel="メモ（振込日など）"
+                            reasonMax={100}
+                            confirmLabel="返金済みにする"
+                          />
+                        ) : (
+                          <ActionButton
+                            op="order.refund"
+                            id={o.id}
+                            label="返金をやり直す"
+                            className="warn"
+                            title="返金をやり直しますか？"
+                            body={`${orderNo(o.order_no)}（${yen(o.total)}）の返金を、決済会社にもう一度頼みます。`}
+                            confirmLabel="返金する"
+                          />
+                        )}
                         <Link href={`/admin/orders/${o.id}`} className="action-btn">
                           詳細
                         </Link>

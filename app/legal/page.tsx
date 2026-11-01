@@ -26,10 +26,9 @@ function Fill({ children }: { children: string }) {
 export default async function LegalPage() {
   const s = await getSettings();
   const feePct = `${Math.round(s.feeRate * 1000) / 10}%`;
-  const methods = payMethods()
-    .map((m) => m.name)
-    .join("、");
-  const payLimit = payLimitText();
+  const available = await payMethods();
+  const methods = available.map((m) => m.name).join("、");
+  const payLimit = payLimitText(available);
 
   return (
     <StaticShell toc={TOC} updated={TERMS_UPDATED}>

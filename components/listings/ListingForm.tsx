@@ -1,14 +1,26 @@
 "use client";
 /* 出品のフォーム（見本 item_form.html）。新規と編集の両方で使う。
    保存は saveListing（下書き・出品する・今の状態のまま）。公開には本人確認が要る（ここでは押せなくし、action と DB でも止める）。
-   手数料の見込みは DB の注文と同じ round(価格 × 手数料率)。 */
+   手数料の見込みは DB の注文と同じ round(価格 × 手数料率)。
+   「プレビュー確認」で、フォームを隠して購入者から見た形（ListingPreview）に切り替える。 */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ImageUploader, { type UploadedImage } from "@/components/ImageUploader";
 import { useAction, FormMessage } from "@/components/useAction";
 import { saveListing, type ListingInput, type ListingIntent } from "@/lib/actions/listings";
+import ListingPreview from "@/components/listings/ListingPreview";
 import { CATEGORIES, COLORS, MATERIALS, SHIP_ESTIMATES, SIZES } from "@/lib/labels";
+import {
+  PAID_OPTION_MAX,
+  PAID_OPTION_NAME_MAX,
+  PAID_OPTION_PRICE_MAX,
+  PAID_OPTION_PRICE_MIN,
+  PAID_OPTION_SUGGESTIONS,
+  newPaidOptionId,
+  paidOptionsError,
+  type PaidOption,
+} from "@/lib/paid-options";
 
 export type ListingFormValues = Omit<ListingInput, "image_paths">;
 export type ListingFormStatus = "draft" | "published" | "private";
@@ -33,6 +45,9 @@ type BoolKey = {
 }[keyof ListingFormValues];
 
 const WORN_DAYS = [1, 2, 3, 4, 5, 6] as const;
+
+/** 自分で決める有料オプションの入力中の行（料金は欄の文字のまま持つ） */
+type CustomRow = { id: string; name: string; price: string };
 
 const yen = (n: number) => `¥${n.toLocaleString("ja-JP")}`;
 
@@ -67,14 +82,31 @@ export default function ListingForm({
   const [priceText, setPriceText] = useState(initial.price == null ? "" : String(initial.price));
   const [done, setDone] = useState<null | "published">(null);
   const [draftSaved, setDraftSaved] = useState(justSaved === "draft");
-  const previewRef = useRef<HTMLDivElement>(null);
   const modalBtnRef = useRef<HTMLAnchorElement>(null);
+  const [custom, setCustom] = useState<CustomRow[]>(() =>
+    initial.paid_options.map((o) => ({ id: o.id, name: o.name, price: String(o.price) })),
+  );
+  const [view, setView] = useState<"edit" | "preview">("edit");
+  const previewHeadingRef = useRef<HTMLHeadingElement>(null);
+  const editScroll = useRef(0);
+  const firstView = useRef(true);
 
   function set<K extends keyof ListingFormValues>(key: K, value: ListingFormValues[K]) {
     setF((cur) => ({ ...cur, [key]: value }));
   }
   function toggle(key: BoolKey) {
     setF((cur) => ({ ...cur, [key]: !cur[key] }));
+  }
+  function addCustom(name: string) {
+    setCustom((cur) =>
+      cur.length >= PAID_OPTION_MAX ? cur : [...cur, { id: newPaidOptionId(new Set(cur.map((r) => r.id))), name, price: "" }],
+    );
+  }
+  function editCustom(rowId: string, patch: Partial<Omit<CustomRow, "id">>) {
+    setCustom((cur) => cur.map((r) => (r.id === rowId ? { ...r, ...patch } : r)));
+  }
+  function removeCustom(rowId: string) {
+    setCustom((cur) => cur.filter((r) => r.id !== rowId));
   }
 
   // 下書き保存の「✓」を少しの間だけ出す（見本の handleDraft と同じ）
@@ -96,10 +128,31 @@ export default function ListingForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- closeDone は id と listingId しか見ない
   }, [done]);
 
+  // プレビューを開いたら上から見せ、戻ったら元の位置へ（読み上げの位置も見出しへ移す）
+  useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    if (view === "preview") {
+      window.scrollTo({ top: 0 });
+      previewHeadingRef.current?.focus({ preventScroll: true });
+    } else {
+      window.scrollTo({ top: editScroll.current });
+    }
+  }, [view]);
+
+  function openPreview() {
+    editScroll.current = window.scrollY;
+    setError(null);
+    setView("preview");
+  }
+
   // 新しい出品は、完了の窓を閉じるまで URL を /listings/new のままにする。
   // 先に URL を編集の画面に替えると、保存の後の読み直しで画面ごと作り直され、窓が消える。
   function closeDone() {
     setDone(null);
+    setView("edit");
     if (listingId === null && id) router.replace(`/listings/${id}/edit`, { scroll: false });
   }
 
@@ -121,6 +174,12 @@ export default function ListingForm({
 
   // 延長できる最大の日数は、着用日数より後ろの日だけ選べる
   const extendChoices = WORN_DAYS.filter((d) => d > (f.worn_days ?? 0));
+
+  // 自分で決める有料オプション：空の行は除き、名前の前後の空白を落とす（料金が数でなければ NaN にして、確かめで止める）
+  const extras: PaidOption[] = custom
+    .filter((r) => r.name.trim() !== "" || r.price.trim() !== "")
+    .map((r) => ({ id: r.id, name: r.name.trim(), price: parsePrice(r.price) ?? Number.NaN }));
+  const extrasError = paidOptionsError(extras);
 
   /** 公開するときに足りない項目（DB の listings_complete と同じ） */
   function missing(): string[] {
@@ -156,6 +215,10 @@ export default function ListingForm({
       setError("着用日数延長をつけるときは、延長できる最大の日数を着用日数より長くしてください。");
       return;
     }
+    if (extrasError) {
+      setError(extrasError);
+      return;
+    }
 
     const input: ListingInput = {
       ...f,
@@ -164,6 +227,7 @@ export default function ListingForm({
       ng_note: f.ng_note.trim(),
       price,
       max_worn_days: f.opt_extend ? f.max_worn_days : null,
+      paid_options: extras,
       image_paths: images.map((i) => i.path),
     };
     run(
@@ -186,7 +250,7 @@ export default function ListingForm({
   // 段の進み具合：必須がそろえば 1・2 は済み、3（確認・出品）へ
   const s1 = basicDone ? "step done" : "step active";
   const s2 = basicDone ? "step done" : "step";
-  const s3 = basicDone ? "step active" : "step";
+  const s3 = basicDone || view === "preview" ? "step active" : "step";
 
   const badges: string[] = [];
   if (f.same_day) badges.push("即日");
@@ -221,6 +285,50 @@ export default function ListingForm({
     { key: "cool_shipping", name: "❄️ クール便で発送", desc: "冷蔵・冷凍が必要な商品（体液系など）はONにしてください" },
   ];
 
+  // 保存のボタンと文は、フォームの横と確認の画面の両方で使う
+  const saveButtons = (
+    <>
+      {status === "published" ? (
+        <button type="button" className="btn-publish" onClick={() => save("keep")} disabled={pending}>
+          {pending ? "保存しています…" : "💾 変更を保存する"}
+        </button>
+      ) : (
+        <button type="button" className="btn-publish" onClick={() => save("publish")} disabled={pending || !canPublish}>
+          {pending ? "保存しています…" : status === "private" ? "🎀 公開する" : "🎀 出品する"}
+        </button>
+      )}
+      {(isNew || status === "draft") && (
+        <button
+          type="button"
+          className={`btn-draft${draftSaved ? " lf-saved" : ""}`}
+          onClick={() => save("draft")}
+          disabled={pending}
+        >
+          {draftSaved ? "✓ 下書き保存しました" : "💾 下書き保存"}
+        </button>
+      )}
+      {status === "private" && (
+        <button type="button" className="btn-draft" onClick={() => save("keep")} disabled={pending}>
+          💾 非公開のまま保存
+        </button>
+      )}
+    </>
+  );
+  const notes = (
+    <>
+      <FormMessage error={error} message={draftSaved ? null : message} />
+      {!canPublish && (
+        <div className="lf-kyc-note">
+          出品（公開）するには本人確認が必要です。下書きは今すぐ保存できます。
+          <br />
+          <Link href="/kyc">本人確認へ →</Link>
+        </div>
+      )}
+    </>
+  );
+  const previewMissing = missing();
+  if (price !== null && !priceOk(price)) previewMissing.push("販売価格（¥500〜¥100,000・100円単位）");
+
   return (
     <>
       {/* STEP BAR */}
@@ -240,7 +348,7 @@ export default function ListingForm({
         </div>
       </div>
 
-      <main className="layout">
+      <main className="layout" hidden={view === "preview"}>
         {/* ── 左：フォーム ── */}
         <div className="form-section fade-in">
           {/* 1. 写真 */}
@@ -472,7 +580,7 @@ export default function ListingForm({
               </div>
             </div>
             <div className="form-hint" style={{ marginTop: 8 }}>
-              ※ 見込みの額です。有料オプション（動画・延長）の代金にも、同じ率の手数料がかかります。
+              ※ 見込みの額です。有料オプション（動画・延長・自分で決めたオプション）の代金にも、同じ率の手数料がかかります。
             </div>
           </div>
 
@@ -564,6 +672,75 @@ export default function ListingForm({
                 </div>
               </div>
             )}
+
+            <div className="form-row" style={{ marginTop: 16 }}>
+              <div className="form-group" role="group" aria-labelledby="lf-po-title">
+                <span className="form-label" id="lf-po-title">
+                  自分で決める有料オプション <span className="opt-tag-label">任意・{PAID_OPTION_MAX}件まで</span>
+                </span>
+                <div className="form-hint">
+                  名前と料金（¥{PAID_OPTION_PRICE_MIN}〜¥{PAID_OPTION_PRICE_MAX.toLocaleString("ja-JP")}・100円単位）を自由に決められます。候補を押すと名前が入ります。
+                </div>
+                {custom.length > 0 && (
+                  <ul className="lf-po-list">
+                    {custom.map((r, i) => (
+                      <li className="lf-po-row" key={r.id}>
+                        <input
+                          className="form-input lf-po-name"
+                          aria-label={`有料オプション${i + 1}の名前`}
+                          placeholder="オプションの名前"
+                          maxLength={PAID_OPTION_NAME_MAX}
+                          list="lf-po-suggest"
+                          value={r.name}
+                          onChange={(e) => editCustom(r.id, { name: e.target.value })}
+                        />
+                        <div className="lf-po-price">
+                          <span aria-hidden="true">+¥</span>
+                          <input
+                            className="form-input"
+                            aria-label={`有料オプション${i + 1}の料金（円）`}
+                            inputMode="numeric"
+                            placeholder="1000"
+                            value={r.price}
+                            onChange={(e) => editCustom(r.id, { price: e.target.value })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="lf-po-del"
+                          aria-label={`有料オプション${i + 1}を消す`}
+                          onClick={() => removeCustom(r.id)}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <datalist id="lf-po-suggest">
+                  {PAID_OPTION_SUGGESTIONS.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+                {extras.length > 0 && extrasError && <div className="lf-po-err">{extrasError}</div>}
+                {custom.length < PAID_OPTION_MAX ? (
+                  <>
+                    <div className="option-chips lf-po-suggest" role="group" aria-label="有料オプションの候補">
+                      {PAID_OPTION_SUGGESTIONS.filter((s) => !custom.some((r) => r.name.trim() === s)).map((s) => (
+                        <button key={s} type="button" className="opt-chip" onClick={() => addCustom(s)}>
+                          ＋ {s}
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button" className="lf-po-add" onClick={() => addCustom("")}>
+                      ＋ 自由に追加する
+                    </button>
+                  </>
+                ) : (
+                  <div className="form-hint">有料オプションは{PAID_OPTION_MAX}件までです。</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 5. 発送・配送 */}
@@ -632,7 +809,7 @@ export default function ListingForm({
 
         {/* ── 右：プレビューとボタン ── */}
         <aside className="sidebar fade-in" style={{ transitionDelay: "0.1s" }}>
-          <div className="preview-card" ref={previewRef}>
+          <div className="preview-card">
             <div className="preview-thumb">
               {images[0] ? (
                 <img src={images[0].url} alt="プレビュー" className="preview-img" />
@@ -663,56 +840,11 @@ export default function ListingForm({
           </div>
 
           <div className="action-card">
-            {status === "published" ? (
-              <button type="button" className="btn-publish" onClick={() => save("keep")} disabled={pending}>
-                {pending ? "保存しています…" : "💾 変更を保存する"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn-publish"
-                onClick={() => save("publish")}
-                disabled={pending || !canPublish}
-              >
-                {pending ? "保存しています…" : status === "private" ? "🎀 公開する" : "🎀 出品する"}
-              </button>
-            )}
-            {(isNew || status === "draft") && (
-              <button
-                type="button"
-                className={`btn-draft${draftSaved ? " lf-saved" : ""}`}
-                onClick={() => save("draft")}
-                disabled={pending}
-              >
-                {draftSaved ? "✓ 下書き保存しました" : "💾 下書き保存"}
-              </button>
-            )}
-            {status === "private" && (
-              <button type="button" className="btn-draft" onClick={() => save("keep")} disabled={pending}>
-                💾 非公開のまま保存
-              </button>
-            )}
-            {id ? (
-              <a className="btn-preview" href={`/items/${id}`} target="_blank" rel="noopener">
-                👁 プレビュー確認
-              </a>
-            ) : (
-              <button
-                type="button"
-                className="btn-preview"
-                onClick={() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              >
-                👁 プレビュー確認
-              </button>
-            )}
-            <FormMessage error={error} message={draftSaved ? null : message} />
-            {!canPublish && (
-              <div className="lf-kyc-note">
-                出品（公開）するには本人確認が必要です。下書きは今すぐ保存できます。
-                <br />
-                <Link href="/kyc">本人確認へ →</Link>
-              </div>
-            )}
+            {saveButtons}
+            <button type="button" className="btn-preview" onClick={openPreview}>
+              👁 プレビュー確認
+            </button>
+            {view === "edit" && notes}
             <div className="action-note">
               {status === "published" ? (
                 <>
@@ -759,6 +891,33 @@ export default function ListingForm({
           </div>
         </aside>
       </main>
+
+      {/* 確認の画面（フォームの代わりに出す） */}
+      {view === "preview" && (
+        <div className="layout">
+          <ListingPreview
+            values={f}
+            images={images}
+            price={priceOk(price) ? price : null}
+            extras={extras.filter((x) => paidOptionsError([x]) === null)}
+            sellerName={sellerName}
+            videoFee={videoFee}
+            extendFeePerDay={extendFeePerDay}
+            missing={previewMissing}
+            onBack={() => setView("edit")}
+            headingRef={previewHeadingRef}
+          />
+          <aside className="sidebar">
+            <div className="action-card">
+              {saveButtons}
+              <button type="button" className="btn-preview" onClick={() => setView("edit")}>
+                ✏️ 編集に戻る
+              </button>
+              {notes}
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* 完了の窓 */}
       {done && id && (

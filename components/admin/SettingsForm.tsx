@@ -7,8 +7,8 @@ import { useFlash } from "./Flash";
 import { Modal } from "./Modal";
 
 type NumKey = "feePercent" | "anonymousFee" | "videoFee" | "extendFeePerDay" | "minPayout" | "payoutFee" | "autoCompleteDays";
-type BoolKey = "registrationOpen" | "maintenance" | "mailOrder" | "mailKyc" | "mailPayout" | "modSpamFilter";
-type TextKey = "notice" | "forwardingAddress";
+type BoolKey = "registrationOpen" | "maintenance" | "mailOrder" | "mailKyc" | "mailPayout" | "modSpamFilter" | "transferEnabled";
+type TextKey = "notice" | "forwardingAddress" | "transferBank" | "transferBranch" | "transferType" | "transferNumber" | "transferHolder";
 
 export type SettingsValues = { [K in NumKey]: number } & { [K in BoolKey]: boolean } & { [K in TextKey]: string };
 
@@ -28,11 +28,19 @@ const LABELS: Record<NumKey | BoolKey | TextKey, string> = {
   modSpamFilter: "スパムフィルター",
   notice: "お知らせ（全ページの上に出す文）",
   forwardingAddress: "匿名配送の転送先（非公開）",
+  transferEnabled: "銀行振込の受付",
+  transferBank: "銀行名",
+  transferBranch: "支店名",
+  transferType: "口座の種別",
+  transferNumber: "口座番号（7桁）",
+  transferHolder: "口座名義（カナ）",
 };
 
+const ACCOUNT_TYPES = { ordinary: "普通", checking: "当座" } as const;
+
 const NUM_KEYS: NumKey[] = ["feePercent", "anonymousFee", "videoFee", "extendFeePerDay", "minPayout", "payoutFee", "autoCompleteDays"];
-const BOOL_KEYS: BoolKey[] = ["registrationOpen", "maintenance", "mailOrder", "mailKyc", "mailPayout", "modSpamFilter"];
-const TEXT_KEYS: TextKey[] = ["notice", "forwardingAddress"];
+const BOOL_KEYS: BoolKey[] = ["registrationOpen", "maintenance", "mailOrder", "mailKyc", "mailPayout", "modSpamFilter", "transferEnabled"];
+const TEXT_KEYS: TextKey[] = ["notice", "forwardingAddress", "transferBank", "transferBranch", "transferType", "transferNumber", "transferHolder"];
 
 function toNum(s: string): number {
   const t = s.trim();
@@ -82,9 +90,12 @@ export default function SettingsForm({
     const a = saved[k];
     const b = now[k];
     if (typeof a === "string" && typeof b === "string" ? a.trim() !== b.trim() : a !== b) {
-      changes.push({ label: LABELS[k], from: show(a), to: show(b) });
+      const label = (x: number | boolean | string) => (k === "transferType" ? ACCOUNT_TYPES[x as keyof typeof ACCOUNT_TYPES] : show(x));
+      changes.push({ label: LABELS[k], from: label(a), to: label(b) });
     }
   }
+  const accountMissing =
+    now.transferEnabled && [now.transferBank, now.transferBranch, now.transferNumber, now.transferHolder].some((x) => x.trim() === "");
 
   function open() {
     for (const k of NUM_KEYS) {
@@ -95,6 +106,14 @@ export default function SettingsForm({
     }
     if (changes.length === 0) {
       setError("変えた項目がありません。");
+      return;
+    }
+    if (accountMissing) {
+      setError("銀行振込の受付をオンにするには、振込先をすべて入れてください。");
+      return;
+    }
+    if (!/^([0-9]{7})?$/.test(now.transferNumber.trim())) {
+      setError("口座番号は7桁の数字で入れてください。");
       return;
     }
     setError(null);
@@ -119,13 +138,21 @@ export default function SettingsForm({
       mailPayout: v.mailPayout,
       modSpamFilter: v.modSpamFilter,
       forwardingAddress: v.forwardingAddress,
+      transferEnabled: v.transferEnabled,
+      transferBank: v.transferBank,
+      transferBranch: v.transferBranch,
+      transferType: v.transferType === "checking" ? "checking" : "ordinary",
+      transferNumber: v.transferNumber,
+      transferHolder: v.transferHolder,
     };
     start(async () => {
       try {
         const r = await updateSettings(input);
         setConfirming(false);
         if (r.ok) {
-          setSaved({ ...v, notice: v.notice.trim(), forwardingAddress: v.forwardingAddress.trim() });
+          const trimmed = { ...v };
+          for (const k of TEXT_KEYS) trimmed[k] = v[k].trim();
+          setSaved(trimmed);
           flash(r.message ?? "設定を保存しました。", "ok");
         } else {
           setError(r.error);
@@ -174,6 +201,24 @@ export default function SettingsForm({
         />
         <span className="toggle-slider" />
       </label>
+    </div>
+  );
+
+  const textField = (k: TextKey, opts: { max: number; placeholder?: string; numeric?: boolean }) => (
+    <div>
+      <label className="adm-label" htmlFor={`set-${k}`}>
+        {LABELS[k]}
+      </label>
+      <input
+        id={`set-${k}`}
+        className="adm-input"
+        maxLength={opts.max}
+        inputMode={opts.numeric ? "numeric" : undefined}
+        autoComplete="off"
+        placeholder={opts.placeholder}
+        value={texts[k]}
+        onChange={(e) => setTexts((s) => ({ ...s, [k]: e.target.value }))}
+      />
     </div>
   );
 
@@ -280,6 +325,43 @@ export default function SettingsForm({
             </div>
             {toggle("modSpamFilter", "不審な投稿・メッセージを自動で保留にする")}
           </div>
+        </div>
+      </div>
+      <div className="chart-card">
+        <div className="card-header">
+          <div className="card-title">
+            <span className="pill pill-green" aria-hidden="true">
+              🏦
+            </span>{" "}
+            銀行振込（運営の口座）
+          </div>
+        </div>
+        <div className="adm-form">
+          {toggle("transferEnabled", "購入の画面に「銀行振込」を出す。振込先をすべて入れてからオンにできます")}
+          <p className="adm-hint">
+            購入者は、注文のあとにこの口座と振込名義の番号（例：P12345）を見て振り込みます。入金は「注文管理」の「入金待ちの銀行振込」で、入金額を入れて確かめます。
+          </p>
+          {textField("transferBank", { max: 30, placeholder: "例：〇〇銀行" })}
+          {textField("transferBranch", { max: 30, placeholder: "例：本店営業部" })}
+          <div>
+            <label className="adm-label" htmlFor="set-transferType">
+              {LABELS.transferType}
+            </label>
+            <select
+              id="set-transferType"
+              className="adm-input"
+              value={texts.transferType}
+              onChange={(e) => setTexts((s) => ({ ...s, transferType: e.target.value }))}
+            >
+              {Object.entries(ACCOUNT_TYPES).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {textField("transferNumber", { max: 7, numeric: true, placeholder: "7桁の数字" })}
+          {textField("transferHolder", { max: 40, placeholder: "例：カ）パンテイア" })}
         </div>
       </div>
       <div className="chart-card">

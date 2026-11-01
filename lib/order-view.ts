@@ -39,7 +39,8 @@ async function readGroup(groupId: string, buyerId: string): Promise<GroupState |
     聞き直しは1人10分60回まで（超えたら聞かずに今の DB の状態を返す） */
 export async function refreshGroupForBuyer(groupId: string, buyerId: string): Promise<GroupState | null> {
   const before = await readGroup(groupId, buyerId);
-  if (!before || !before.pending || before.method === "mock") return before;
+  // テスト決済と運営の口座への振込は、聞き直す相手がいない（振込は運営が管理画面で確かめる）
+  if (!before || !before.pending || before.method === "mock" || before.method === "transfer") return before;
   const limit = await takeRateLimit([{ rule: RULES.paySyncUser, kind: "user", id: buyerId }], { failClosed: true });
   if (!limit.ok) return before;
   try {

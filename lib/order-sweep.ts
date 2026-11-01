@@ -31,13 +31,15 @@ export async function expireStaleOrders(): Promise<{ cancelled: number; groups: 
   return { cancelled: data?.length ?? 0, groups: groups.size, paidLate, errors };
 }
 
-/** 返金待ちのまま残っている注文を、もう一度返金にかける（決済会社の不調・記録の失敗のやり直し） */
+/** 返金待ちのまま残っている注文を、もう一度返金にかける（決済会社の不調・記録の失敗のやり直し）。
+    運営の口座への振込は決済会社で返せない（運営が手で振り込む）ので外す */
 export async function retryRefunds(limit = 50): Promise<{ tried: number; refunded: number; failed: number }> {
   const { data, error } = await createServiceClient()
     .from("orders")
     .select("id")
     .eq("needs_refund", true)
     .is("refunded_at", null)
+    .neq("payment_method", "transfer")
     .order("cancelled_at", { ascending: true, nullsFirst: true })
     .limit(limit);
   if (error) throw new Error(error.message);

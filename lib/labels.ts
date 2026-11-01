@@ -70,7 +70,8 @@ export const CARRIERS = [
 export const PAYMENT_METHODS = [
   { value: "card", label: "クレジットカード" },
   { value: "paypay", label: "PayPay" },
-  { value: "bank", label: "銀行振込" },
+  { value: "bank", label: "銀行振込（Stripe）" },
+  { value: "transfer", label: "銀行振込" },
   { value: "mock", label: "テスト決済" },
 ] as const;
 

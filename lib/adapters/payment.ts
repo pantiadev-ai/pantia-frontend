@@ -1,4 +1,4 @@
-/* 決済の口（Stripe のカード・銀行振込、PayPay、契約前の mock）。
+/* 決済の口（Stripe のカード・銀行振込、PayPay、運営の口座への銀行振込、契約前の mock）。
    ・お金が動いたかは、決済会社に聞き直した値だけを信じる。画面の戻り先・webhook の本文は「聞き直す合図」にしか使わない。
    ・DB に書くのは service_role の関数だけ（create_checkout → attach_payment_ref → mark_group_paid／mark_refunded）。
    ・決済会社に送るのは金額・まとめ番号（group_id）・購入者のメールアドレスだけ。商品名は送らない（明細は「パンティアのご注文」）。
@@ -7,6 +7,7 @@
    orders.payment_ref に入る値:
      card・bank … 手続き中は Checkout Session（cs_…）。銀行振込の案内が出たら PaymentIntent（pi_…）。入金後も pi_…
      paypay     … 手続き中は QR の codeId。入金後は PayPay の paymentId
+     transfer   … transfer:<振込名義の番号>（運営の口座への振込。決済会社を通さず、入金は運営が管理画面で確かめる）
      mock       … mock:<group_id> */
 import "server-only";
 import { createHash, createHmac, randomBytes } from "node:crypto";
@@ -14,8 +15,9 @@ import Stripe from "stripe";
 import { publicEnv, serverEnv } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
 
-export type PayMethod = "card" | "bank" | "paypay" | "mock";
-export type RefundResult = { ok: true; ref: string } | { ok: false; error: string };
+export type PayMethod = "card" | "bank" | "paypay" | "transfer" | "mock";
+/** manual … 運営の口座への振込。決済会社では返せないので、運営が購入者の口座へ手で振り込む */
+export type RefundResult = { ok: true; ref: string } | { ok: false; error: string; manual?: true };
 export type StartResult = { ok: true; redirectUrl: string; ref: string } | { ok: false; error: string };
 /** mark_group_paid の返事（paid・already・revived・refund_needed・amount_mismatch・not_found）か、まだ払われていない（unpaid） */
 export type SyncResult = string;
@@ -31,6 +33,22 @@ export function availableMethods(): PayMethod[] {
 
 export function mockAllowed(): boolean {
   return serverEnv.paymentMode === "mock" && !serverEnv.isProduction;
+}
+
+/** 運営の口座への振込を受け付けているか（管理画面のサイト設定。振込先が揃っていないとオンにできない） */
+export async function transferEnabled(): Promise<boolean> {
+  const { data, error } = await createServiceClient().from("site_settings").select("transfer_enabled").maybeSingle();
+  if (error) {
+    console.error("[payment] 振込の受付を読めませんでした", error.message);
+    return false;
+  }
+  return data?.transfer_enabled === true;
+}
+
+/** 購入の画面で選べる支払い方法（決済会社の分＋運営の口座への振込） */
+export async function checkoutMethods(): Promise<PayMethod[]> {
+  const methods = availableMethods();
+  return (await transferEnabled()) ? [...methods, "transfer"] : methods;
 }
 
 /* ───────────── Stripe ───────────── */
@@ -137,6 +155,10 @@ export async function startPayment(p: StartInput): Promise<StartResult> {
     switch (p.method) {
       case "mock":
         return { ok: true, redirectUrl: `/checkout/mock?group=${p.groupId}`, ref: `mock:${p.groupId}` };
+
+      case "transfer":
+        // 振込は決済会社を通さない（注文を作るときに DB が振込名義の番号を決める）
+        return { ok: false, error: "この支払い方法は、いまは使えません。" };
 
       case "card": {
         const s = await stripe().checkout.sessions.create(
@@ -248,7 +270,8 @@ export async function syncGroupPayment(groupId: string): Promise<SyncResult> {
   const method = rows[0]!.payment_method as PayMethod;
   const ref = rows.find((o) => o.payment_ref)?.payment_ref ?? null;
 
-  if (method === "mock") return "unpaid";
+  // 運営の口座への振込は、運営が管理画面で確かめる（聞き直す先が無い）
+  if (method === "mock" || method === "transfer") return "unpaid";
 
   if (method === "paypay") {
     const pay = await fetchPaypayPayment(groupId);
@@ -319,7 +342,7 @@ export type CancelOutcome = "cancelled" | "paid" | "error";
 
 export async function cancelProviderPayment(method: string, ref: string | null, groupId: string): Promise<CancelOutcome> {
   try {
-    if (method === "mock") return "cancelled";
+    if (method === "mock" || method === "transfer") return "cancelled";
     if (method === "paypay") {
       const pay = await fetchPaypayPayment(groupId);
       if (pay?.status === "COMPLETED") return "paid";
@@ -360,11 +383,13 @@ async function cancelIntent(id: string): Promise<CancelOutcome> {
 }
 
 /** 支払い待ちの続き（カード: まだ開いている支払い画面／銀行振込: 振込先の案内／テスト決済）。無ければ null。
+    運営の口座への振込は、振込先・振込名義の案内の画面。
     PayPay は QR の URL を持っていないので出せない（取り消して買い直してもらう）。
     呼ぶ前に、見ている人がこの group の購入者であることを確かめておく（URL は本人だけに見せる） */
 export async function resumeUrl(method: string, ref: string | null, groupId: string): Promise<string | null> {
   try {
     if (method === "mock") return mockAllowed() ? `/checkout/mock?group=${groupId}` : null;
+    if (method === "transfer") return `/checkout/transfer?group=${groupId}`;
     if (!ref || method === "paypay") return null;
     let pi: string | null = ref.startsWith("pi_") ? ref : null;
     if (ref.startsWith("cs_")) {
@@ -396,6 +421,9 @@ export async function refundOrder(orderId: string): Promise<RefundResult> {
   if (!o) return { ok: false, error: "注文が見つかりません。" };
   if (o.refunded_at) return { ok: true, ref: "already" };
   if (!o.needs_refund) return { ok: false, error: "この注文は返金待ちではありません。" };
+  if (o.payment_method === "transfer") {
+    return { ok: false, manual: true, error: "銀行振込の注文です。運営が購入者の口座へ振り込んで返金します。" };
+  }
 
   let ref: string;
   try {
