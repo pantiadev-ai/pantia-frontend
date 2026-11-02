@@ -220,6 +220,21 @@ export async function setNotify(key: unknown, on: unknown): Promise<ActionResult
 }
 
 /* ---------------------------------------------------------------------------
+   メッセージの同意の取り消し（同意は初めて送るときにチャットの画面でもらう）
+--------------------------------------------------------------------------- */
+export async function withdrawMessageConsent(): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await actionViewer();
+    await limitOrThrow([{ rule: RULES.reactUser, kind: "user", id: v.id }]);
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("withdraw_message_terms");
+    throwDb(error);
+    revalidatePath("/settings");
+    return { ok: true, message: "同意を取り消しました。次にメッセージを送るときに、もう一度確かめます。" };
+  });
+}
+
+/* ---------------------------------------------------------------------------
    役割の変更の申請（出品者⇔購入者。運営が確かめて切り替える）
 --------------------------------------------------------------------------- */
 const RoleInput = z.object({ reason: z.string().trim().min(1).max(200) });

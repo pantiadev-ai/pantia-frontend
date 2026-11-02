@@ -648,6 +648,32 @@ export type Database = {
         }
         Relationships: []
       }
+      message_consents: {
+        Row: {
+          agreed_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          agreed_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          agreed_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_consents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string
@@ -1624,6 +1650,7 @@ export type Database = {
         Row: {
           anonymous_fee: number
           auto_complete_days: number
+          banned_words: string[]
           extend_fee_per_day: number
           fee_rate: number
           forwarding_address: string
@@ -1650,6 +1677,7 @@ export type Database = {
         Insert: {
           anonymous_fee?: number
           auto_complete_days?: number
+          banned_words?: string[]
           extend_fee_per_day?: number
           fee_rate?: number
           forwarding_address?: string
@@ -1676,6 +1704,7 @@ export type Database = {
         Update: {
           anonymous_fee?: number
           auto_complete_days?: number
+          banned_words?: string[]
           extend_fee_per_day?: number
           fee_rate?: number
           forwarding_address?: string
@@ -1915,6 +1944,10 @@ export type Database = {
         Args: { p_admin: string; p_patch: Json }
         Returns: undefined
       }
+      admin_view_thread: {
+        Args: { p_admin: string; p_message: string }
+        Returns: Json
+      }
       admin_warn_user: {
         Args: { p_admin: string; p_reason: string; p_user: string }
         Returns: undefined
@@ -1923,6 +1956,7 @@ export type Database = {
         Args: { p_admin: string; p_reason: string; p_user: string }
         Returns: Json
       }
+      agree_message_terms: { Args: never; Returns: undefined }
       assert_admin: { Args: { p_admin: string }; Returns: undefined }
       attach_payment_ref: {
         Args: { p_group: string; p_ref: string }
@@ -1939,6 +1973,9 @@ export type Database = {
         Returns: undefined
       }
       auto_complete_orders: { Args: never; Returns: number }
+      banned_word_in: { Args: { p_text: string }; Returns: string }
+      banned_word_key: { Args: { p_text: string }; Returns: string }
+      banned_words_ok: { Args: { p_words: string[] }; Returns: boolean }
       blocked_between: { Args: { p_a: string; p_b: string }; Returns: boolean }
       bump_listing_view: { Args: { p_listing: string; p_viewer?: string | null }; Returns: undefined }
       cancel_expired_orders: {
@@ -2253,6 +2290,7 @@ export type Database = {
         }
         Returns: Json
       }
+      withdraw_message_terms: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

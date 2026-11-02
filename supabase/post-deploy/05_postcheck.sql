@@ -14,7 +14,9 @@ with
     -- 0010 代理登録
     ('proxy_registrations'),
     -- 0011 銀行振込
-    ('bank_transfers')
+    ('bank_transfers'),
+    -- 0012 メッセージの同意
+    ('message_consents')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -36,7 +38,9 @@ with
     -- 0010 代理登録
     ('admin_proxy_link_issued'), ('admin_proxy_register'), ('admin_proxy_submit_kyc'), ('proxy_mark_handed_over'),
     -- 0011 銀行振込・有料オプション
-    ('admin_confirm_transfer'), ('admin_mark_refunded_manual'), ('listing_reserved'), ('paid_options_ok')
+    ('admin_confirm_transfer'), ('admin_mark_refunded_manual'), ('listing_reserved'), ('paid_options_ok'),
+    -- 0012 禁止ワード・メッセージの同意・運営が会話を見る
+    ('admin_view_thread'), ('agree_message_terms'), ('banned_word_in'), ('banned_word_key'), ('banned_words_ok'), ('withdraw_message_terms')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -66,7 +70,7 @@ with
   missing_buckets as (select id from new_buckets b where not exists (select 1 from storage.buckets s where s.id = b.id))
 select 1 as no, '新しい表が全部ある' as item,
   case when exists (select 1 from missing_tables) then 'NG' else 'OK' end as result,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '33 表') as detail
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '34 表') as detail
 union all
 select 2, '新しい表は全部 RLS が入っている',
   case when exists (select 1 from no_rls) then 'NG' else 'OK' end,
@@ -74,7 +78,7 @@ select 2, '新しい表は全部 RLS が入っている',
 union all
 select 3, '関数が全部ある',
   case when exists (select 1 from missing_functions) then 'NG' else 'OK' end,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '104 個')
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '110 個')
 union all
 select 4, 'SECURITY DEFINER の関数は search_path が固定',
   case when exists (select 1 from open_definer) then 'NG' else 'OK' end,
@@ -156,4 +160,22 @@ select 18, '振込の台帳（bank_transfers）は関数からしか書けず、
 union all
 select 19, '振込の受付（社長が /admin/settings で口座を入れてオンにする）', '記録',
   coalesce((select 'transfer_enabled=' || transfer_enabled::text from public.site_settings limit 1), '行なし')
+union all
+select 20, '禁止ワードの列（site_settings.banned_words）は利用者から読めない',
+  case when not exists (select 1 from information_schema.columns
+                        where table_schema = 'public' and table_name = 'site_settings' and column_name = 'banned_words') then 'NG'
+       when has_column_privilege('anon', 'public.site_settings', 'banned_words', 'SELECT')
+         or has_column_privilege('authenticated', 'public.site_settings', 'banned_words', 'SELECT') then 'NG'
+       else 'OK' end, ''
+union all
+select 21, 'メッセージの同意（message_consents）は関数からしか書けない',
+  case when to_regclass('public.message_consents') is null then 'NG'
+       when has_table_privilege('service_role', 'public.message_consents', 'INSERT')
+         or has_table_privilege('service_role', 'public.message_consents', 'UPDATE')
+         or has_table_privilege('service_role', 'public.message_consents', 'DELETE')
+         or has_table_privilege('authenticated', 'public.message_consents', 'INSERT')
+         or has_table_privilege('authenticated', 'public.message_consents', 'UPDATE')
+         or has_table_privilege('authenticated', 'public.message_consents', 'DELETE')
+         or has_table_privilege('anon', 'public.message_consents', 'SELECT') then 'NG'
+       else 'OK' end, ''
 order by no;

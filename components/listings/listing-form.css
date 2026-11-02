@@ -1,5 +1,22 @@
 /* 出品フォームで足りない所だけ（見本 item_form の CSS は @/styles/item-form.css）。.pg-item-form の中だけに効く */
 
+/* 価格設定の見込みの、有料オプションの行（長い名前は折り返す） */
+.pg-item-form .lf-pp-option {
+  gap: 12px;
+  font-weight: 500;
+}
+.pg-item-form .lf-pp-option > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pg-item-form .lf-pp-option > span:last-child {
+  flex-shrink: 0;
+}
+.pg-item-form .lf-pp-note {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* ボタンの字を本文と同じにする（見本は div だったチップを button にしたため） */
 .pg-item-form button {
   font-family: inherit;

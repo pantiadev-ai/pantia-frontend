@@ -379,6 +379,14 @@ export default async function TermsPage() {
             <strong>画像の位置情報など（EXIF）</strong>は自動で消します
           </Rule>
           <Rule kind="ng">他のユーザーの個人情報をSNS等に公開・拡散することは禁止します</Rule>
+          <Rule kind="ok" icon="👀">
+            <strong>メッセージの確認：</strong>
+            通報されたメッセージや、連絡先の交換などで自動で止まったメッセージは、取引の安全のため、運営がその前後のやり取りを含めて確認します。
+            この確認には、初めてメッセージを送るときに同意をいただきます（設定からいつでも取り消せます。取り消している間はメッセージを送れません）
+          </Rule>
+          <Rule kind="ok" icon="🚫">
+            <strong>使えない言葉：</strong>運営が決めた言葉を含むメッセージは送れません。送ろうとした内容は相手に届かず、残りません
+          </Rule>
           <Rule kind="ng">メッセージ内で取得した個人情報を本サービス外で利用することは禁止します</Rule>
         </RuleList>
       </Section>

@@ -72,7 +72,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
   const otherId = isSeller ? t.buyer_id : t.seller_id;
   const otherRole = isSeller ? "buyer" : "seller";
 
-  const [profileRes, blockRes, page, ordersRes, doneOrdersRes, listingsRes, threadsRes] = await Promise.all([
+  const [profileRes, blockRes, page, ordersRes, doneOrdersRes, listingsRes, threadsRes, consentRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, public_name, avatar_path, age, occupation, accept_messages, last_seen_at, kyc_status, follower_count, sales_count, rating_sum, rating_count")
@@ -101,6 +101,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
           .limit(50)
       : null,
     supabase.rpc("my_threads"),
+    supabase.from("message_consents").select("user_id").eq("user_id", viewer.id).maybeSingle(),
   ]);
 
   // 退会・停止した相手は RLS で読めない
@@ -218,6 +219,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
             initialOtherReadAt={otherReadAt(t, viewer.id)}
             myListings={myListings}
             closed={closed}
+            consented={!!consentRes.data}
           />
         </main>
 

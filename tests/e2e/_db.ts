@@ -49,7 +49,8 @@ export function admin() {
 export type Role = "seller" | "buyer";
 export type Kyc = "approved" | "unsubmitted" | "pending" | "rejected";
 export type Cast = { key: string; id: string; email: string; nickname: string; role: Role };
-type UserOpts = { role: Role; nickname?: string; kyc?: Kyc; admin?: boolean };
+/** messageConsent: メッセージを送る前の同意（既定は同意済み。同意の流れを試すときだけ false） */
+type UserOpts = { role: Role; nickname?: string; kyc?: Kyc; admin?: boolean; messageConsent?: boolean };
 
 const emailOf = (key: string) => `e2e-${key}@example.test`;
 
@@ -73,6 +74,9 @@ export async function ensureUser(key: string, opts: UserOpts): Promise<Cast> {
     update public.profiles set role = ${lit(opts.role)}, kyc_status = ${lit(opts.kyc ?? "approved")}, status = 'active', nickname = ${lit(nickname)}
     where id = ${lit(id)};
     ${opts.admin ? `insert into public.admin_users (user_id, note) values (${lit(id)}, 'e2e') on conflict (user_id) do nothing;` : ""}
+    ${opts.messageConsent === false
+      ? `delete from public.message_consents where user_id = ${lit(id)};`
+      : `insert into public.message_consents (user_id) values (${lit(id)}) on conflict (user_id) do nothing;`}
   `);
   return { key, id, email, nickname, role: opts.role };
 }

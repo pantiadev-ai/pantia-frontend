@@ -7,7 +7,7 @@ export default async function globalSetup() {
   await sql(`
     delete from public.rate_limit_hits;
     update public.site_settings
-    set registration_open = true, maintenance = false, notice = '', mail_order = true, mail_kyc = true, mail_payout = true, mod_spam_filter = true
+    set registration_open = true, maintenance = false, notice = '', mail_order = true, mail_kyc = true, mail_payout = true, mod_spam_filter = true, banned_words = '{}'
     where id;
   `);
   for (const name of Object.keys(CAST) as (keyof typeof CAST)[]) await cast(name);

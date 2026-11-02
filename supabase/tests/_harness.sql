@@ -49,7 +49,7 @@ create function pg_temp.eq(p_name text, p_uid uuid, p_role text, p_sql text, p_w
 declare v text := pg_temp.val(p_uid, p_role, p_sql);
 begin perform pg_temp.chk(p_name, v is not distinct from p_want, 'got ' || coalesce(v, 'null') || ' want ' || coalesce(p_want, 'null')); end $f$;
 
--- テスト用の利用者を作る（メール確認済み・プロフィールは trigger が作る）
+-- テスト用の利用者を作る（メール確認済み・プロフィールは trigger が作る・メッセージの同意は済み）
 create function pg_temp.mkuser(p_nick text, p_role text, p_kyc text default 'approved') returns uuid language plpgsql as $f$
 declare v uuid := gen_random_uuid();
 begin
@@ -57,6 +57,7 @@ begin
   values ('00000000-0000-0000-0000-000000000000', v, 'authenticated', 'authenticated', v::text || '@test.invalid', '', now(),
           '{"provider":"email","providers":["email"]}', jsonb_build_object('nickname', p_nick, 'role', p_role, 'age', '25'), now(), now());
   update public.profiles set kyc_status = p_kyc where id = v;
+  insert into public.message_consents (user_id) values (v);
   return v;
 end $f$;
 

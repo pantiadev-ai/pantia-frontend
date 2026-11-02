@@ -5,10 +5,11 @@ import "server-only";
 import Form from "next/form";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import Heartbeat from "@/components/Heartbeat";
 import { navCounts, requireAdminPage } from "@/lib/admin";
 import { SITE_NAME } from "@/lib/site";
 import { createServiceClient } from "@/lib/supabase/service";
-import { FlashProvider } from "./Flash";
+import { FlashToasts } from "./Flash";
 
 export type AdminPanel =
   | "dashboard"
@@ -79,62 +80,70 @@ export default async function AdminShell({ active, title, children }: { active: 
 
   return (
     <div className="pg-admin">
-      <FlashProvider>
-        <aside className="admin-sidebar">
-          <div className="admin-logo">
-            <div className="admin-logo-text">♡ {SITE_NAME}</div>
-            <div className="admin-logo-sub">Admin Dashboard</div>
-          </div>
+      <aside className="admin-sidebar">
+        <div className="admin-logo">
+          <div className="admin-logo-text">♡ {SITE_NAME}</div>
+          <div className="admin-logo-sub">Admin Dashboard</div>
+        </div>
 
-          <nav className="adm-nav" aria-label="管理メニュー">
-            {sections.map((s) => (
-              <div className="nav-section" key={s.label}>
-                <div className="nav-section-label">{s.label}</div>
-                {s.items.map((it) => (
-                  <NavLink key={it.key} item={it} active={active} />
-                ))}
-              </div>
-            ))}
-          </nav>
-
-          <div className="admin-user">
-            <div className="au-avatar" aria-hidden="true">
-              {Array.from(me.nickname.trim())[0] ?? "A"}
+        <nav className="adm-nav" aria-label="管理メニュー">
+          {sections.map((s) => (
+            <div className="nav-section" key={s.label}>
+              <div className="nav-section-label">{s.label}</div>
+              {s.items.map((it) => (
+                <NavLink key={it.key} item={it} active={active} />
+              ))}
             </div>
-            <div>
-              <div className="au-name">{me.nickname}</div>
-              <div className="au-role">管理者</div>
-            </div>
-          </div>
-        </aside>
+          ))}
+        </nav>
 
-        <main className="admin-main">
-          <header className="topbar">
-            <h1 className="topbar-title">{title}</h1>
-            <div className="topbar-right">
-              <div className="topbar-search">
-                <Form action="/admin/search" role="search">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.35-4.35" />
-                  </svg>
-                  <input type="search" name="q" placeholder="ユーザー・商品・注文を検索" maxLength={50} aria-label="ユーザー・商品・注文を検索" />
-                </Form>
-              </div>
-              <Link href="/admin" className="topbar-icon" aria-label={pending > 0 ? `未処理が ${pending}件あります（ダッシュボードへ）` : "ダッシュボードへ"}>
-                🔔{pending > 0 && <div className="notif-dot" />}
-              </Link>
-              <Link href="/" className="topbar-icon" aria-label="サイトを開く">
-                🌐
-              </Link>
-            </div>
-          </header>
-
-          <div className="content">
-            <section className="panel show fade-in">{children}</section>
+        <div className="admin-user">
+          <div className="au-avatar" aria-hidden="true">
+            {Array.from(me.nickname.trim())[0] ?? "A"}
           </div>
-        </main>
-      </FlashProvider>
+          <div>
+            <div className="au-name">{me.nickname}</div>
+            <div className="au-role">管理者</div>
+          </div>
+          {/* ログアウトは POST だけ（app/auth/signout）。終わるとサイトの入口へ戻る */}
+          <form action="/auth/signout" method="post" className="au-signout">
+            <button type="submit">ログアウト</button>
+          </form>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="topbar">
+          <h1 className="topbar-title">{title}</h1>
+          <div className="topbar-right">
+            <div className="topbar-search">
+              <Form action="/admin/search" role="search">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                <input type="search" name="q" placeholder="ユーザー・商品・注文を検索" maxLength={50} aria-label="ユーザー・商品・注文を検索" />
+              </Form>
+            </div>
+            <Link href="/admin" className="topbar-icon" aria-label={pending > 0 ? `未処理が ${pending}件あります（ダッシュボードへ）` : "ダッシュボードへ"}>
+              🔔{pending > 0 && <div className="notif-dot" />}
+            </Link>
+            <Link href="/" className="topbar-icon" aria-label="サイトを開く">
+              🌐
+            </Link>
+            {/* 左下の名前の欄はスマホの幅で隠れるので、上の帯にも置く */}
+            <form action="/auth/signout" method="post" className="topbar-signout">
+              <button type="submit">ログアウト</button>
+            </form>
+          </div>
+        </header>
+        <Heartbeat />
+
+        <div className="content">
+          <section className="panel show fade-in">{children}</section>
+        </div>
+      </main>
+      <FlashToasts />
     </div>
   );
 }

@@ -107,8 +107,10 @@ test.describe("代理で登録する", () => {
     await expect(dialog).toContainText(name);
     await expect(dialog).toContainText("出品者・24歳");
     await dialog.getByRole("button", { name: "登録する", exact: true }).click();
-    await expect(page.locator(".adm-toasts").getByText("代理で登録しました。次に、パスワードを決めるリンクを作って本人に送ってください。")).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/proxy\/[0-9a-f-]{36}$/);
+    // 知らせは、移った先の詳しい画面でも読める（移る前の一瞬だけではない）
+    await expect(page.getByRole("heading", { name: "代理登録の詳細", level: 1 })).toBeVisible();
+    await expect(page.locator(".adm-toasts").getByText("代理で登録しました。次に、パスワードを決めるリンクを作って本人に送ってください。")).toBeVisible();
     const id = page.url().split("/").pop() ?? "";
 
     // 作られた人: ふつうの登録と同じで、本人確認は未提出。台帳には登録した運営とメモ

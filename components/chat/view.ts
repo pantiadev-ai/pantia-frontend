@@ -7,6 +7,8 @@ const TZ = "Asia/Tokyo";
 const WITHDRAWN = "退会したユーザー";
 
 export const BODY_MAX = 1000;
+/** 運営による確認への同意がまだ（別の画面で取り消した後など）。画面はこの文を見て同意の欄を出し直す */
+export const CONSENT_REQUIRED = "送る前に、下の確認に同意してください。";
 export const KINDS: readonly MessageKind[] = ["text", "image", "item", "system", "shipping"];
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** チャットの画像の置き場所（<会話の id>/<uuid>.webp。DB の paths_ok と同じ形） */

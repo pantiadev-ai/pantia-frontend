@@ -1,6 +1,7 @@
 /* 画面の上の帯。見本ごとに囲いのクラス（list-header・detail-header…）が違うので variant で切り替える。
    中身（ロゴ・検索・メニュー）は同じ形。ログインの有無でメニューを替える。 */
 import Link from "next/link";
+import Heartbeat from "@/components/Heartbeat";
 import { getViewer } from "@/lib/auth";
 import { san } from "@/lib/format";
 import { getUnread } from "@/lib/unread";
@@ -72,6 +73,7 @@ export default async function SiteHeader({ variant, active, search }: Props) {
             <form action="/auth/signout" method="post" className="pt-signout">
               <button type="submit">ログアウト</button>
             </form>
+            <Heartbeat />
           </>
         ) : (
           <>
