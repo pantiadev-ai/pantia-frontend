@@ -123,8 +123,9 @@ test.describe("送る・受け取る", () => {
       await sp.getByRole("textbox", { name: "メッセージ" }).fill(reply);
       await sp.getByRole("button", { name: "送信" }).click();
       await expect(page.locator(".bubble.theirs", { hasText: reply })).toBeVisible({ timeout: 10_000 });
-      // 購入者が見ているので、出品者の送った物に既読が付く
-      await expect(sp.locator(".msg-row.mine", { hasText: reply }).getByText("✓✓ 既読")).toBeVisible({ timeout: 10_000 });
+      // 購入者が見ているので、出品者の送った物に既読が付く。
+      // 印は「既読」の文字だけ（✓✓ だと、運営も見ている印かと思われた。2026-11-03 に運営から指摘）
+      await expect(sp.locator(".msg-row.mine", { hasText: reply }).locator(".read-check")).toHaveText(/^既読$/, { timeout: 10_000 });
 
       const saved = await sql<{ body: string }>(`select body from public.messages where thread_id = ${lit(tid)} order by created_at`);
       expect(saved.map((r) => r.body)).toEqual([hello, reply]);

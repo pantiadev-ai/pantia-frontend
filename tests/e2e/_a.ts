@@ -154,6 +154,8 @@ export async function clippedItems(box: Locator): Promise<string[]> {
     const r = el.getBoundingClientRect();
     return Array.from(el.querySelectorAll<HTMLElement>("a, button"))
       .filter((a) => {
+        // display: none で隠した項目（スマホでメニューに移した物）は、切れているのではない
+        if (a.getClientRects().length === 0) return false;
         const b = a.getBoundingClientRect();
         return b.left < r.left - 1 || b.right > r.right + 1 || b.top < r.top - 1 || b.bottom > r.bottom + 1;
       })

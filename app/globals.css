@@ -176,19 +176,149 @@ body:has(.pg-chat) > .pt-banner {
   opacity: 1;
   text-decoration: underline;
 }
-/* スマホではヘッダーの検索を隠し、メニューを横に流せるようにする（見本はPCの幅だけ） */
+/* スマホの「☰ メニュー」（components/MobileMenu.tsx）。PC では出さない。
+   板は画面いっぱいの不透明な白（半透明だと下のページの文字が透けて読めない。2026-11-03 に運営から指摘） */
+.pt-mmenu-btn {
+  display: none;
+}
+dialog.pt-mmenu[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  border: 0;
+  background: #fff;
+  color: var(--pt-text);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+dialog.pt-mmenu::backdrop {
+  background: #fff;
+}
+html:has(dialog.pt-mmenu[open]) {
+  overflow: hidden;
+}
+.pt-mmenu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+.pt-mmenu-who {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pt-sub);
+  overflow-wrap: anywhere;
+}
+.pt-mmenu-close {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+  background: #fff;
+  color: var(--pt-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pt-mmenu-links {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+.pt-mmenu-links a {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--pt-text);
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.pt-mmenu-out {
+  margin: 32px 0 0;
+}
+.pt-mmenu-out button {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--pt-danger);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+/* ヘッダーの名前。長い名前（上限20文字）でメニューを押し出さないよう「…」で縮め、全部は title で見せる */
+header .pt-name {
+  display: inline-block;
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+/* PC の文字のメニューは約 1,000px 要る。1024px 以下（iPad の縦置き・横置きも）は pt-desk の項目を隠し、「☰ メニュー」へまとめる
+   （2026-11-03、769〜1024px で「ログアウト」と名前が画面の外に出ていた） */
+@media (max-width: 1024px) {
+  header .pt-desk {
+    display: none !important;
+  }
+  .pt-mmenu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 0 12px;
+    margin-left: 4px;
+    border: 1px solid rgba(255, 75, 145, 0.3);
+    border-radius: 9999px;
+    background: #fff;
+    color: var(--pt-primary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+}
+/* スマホではヘッダーを1行に収める（見本はPCの幅だけ）。検索も隠す */
 @media (max-width: 768px) {
   header .header-search.pt-hide-sm {
     display: none !important;
   }
-  header nav.pt-nav,
-  header .pt-nav {
-    overflow-x: auto;
-    max-width: calc(100vw - 140px);
-    scrollbar-width: none;
+  header nav.pt-nav {
+    flex-shrink: 0;
+    gap: 2px;
+  }
+  header nav.pt-nav a {
+    padding: 8px 10px;
+    white-space: nowrap;
   }
   header > a.logo {
     font-size: 17px !important;
+    white-space: nowrap;
+  }
+  /* iPhone の Safari は、16px より小さい入力欄を押すと画面を拡大し、戻さない（2026-11-03 に運営から指摘） */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="submit"], [type="button"], [type="reset"]),
+  textarea,
+  select {
+    font-size: 16px !important;
   }
 }
 

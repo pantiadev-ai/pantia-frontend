@@ -537,7 +537,8 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
                   <div className="msg-meta">
                     <span>{clock(m.createdAt)}</span>
                     {mine && m.held && <span className="chat-held">確認中（相手にはまだ届いていません）</span>}
-                    {read && <span className="read-check">✓✓ 既読</span>}
+                    {/* 相手が読んだ印。「✓✓」は運営が見ている印に見えると言われたので、文字だけにする（2026-11-03 に運営から指摘） */}
+                    {read && <span className="read-check">既読</span>}
                     {!mine && <ReportButton type="message" targetId={m.id} loggedIn label="通報" className="chat-report" />}
                   </div>
                 </div>
