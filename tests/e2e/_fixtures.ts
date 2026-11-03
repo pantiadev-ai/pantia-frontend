@@ -20,13 +20,23 @@ export const test = base.extend<Fixtures>({
           report?.(`${e.violatedDirective} ${e.blockedURI || "inline"}（${location.pathname}）`);
         });
       });
-      page.on("pageerror", (e) => errors.push(`画面の例外: ${e.message}`));
+      page.on("pageerror", (e) => {
+        // Safari（WebKit）は、画面を移るときに打ち切った読み込み（先読みの ?_rsc= も、画面の URL そのままも）をこの文で出す（画面の不具合ではない）。
+        // 除くのは試験用サーバー自身（localhost:3100）の URL だけ。ほかの宛先は今までどおり落とす
+        if (/localhost:3100\/\S* due to access control checks\.?$/.test(e.message)) return;
+        errors.push(`画面の例外: ${e.message}`);
+      });
       page.on("console", (m) => {
         if (m.type() !== "error") return;
         const text = m.text();
         const url = m.location()?.url ?? "";
         // 試験用の画像（1×1）は置き場に無いことがある
         if (/\/storage\/v1\/object\//.test(url)) return;
+        // Safari（WebKit）は、見張るだけの CSP に報告先が無いと毎回これを出す（画面の不具合ではない）
+        if (/was delivered in report-only mode, but does not specify a 'report-to'/.test(text)) return;
+        // メッセージの画面を開いてすぐ移ると、つなぎかけのリアルタイム（Supabase）を画面が自分で閉じ、Safari がこれを出す（画面の不具合ではない）。
+        // 「つなげなかった」側の誤り（handshake の失敗など）は今までどおり落とす
+        if (/^WebSocket connection to 'wss:\/\/[a-z0-9]+\.supabase\.co\/realtime\/v1\/websocket\?[^']*' failed: WebSocket is closed before the connection is established\.$/.test(text)) return;
         if (consoleAllow.some((re) => re.test(text) || re.test(url))) return;
         errors.push(`console.error: ${text}${url ? `（${url}）` : ""}`);
       });

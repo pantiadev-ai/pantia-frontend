@@ -154,6 +154,10 @@
   flex-direction: column;
   gap: 14px;
 }
+/* 1列になるスマホでは貼り付けない（中身がこの欄の上を流れて重なり、読めなくなる。2026-11-03 に運営から指摘） */
+@media (max-width: 768px) {
+  .pg-mypage .sidebar { position: static; }
+}
 
 .pg-mypage .profile-mini {
   background: var(--glass-bg);

@@ -28,6 +28,8 @@ export default defineConfig({
   projects: [
     { name: "pc", use: { ...devices["Desktop Chrome"] }, testIgnore: /\.mobile\.spec\.ts$/ },
     { name: "mobile", use: { ...devices["Pixel 7"] }, testMatch: /\.mobile\.spec\.ts$/ },
+    // 幅の狭い iPhone（375px・Safari と同じ WebKit）。Pixel 7（412px）では通っても、ここで崩れていた（2026-11-03 に運営から指摘）
+    { name: "iphone-mini", use: { ...devices["iPhone 12 Mini"] }, testMatch: /\.mobile\.spec\.ts$/ },
   ],
   webServer: {
     command: `npm run start -- -p ${PORT}`,

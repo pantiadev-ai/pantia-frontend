@@ -1,8 +1,9 @@
 "use client";
 /* /items の絞り込み（左の欄）と検索・並べ替え（右の上）。
    普通の GET のフォームなので JavaScript が無くても動く。ある時は送る前に URL を整えてから移る
-   （空の欄・既定の値を URL に残さない）。チップとチェックは押したらすぐ送る。 */
-import type { FormEvent, ReactNode } from "react";
+   （空の欄・既定の値を URL に残さない）。チップとチェックは押したらすぐ送る。
+   スマホでは絞り込みを「絞り込み（n）」のボタンの下に畳み、押すとその場で開く（重ねる板にしない。2026-11-03 に運営から指摘） */
+import { useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, SORTS, WORN_FILTERS } from "@/lib/labels";
@@ -27,6 +28,9 @@ const SearchIcon = () => (
 
 export default function ItemsFilterForm({ state, optionCounts, children }: Props) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const active =
+    state.categories.length + (state.priceMin != null ? 1 : 0) + (state.priceMax != null ? 1 : 0) + state.worn.length + state.flags.length;
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -42,8 +46,13 @@ export default function ItemsFilterForm({ state, optionCounts, children }: Props
   return (
     <form className="cat-filter-form" action="/items" method="get" role="search" onSubmit={onSubmit}>
       {/* ── 左: 絞り込み ── */}
-      <aside className="filter-sidebar fade-in">
-        <div className="filter-card">
+      <aside className={`filter-sidebar fade-in${open ? " is-open" : ""}`}>
+        {/* スマホだけに出す（PC は最初から開いている） */}
+        <button type="button" className="cat-filter-toggle" aria-expanded={open} aria-controls="items-filter-card" onClick={() => setOpen((o) => !o)}>
+          絞り込み{active > 0 ? `（${active}）` : ""}
+          <span aria-hidden="true">{open ? "▲" : "▼"}</span>
+        </button>
+        <div className="filter-card" id="items-filter-card">
           <div className="filter-title">
             絞り込み
             <Link href="/items" className="filter-reset">

@@ -531,6 +531,12 @@
     display: block;
   }
 }
+/* ほかの画面のヘッダーと同じく、1024px 以下は文字のメニューを隠して「☰ メニュー」へ（app/globals.css） */
+@media (max-width: 1024px) {
+  .pg-chat .chat-hide-sm {
+    display: none;
+  }
+}
 @media (max-width: 768px) {
   .pg-chat .chat-layout,
   .pg-chat .chat-layout.no-side {
@@ -540,9 +546,6 @@
     display: none;
   }
   .pg-chat .chat-layout.is-room .thread-list {
-    display: none;
-  }
-  .pg-chat .chat-hide-sm {
     display: none;
   }
   .pg-chat .ch-back {

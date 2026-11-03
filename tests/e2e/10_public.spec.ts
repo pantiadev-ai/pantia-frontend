@@ -102,6 +102,19 @@ test.describe("商品の検索（/items）", () => {
     }
   });
 
+  test("PC では、絞り込みは最初から左に開いていて、畳むための「絞り込み」ボタンは出ない", async ({ page }) => {
+    await page.goto("/items");
+    await expect(page.getByLabel("価格の下限（円）")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^絞り込み/ })).toBeHidden();
+  });
+
+  test("PC では、ヘッダーに文字のメニューが並び、スマホ用の「☰ メニュー」は出ない", async ({ page }) => {
+    await page.goto("/help");
+    const nav = page.getByRole("navigation", { name: "メインメニュー" });
+    for (const name of ["女の子", "商品", "つぶやき", "ランキング", "ログイン"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "メニュー", exact: true })).toBeHidden();
+  });
+
   test("並び替えで安い順・高い順を選ぶと、価格の順に並ぶ", async ({ page }) => {
     const seller = await publicSeller("pub-sort");
     const t = tok();

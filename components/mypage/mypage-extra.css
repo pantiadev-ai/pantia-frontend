@@ -55,6 +55,24 @@
   /* スマホでは本文の上に来るので、2列にして短くする */
   .pg-mypage nav.side-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* 中の画面の「‹ マイページ」（MypageShell の is-sub）。PC は左にメニューがあるので出さない。
+   スマホでは表紙（/mypage）にだけプロフィールとメニューを出し、中の画面は戻るリンクと中身だけにする（2026-11-03 に運営から指摘） */
+.pg-mypage .mp-back { display: none; }
+@media (max-width: 768px) {
+  .pg-mypage .layout.is-sub .sidebar { display: none; }
+  .pg-mypage .mp-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 4px;
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-size: 15px;
+    font-weight: 800;
+    text-decoration: none;
+  }
+}
 
 /* ── 見本の div/button を a にした所の下線を消す ── */
 .pg-mypage a.order-item,

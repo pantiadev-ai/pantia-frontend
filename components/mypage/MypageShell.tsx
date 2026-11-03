@@ -124,7 +124,9 @@ export default async function MypageShell({ active, children }: MypageShellProps
       <SiteHeader variant="mypage" active="mypage" />
       {active !== "kyc" && <KycBand v={viewer} />}
 
-      <main className="layout">
+      {/* スマホでは、/mypage の表紙だけプロフィールとメニューを出し、ほかの画面は「‹ マイページ」と中身だけにする（is-sub）。
+          前は、どの画面でも上に同じプロフィールとメニューが出て、押しても同じ所に来たように見えた（2026-11-03 に運営から指摘） */}
+      <main className={`layout${active !== "dashboard" ? " is-sub" : ""}`}>
         <aside className="sidebar fade-in">
           <div className="profile-mini">
             <div className="pm-avatar">
@@ -191,6 +193,11 @@ export default async function MypageShell({ active, children }: MypageShellProps
         </aside>
 
         <div className="main fade-in" style={{ transitionDelay: "0.08s" }}>
+          {active !== "dashboard" && (
+            <Link href="/mypage" className="mp-back" aria-label="マイページに戻る">
+              <span aria-hidden="true">‹</span> マイページ
+            </Link>
+          )}
           <div className="panel show">{children}</div>
         </div>
       </main>

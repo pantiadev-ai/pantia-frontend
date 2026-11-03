@@ -1,8 +1,11 @@
 /* 画面の上の帯。見本ごとに囲いのクラス（list-header・detail-header…）が違うので variant で切り替える。
-   中身（ロゴ・検索・メニュー）は同じ形。ログインの有無でメニューを替える。 */
+   中身（ロゴ・検索・メニュー）は同じ形。ログインの有無でメニューを替える。
+   1024px 以下（スマホと iPad）では pt-desk の項目を隠し、右上の「☰ メニュー」（MobileMenu）にまとめる。
+   頭に残すのは、ログイン中は 💬 🔔、ログインしていないときは「ログイン」だけ（2026-11-03 に運営から指摘） */
 import Link from "next/link";
 import Heartbeat from "@/components/Heartbeat";
-import { getViewer } from "@/lib/auth";
+import MobileMenu, { type MenuLink } from "@/components/MobileMenu";
+import { getViewer, type Viewer } from "@/lib/auth";
 import { san } from "@/lib/format";
 import { getUnread } from "@/lib/unread";
 import { SITE_NAME } from "@/lib/site";
@@ -25,6 +28,27 @@ const SearchIcon = () => (
   </svg>
 );
 
+/** スマホの「☰ メニュー」の行き先。チャットの頭（ChatHeaderBar）も同じ物を使う */
+export function mobileMenuLinks(viewer: Viewer | null): MenuLink[] {
+  if (!viewer) {
+    return [
+      { href: "/sellers", label: "女の子" },
+      { href: "/items", label: "商品" },
+      { href: "/tweets", label: "つぶやき" },
+      { href: "/ranking", label: "ランキング" },
+      { href: "/auth", label: "ログイン" },
+    ];
+  }
+  return [
+    { href: "/mypage", label: "マイページ" },
+    { href: "/items", label: "商品一覧" },
+    { href: "/tweets", label: "つぶやき" },
+    { href: "/timeline", label: "タイムライン" },
+    { href: "/ranking", label: "ランキング" },
+    ...(viewer.isAdmin ? [{ href: "/admin", label: "管理" }] : []),
+  ];
+}
+
 export default async function SiteHeader({ variant, active, search }: Props) {
   const viewer = await getViewer();
   const unread = viewer ? await getUnread() : { notifications: 0, messages: 0 };
@@ -46,16 +70,16 @@ export default async function SiteHeader({ variant, active, search }: Props) {
       <nav className="pt-nav" aria-label="メインメニュー">
         {viewer ? (
           <>
-            <Link href="/items" className={cls("items")}>
+            <Link href="/items" className={cls("items", "pt-desk")}>
               商品一覧
             </Link>
-            <Link href="/tweets" className={cls("tweets")}>
+            <Link href="/tweets" className={cls("tweets", "pt-desk")}>
               つぶやき
             </Link>
-            <Link href="/timeline" className={cls("timeline")}>
+            <Link href="/timeline" className={cls("timeline", "pt-desk")}>
               タイムライン
             </Link>
-            <Link href="/ranking" className={cls("ranking")}>
+            <Link href="/ranking" className={cls("ranking", "pt-desk")}>
               ランキング
             </Link>
             <Link href="/messages" className={cls("messages", `pt-bell ${bellClass}`)} aria-label={`メッセージ${unread.messages ? `（未読 ${unread.messages}件）` : ""}`}>
@@ -64,35 +88,41 @@ export default async function SiteHeader({ variant, active, search }: Props) {
             <Link href="/notifications" className={cls("notifications", `pt-bell ${bellClass}`)} aria-label={`お知らせ${unread.notifications ? `（未読 ${unread.notifications}件）` : ""}`}>
               🔔{unread.notifications ? <span className="pt-dot notif-dot" /> : null}
             </Link>
-            <div className="nav-divider" />
-            <Link href="/mypage" className={active === "mypage" ? "nav-active" : "nav-login"}>
+            <div className="nav-divider pt-desk" />
+            <Link href="/mypage" className={`${active === "mypage" ? "nav-active" : "nav-login"} pt-desk pt-name`} title={san(viewer.nickname)}>
               {san(viewer.nickname)}
             </Link>
-            {viewer.isAdmin ? <Link href="/admin">管理</Link> : null}
+            {viewer.isAdmin ? (
+              <Link href="/admin" className="pt-desk">
+                管理
+              </Link>
+            ) : null}
             {/* ログアウトは POST だけ（app/auth/signout。GET のリンクだと、外のページの画像1枚でログアウトさせられる） */}
-            <form action="/auth/signout" method="post" className="pt-signout">
+            <form action="/auth/signout" method="post" className="pt-signout pt-desk">
               <button type="submit">ログアウト</button>
             </form>
+            <MobileMenu links={mobileMenuLinks(viewer)} signedInAs={san(viewer.nickname)} />
             <Heartbeat />
           </>
         ) : (
           <>
-            <Link href="/sellers" className={cls("sellers")}>
+            <Link href="/sellers" className={cls("sellers", "pt-desk")}>
               女の子
             </Link>
-            <Link href="/items" className={cls("items")}>
+            <Link href="/items" className={cls("items", "pt-desk")}>
               商品
             </Link>
-            <Link href="/tweets" className={cls("tweets")}>
+            <Link href="/tweets" className={cls("tweets", "pt-desk")}>
               つぶやき
             </Link>
-            <Link href="/ranking" className={cls("ranking")}>
+            <Link href="/ranking" className={cls("ranking", "pt-desk")}>
               ランキング
             </Link>
-            <div className="nav-divider" />
+            <div className="nav-divider pt-desk" />
             <Link href="/auth" className="nav-login">
               ログイン
             </Link>
+            <MobileMenu links={mobileMenuLinks(null)} />
           </>
         )}
       </nav>

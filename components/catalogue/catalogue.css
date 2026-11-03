@@ -157,6 +157,28 @@ a.page-btn { text-decoration: none; color: inherit; }
   font-weight: 800;
   cursor: pointer;
 }
+/* スマホの「絞り込み（n）」ボタン。PC では出さない。スマホでは押すまで絞り込みを畳み、押すとその場（検索の上）に開く */
+.cat-filter-toggle { display: none; }
+@media (max-width: 768px) {
+  .pg-items-list .cat-filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 75, 145, 0.3);
+    background: #fff;
+    color: var(--primary);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .pg-items-list .filter-sidebar:not(.is-open) .filter-card { display: none; }
+  .pg-items-list .filter-sidebar.is-open .filter-card { margin-top: 10px; }
+}
 .pg-items-list a.af-remove,
 .pg-items-list a.af-clear,
 .pg-items-list a.cat-tab { text-decoration: none; color: inherit; }

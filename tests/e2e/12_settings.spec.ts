@@ -275,6 +275,14 @@ test.describe("マイページの出し分け", () => {
     }
   });
 
+  test("PC では、設定の画面にもプロフィールと左のメニューが出て、「マイページに戻る」は出ない", async ({ page, context }) => {
+    await loginAs(context, await cast("buyer"));
+    await page.goto("/settings");
+    await expect(page.getByRole("navigation", { name: "マイページのメニュー" })).toBeVisible();
+    await expect(page.locator(".pm-name")).toBeVisible();
+    await expect(page.getByRole("link", { name: "マイページに戻る" })).toBeHidden();
+  });
+
   test("ログインしていない人がマイページ・設定・プロフィールを開くと、ログインへ回される", async ({ page }) => {
     for (const path of ["/mypage", "/settings", "/mypage/profile"]) {
       await page.goto(path);

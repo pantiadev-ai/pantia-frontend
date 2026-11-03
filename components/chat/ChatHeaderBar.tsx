@@ -1,6 +1,9 @@
-/* チャットの頭（見本の chat-header-bar）。メッセージの画面は SiteHeader を使わず、ここで書く */
+/* チャットの頭（見本の chat-header-bar）。メッセージの画面は SiteHeader を使わず、ここで書く。
+   1024px 以下（スマホと iPad）では名前を隠し、ほかの画面と同じ「☰ メニュー」を出す（ログアウトもそこから） */
 import Link from "next/link";
 import Heartbeat from "@/components/Heartbeat";
+import MobileMenu from "@/components/MobileMenu";
+import { mobileMenuLinks } from "@/components/SiteHeader";
 import type { Viewer } from "@/lib/auth";
 import { SITE_NAME } from "@/lib/site";
 import { getUnread } from "@/lib/unread";
@@ -27,9 +30,10 @@ export default async function ChatHeaderBar({ viewer }: { viewer: Viewer }) {
         >
           🔔{unread.notifications ? <span className="pt-dot" /> : null}
         </Link>
-        <Link href="/mypage" className="hbtn nav-login">
+        <Link href="/mypage" className="hbtn nav-login chat-hide-sm pt-name" title={san(viewer.nickname)}>
           {san(viewer.nickname)}
         </Link>
+        <MobileMenu links={mobileMenuLinks(viewer)} signedInAs={san(viewer.nickname)} />
       </div>
       <Heartbeat />
     </header>
