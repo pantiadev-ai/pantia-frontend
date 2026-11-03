@@ -1,7 +1,7 @@
 "use client";
 /* 出品のフォーム（見本 item_form.html）。新規と編集の両方で使う。
    保存は saveListing（下書き・出品する・今の状態のまま）。公開には本人確認が要る（ここでは押せなくし、action と DB でも止める）。
-   手数料の見込みは DB の注文と同じ round(価格 × 手数料率)。
+   受け取り額の見込みは lib/price-estimate（DB の注文と同じ式）。有料オプションは1行ずつ出し、選ばれ方の幅で出す。
    「プレビュー確認」で、フォームを隠して購入者から見た形（ListingPreview）に切り替える。 */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import {
   paidOptionsError,
   type PaidOption,
 } from "@/lib/paid-options";
+import { priceEstimate, rangeText } from "@/lib/price-estimate";
 
 export type ListingFormValues = Omit<ListingInput, "image_paths">;
 export type ListingFormStatus = "draft" | "published" | "private";
@@ -157,7 +158,6 @@ export default function ListingForm({
   }
 
   const price = parsePrice(priceText);
-  const fee = priceOk(price) ? Math.round((price as number) * feeRate) : null;
   const feePct = Math.round(feeRate * 1000) / 10;
   const category = CATEGORIES.find((c) => c.value === f.category);
   const titleLen = Array.from(f.title).length;
@@ -180,6 +180,20 @@ export default function ListingForm({
     .filter((r) => r.name.trim() !== "" || r.price.trim() !== "")
     .map((r) => ({ id: r.id, name: r.name.trim(), price: parsePrice(r.price) ?? Number.NaN }));
   const extrasError = paidOptionsError(extras);
+  // 決まりに合う有料オプションだけを見込みとプレビューに入れる
+  const validExtras = extras.filter((x) => paidOptionsError([x]) === null);
+  const estimate = priceOk(price)
+    ? priceEstimate({
+        price: price as number,
+        feeRate,
+        videoFee: f.opt_video ? videoFee : null,
+        extend:
+          f.opt_extend && f.max_worn_days !== null && f.worn_days !== null
+            ? { feePerDay: extendFeePerDay, days: f.max_worn_days - f.worn_days }
+            : null,
+        extras: validExtras,
+      })
+    : null;
 
   /** 公開するときに足りない項目（DB の listings_complete と同じ） */
   function missing(): string[] {
@@ -366,6 +380,9 @@ export default function ListingForm({
             />
             <div className="img-note">
               ⚠️ 顔・個人情報が映り込まないようご注意ください。写真のEXIF情報（位置情報）は自動で削除されます。最大5枚まで。
+            </div>
+            <div className="img-note">
+              📐 一覧や検索では、1枚目の写真の上下・左右の端が切れて表示されます。大事な所は写真の真ん中に入れてください（商品ページでは切れずに全体が出ます）。
             </div>
           </div>
 
@@ -567,20 +584,31 @@ export default function ListingForm({
             <div className="price-preview">
               <div className="pp-row">
                 <span>販売価格</span>
-                <span>{fee !== null ? yen(price as number) : "¥ ---"}</span>
+                <span>{estimate ? yen(estimate.subtotal.min) : "¥ ---"}</span>
               </div>
+              {estimate?.lines.map((l, i) => (
+                <div className="pp-row lf-pp-option" key={i}>
+                  <span>
+                    {l.label}
+                    {l.note && <span className="lf-pp-note">（{l.note}）</span>}
+                  </span>
+                  <span>+ {yen(l.amount)}</span>
+                </div>
+              ))}
               <div className="pp-row">
                 <span>手数料（{feePct}%）</span>
-                <span style={{ color: "var(--err)" }}>{fee !== null ? `- ${yen(fee)}` : "- ¥ ---"}</span>
+                <span style={{ color: "var(--err)" }}>{estimate ? `- ${rangeText(estimate.fee)}` : "- ¥ ---"}</span>
               </div>
               <hr className="pp-divider" />
               <div className="pp-row">
                 <span style={{ fontWeight: 600 }}>あなたの受け取り額</span>
-                <span className="pp-total">{fee !== null ? yen((price as number) - fee) : "¥ ---"}</span>
+                <span className="pp-total">{estimate ? rangeText(estimate.net) : "¥ ---"}</span>
               </div>
             </div>
             <div className="form-hint" style={{ marginTop: 8 }}>
-              ※ 見込みの額です。有料オプション（動画・延長・自分で決めたオプション）の代金にも、同じ率の手数料がかかります。
+              {estimate && estimate.lines.length > 0
+                ? "※ 見込みの額です。有料オプションは購入者が選んだ分だけ足され、同じ率の手数料がかかります（左はオプションなし、右は全部選ばれたとき）。"
+                : "※ 見込みの額です。下の「対応オプション」で有料オプションをつけると、ここに足されます。"}
             </div>
           </div>
 
@@ -899,7 +927,7 @@ export default function ListingForm({
             values={f}
             images={images}
             price={priceOk(price) ? price : null}
-            extras={extras.filter((x) => paidOptionsError([x]) === null)}
+            extras={validExtras}
             sellerName={sellerName}
             videoFee={videoFee}
             extendFeePerDay={extendFeePerDay}

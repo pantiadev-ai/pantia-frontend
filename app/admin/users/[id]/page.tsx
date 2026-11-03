@@ -9,9 +9,10 @@ import { kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBa
 import LedgerAdjustForm from "@/components/admin/LedgerAdjustForm";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
-import { dateJst, dateTimeJst, excerpt, num, orderNo, ratingAvg, relTime, san, yen } from "@/lib/format";
+import { dateJst, dateTimeJst, excerpt, isOnline, num, orderNo, ratingAvg, relTime, san, yen } from "@/lib/format";
 import { labelOf, LEDGER_KINDS, REPORT_REASONS } from "@/lib/labels";
 import { isUuid } from "@/lib/search";
+import { avatarImage } from "@/lib/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const metadata: Metadata = { title: "ユーザーの詳細" };
@@ -33,7 +34,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   const service = createServiceClient();
   const { data: p, error } = await service
     .from("profiles")
-    .select("id, nickname, role, status, kyc_status, created_at, last_seen_at, sales_count, purchase_count, rating_sum, rating_count, follower_count, bio")
+    .select("id, nickname, avatar_path, role, status, kyc_status, created_at, last_seen_at, sales_count, purchase_count, rating_sum, rating_count, follower_count, bio")
     .eq("id", id)
     .maybeSingle();
   if (error) console.error("[admin] user", error.message);
@@ -76,6 +77,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   ]);
   const self = me.id === id;
   const name = p.nickname || "（名前なし）";
+  const photo = avatarImage(p.avatar_path);
   const bannedUntil = user?.banned_until && !Number.isNaN(Date.parse(user.banned_until)) ? user.banned_until : null;
 
   return (
@@ -99,6 +101,16 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
         <Card icon="👤" title={name} right={<Badge b={userStatusBadge(p.status)} />}>
           <Dl
             rows={[
+              [
+                "プロフィールの写真",
+                photo ? (
+                  <a href={photo} target="_blank" rel="noopener noreferrer" key="photo" aria-label="プロフィールの写真を原寸で開く">
+                    <img src={photo} alt="" className="adm-user-photo" referrerPolicy="no-referrer" />
+                  </a>
+                ) : (
+                  <span className="adm-muted" key="photo">登録なし</span>
+                ),
+              ],
               ["ユーザーID", <span className="adm-mono" key="id">{p.id}</span>],
               ["ロール", <Badge b={roleBadge(p.role)} key="role" />],
               ["本人確認", <Badge b={kycBadge(p.kyc_status)} key="kyc" />],
@@ -106,7 +118,10 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
               ["メールの確認", user ? (user.email_confirmed_at ? `済み（${dateJst(user.email_confirmed_at)}）` : "まだ") : ""],
               ["登録日", dateTimeJst(p.created_at)],
               ["最後のログイン", user?.last_sign_in_at ? dateTimeJst(user.last_sign_in_at) : ""],
-              ["最後に見えた時刻", p.last_seen_at ? relTime(p.last_seen_at) : ""],
+              [
+                "最後に画面を開いた時刻",
+                p.last_seen_at ? `${isOnline(p.last_seen_at) ? "🟢 オンライン" : relTime(p.last_seen_at)}（${dateTimeJst(p.last_seen_at)}）` : "記録なし",
+              ],
               ["ログインの停止期限", bannedUntil ? dateJst(bannedUntil) : ""],
               ["自己紹介", p.bio ? <span className="adm-pre" key="bio">{p.bio}</span> : ""],
             ]}

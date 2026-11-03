@@ -24,12 +24,12 @@ export function Badge({ b }: { b: BadgeInfo }) {
   return <span className={`badge ${b.cls}`}>{b.label}</span>;
 }
 
-/** 名前の頭文字の丸（顔写真は出さない。管理画面の一覧を軽くするため） */
-export function Initial({ name }: { name: string }) {
+/** 名前の頭文字の丸。プロフィールの写真の URL（lib/storage の avatarImage）を渡すと、写真を出す */
+export function Initial({ name, src }: { name: string; src?: string | null }) {
   const ch = Array.from(name.trim())[0] ?? "?";
   return (
     <span className="td-avatar" aria-hidden="true">
-      {ch.toUpperCase()}
+      {src ? <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" /> : ch.toUpperCase()}
     </span>
   );
 }

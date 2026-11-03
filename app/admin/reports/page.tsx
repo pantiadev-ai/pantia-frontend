@@ -74,7 +74,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps<"/adm
   }
   for (const m of messages.data ?? []) {
     const system = m.kind === "system" || m.kind === "shipping";
-    targets.set(`message:${m.id}`, { text: excerpt(m.body, 30) || "（画像）", href: null, status: m.status, hideable: !system && m.status !== "hidden" });
+    targets.set(`message:${m.id}`, { text: excerpt(m.body, 30) || "（画像）", href: `/admin/moderation/thread/${m.id}`, status: m.status, hideable: !system && m.status !== "hidden" });
   }
   const filter = { q, type, status: status === "active" ? "" : status };
 

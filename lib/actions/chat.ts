@@ -12,7 +12,7 @@ import { signedUrls } from "@/lib/storage-server";
 import { createClient } from "@/lib/supabase/server";
 import { loadMessages, otherReadAt } from "@/components/chat/data";
 import type { ChatLatest, ChatPage } from "@/components/chat/types";
-import { BODY_MAX, CHAT_PATH_RE, normIso } from "@/components/chat/view";
+import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, normIso } from "@/components/chat/view";
 
 const CANT_SEND = "この相手にはメッセージを送れません。";
 const NOT_FOUND = "この会話は見つかりませんでした。";
@@ -66,6 +66,8 @@ const SendSchema = z.object({
   body: z.string().max(BODY_MAX * 4).optional(),
   imagePaths: z.array(z.string().max(120)).max(4).optional(),
   listingId: z.string().max(40).nullish(),
+  // 初めて送るときの同意（画面の印の付いていないチェックボックスを、本人が付けたときだけ true）
+  agree: z.literal(true).optional(),
 });
 
 /** メッセージを送る。止められた（スパムの疑い）ときは本人にだけ見え、確認のあと相手に届く */
@@ -100,6 +102,10 @@ export async function sendMessage(threadId: string, input: unknown): Promise<Act
     if (!limit.ok) throw new ActionError(limit.message);
 
     const supabase = await createClient();
+    if (parsed.data.agree) {
+      const { error: agreeError } = await supabase.rpc("agree_message_terms");
+      throwDb(agreeError);
+    }
     const args: { p_thread: string; p_body: string; p_image_paths: string[]; p_listing?: string } = {
       p_thread: tid,
       p_body: body,
@@ -109,6 +115,11 @@ export async function sendMessage(threadId: string, input: unknown): Promise<Act
     const { data, error } = await supabase.rpc("send_message", args);
     // unavailable は「当事者でない・ブロック・相手が退会や停止」。共通の文は商品向けなので置き換える
     if (error && dbCode(error) === "unavailable") throw new ActionError(CANT_SEND);
+    if (error && dbCode(error) === "message_consent_required") throw new ActionError(CONSENT_REQUIRED);
+    // 禁止ワードは、どの言葉かを本人にだけ知らせる（相手には届かず、どこにも残らない）
+    if (error && dbCode(error) === "banned_word" && error.hint) {
+      throw new ActionError(`「${error.hint}」は使えません。（送っていません）`);
+    }
     throwDb(error);
     if (!isUuid(data)) throw new ActionError("送れませんでした。もう一度お試しください。");
 

@@ -14,6 +14,7 @@ import { z } from "zod";
 import { refundOrder } from "@/lib/adapters/payment";
 import { actionAdmin, ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
+import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banned-words";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
 import { removeImages, signedUrls, type Bucket } from "@/lib/storage-server";
@@ -633,6 +634,10 @@ const SettingsSchema = z.object({
     .trim()
     .regex(/^([0-9]{7})?$/, "口座番号は7桁の数字で入れてください。"),
   transferHolder: optional(40, "口座名義"),
+  // メッセージの禁止ワード。細かい決まりは bannedWordsError と DB の banned_words_ok
+  bannedWords: z
+    .array(z.string().max(BANNED_WORD_MAX * 2), "禁止ワードを確かめてください。")
+    .max(BANNED_WORDS_MAX * 2, `禁止ワードは${BANNED_WORDS_MAX}語までです。`),
 }).refine(
   (s) => !s.transferEnabled || (s.transferBank !== "" && s.transferBranch !== "" && s.transferNumber !== "" && s.transferHolder !== ""),
   "振込の受付をオンにするには、振込先をすべて入れてください。",
@@ -645,6 +650,8 @@ export async function updateSettings(raw: SettingsInput): Promise<ActionResult> 
   return runAction(async () => {
     const v = await begin();
     const s = parse(SettingsSchema, raw);
+    const wordsError = bannedWordsError(s.bannedWords);
+    if (wordsError) throw new ActionError(wordsError);
     // 列を1つずつ選んで渡す（受け取った object をそのまま渡さない）
     const patch = {
       fee_rate: Math.round(s.feePercent * 10) / 1000,
@@ -669,6 +676,8 @@ export async function updateSettings(raw: SettingsInput): Promise<ActionResult> 
       transfer_type: s.transferType,
       transfer_number: s.transferNumber,
       transfer_holder: s.transferHolder,
+      // 監査ログには語を残さず、語の数だけ（DB が書く）
+      banned_words: s.bannedWords,
     };
     const { error } = await createServiceClient().rpc("admin_update_settings", { p_admin: v.id, p_patch: patch });
     adminThrowDb(error);

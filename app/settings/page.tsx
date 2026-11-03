@@ -14,6 +14,7 @@ import EmailForm from "@/components/account/EmailForm";
 import PasswordForm from "@/components/account/PasswordForm";
 import AddressForm from "@/components/account/AddressForm";
 import NotifyToggles from "@/components/account/NotifyToggles";
+import MessageConsentForm from "@/components/account/MessageConsentForm";
 import RoleChangeForm from "@/components/account/RoleChangeForm";
 import WithdrawForm from "@/components/account/WithdrawForm";
 import { NOTIFY_ITEMS, usesPassword, type NotifyKey } from "@/components/account/options";
@@ -42,7 +43,7 @@ export default async function SettingsPage() {
   const viewer = await requireViewer("/settings");
   const supabase = await createClient();
 
-  const [userRes, me, addressRes, blocksRes, roleRes] = await Promise.all([
+  const [userRes, me, addressRes, blocksRes, roleRes, consentRes] = await Promise.all([
     supabase.auth.getUser(),
     getMyProfile(),
     supabase
@@ -63,11 +64,13 @@ export default async function SettingsPage() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase.from("message_consents").select("agreed_at").eq("user_id", viewer.id).maybeSingle(),
   ]);
 
   if (addressRes.error) console.error("[settings] saved_addresses", addressRes.error.message);
   if (blocksRes.error) console.error("[settings] blocks", blocksRes.error.message);
   if (roleRes.error) console.error("[settings] role_change_requests", roleRes.error.message);
+  if (consentRes.error) console.error("[settings] message_consents", consentRes.error.message);
 
   const user = userRes.data.user;
   const hasPassword = user ? usesPassword(user) : false;
@@ -142,6 +145,14 @@ export default async function SettingsPage() {
         ) : (
           <p className="acc-note">通知の設定を読み込めませんでした。時間をおいて開き直してください。</p>
         )}
+      </section>
+
+      {/* メッセージ */}
+      <section className="settings-section">
+        <h2 className="settings-title">
+          <span className="icon-pill">💬</span> メッセージ
+        </h2>
+        <MessageConsentForm agreedOn={consentRes.data ? dateJst(consentRes.data.agreed_at) : null} />
       </section>
 
       {/* ブロック */}

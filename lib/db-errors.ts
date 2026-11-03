@@ -41,6 +41,8 @@ const MESSAGES: Record<string, string> = {
   already_requested: "すでに申請しています。結果をお待ちください。",
   already_reported: "この内容はすでに通報済みです。ご協力ありがとうございます。",
   registration_closed: "ただいま新規登録の受付を停止しています。",
+  message_consent_required: "送る前に、下の確認に同意してください。",
+  banned_word: "使えない言葉が入っています。（送っていません）",
 };
 
 export type DbError = { message?: string; code?: string; details?: string | null; hint?: string | null } | null | undefined;

@@ -11,7 +11,7 @@ import { yen } from "@/lib/format";
 import { listingImage } from "@/lib/storage";
 import { createClient, realtimeReady } from "@/lib/supabase/browser";
 import type { ChatMessage, ChatPage, ChatPerson, MessageKind, MyListing } from "./types";
-import { BODY_MAX, CHAT_PATH_RE, KINDS, UUID_RE, clock, dayKey, dayLabel, initialOf, normIso, sortKey } from "./view";
+import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, KINDS, UUID_RE, clock, dayKey, dayLabel, initialOf, normIso, sortKey } from "./view";
 
 const EMOJIS = ["🌸", "💕", "🎀", "✨", "😊", "😂", "🫠", "💗", "📸", "📦", "💳", "🏠"];
 const HEART_KINDS: readonly MessageKind[] = ["text", "image", "item"];
@@ -28,6 +28,8 @@ type Props = {
   myListings: MyListing[];
   /** 送れないときの理由（null なら送れる） */
   closed: { text: string; href?: string; label?: string } | null;
+  /** 運営による確認（通報・自動で止まったメッセージ）に同意済みか。まだなら送る前にチェックボックスで確かめる */
+  consented: boolean;
 };
 
 /** (時刻, id) の組で比べる。DB の読み込みの区切り（loadMessages）と同じ並び */
@@ -92,7 +94,7 @@ function Avatar({ person, className }: { person: ChatPerson; className: string }
   return <div className={className}>{person.avatarUrl ? <img src={person.avatarUrl} alt="" className="chat-avatar-img" /> : initialOf(person.name)}</div>;
 }
 
-export default function ChatRoom({ threadId, me, other, isSeller, initial, initialOtherReadAt, myListings, closed }: Props) {
+export default function ChatRoom({ threadId, me, other, isSeller, initial, initialOtherReadAt, myListings, closed, consented }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>(initial.messages);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [otherReadAt, setOtherReadAt] = useState(initialOtherReadAt);
@@ -104,6 +106,9 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
   const [panel, setPanel] = useState<"none" | "image" | "item" | "emoji">("none");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(consented);
+  // 同意のチェックボックスは、印の付いていない状態から本人が付ける
+  const [agreeTick, setAgreeTick] = useState(false);
   const [sending, startSend] = useTransition();
   const [, startHeart] = useTransition();
 
@@ -355,11 +360,12 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     });
   }
 
-  const canSubmit = !sending && !closed && (text.trim() !== "" || images.length > 0 || picked !== null);
+  const canSubmit =
+    !sending && !closed && (agreed || agreeTick) && (text.trim() !== "" || images.length > 0 || picked !== null);
 
   function send() {
     if (!canSubmit) return;
-    const payload = { body: text, imagePaths: images.map((i) => i.path), listingId: picked };
+    const payload = { body: text, imagePaths: images.map((i) => i.path), listingId: picked, ...(agreed ? {} : { agree: true as const }) };
     setError(null);
     setNotice(null);
     startSend(async () => {
@@ -367,8 +373,13 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
         const r = await sendMessage(threadId, payload);
         if (!r.ok) {
           setError(r.error);
+          if (r.error === CONSENT_REQUIRED) {
+            setAgreed(false);
+            setAgreeTick(false);
+          }
           return;
         }
+        setAgreed(true);
         setText("");
         setImages([]);
         setPicked(null);
@@ -642,6 +653,18 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
             </button>
             <span className="chat-caution">※ 住所・個人情報の送付はお控えください</span>
           </div>
+          {!agreed && (
+            <label className="chat-consent">
+              <input type="checkbox" checked={agreeTick} onChange={(e) => setAgreeTick(e.target.checked)} disabled={sending} />
+              <span>
+                取引の安全のため、通報されたメッセージや、連絡先の交換などで自動で止まったメッセージは、運営がその前後のやり取りを含めて確認します。これに同意します（
+                <Link href="/terms#s10" target="_blank">
+                  利用規約
+                </Link>
+                ・設定からいつでも取り消せます）
+              </span>
+            </label>
+          )}
           <div className="input-row">
             <textarea
               ref={inputRef}

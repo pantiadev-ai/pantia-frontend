@@ -314,6 +314,8 @@ a.page-btn { text-decoration: none; color: inherit; }
 /* ── 商品ページ ── */
 .pg-item-detail button.thumb { padding: 0; font: inherit; cursor: pointer; overflow: hidden; }
 .pg-item-detail .main-img .cat-noimg { min-height: 320px; font-size: 64px; }
+/* 大きな写真は切らずに全体を出す（見本は cover で、横長・縦長の写真の端が切れていた）。余白は薄い色 */
+.pg-item-detail .gallery-main-img { object-fit: contain; background: var(--pk0); }
 .pg-item-detail .sm-avatar { overflow: visible; position: relative; }
 .pg-item-detail .sm-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .cat-seller-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -6px; }

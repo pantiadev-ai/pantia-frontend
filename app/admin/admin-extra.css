@@ -396,6 +396,92 @@
   height: auto;
 }
 
+/* 表の中で折り返さない欄（ユーザー一覧の「ログイン」など） */
+.pg-admin .adm-nowrap {
+  white-space: nowrap;
+}
+
+/* ユーザーの詳細のプロフィールの写真（押すと原寸） */
+.pg-admin .adm-user-photo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+/* ログアウト（上の帯と左下の名前の欄。POST の /auth/signout） */
+.pg-admin .topbar-signout,
+.pg-admin .au-signout {
+  display: inline-flex;
+  margin: 0;
+}
+.pg-admin .au-signout {
+  margin-left: auto;
+}
+.pg-admin .topbar-signout button,
+.pg-admin .au-signout button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pg-admin .au-signout button {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+.pg-admin .topbar-signout button:hover,
+.pg-admin .au-signout button:hover {
+  background: var(--pk1);
+  border-color: var(--pk3);
+  color: var(--text);
+}
+
+/* 通報・保留のメッセージの前後の会話（/admin/moderation/thread/…） */
+.pg-admin .adm-thread {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pg-admin .adm-thread-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  font-size: 13px;
+}
+.pg-admin .adm-thread-msg.flagged {
+  border-color: rgba(231, 76, 60, 0.45);
+}
+.pg-admin .adm-thread-msg.target {
+  border-color: var(--yellow2);
+  box-shadow: 0 0 0 1px var(--yellow2);
+}
+.pg-admin .adm-thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.pg-admin .adm-thread-msg .adm-docs {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
 /* 二段階認証の画面 */
 .pg-admin .adm-center {
   flex: 1;

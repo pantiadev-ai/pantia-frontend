@@ -3,6 +3,7 @@
    サイト名・送信元・メールの送り方は環境変数で決まるので、ここでは見せるだけ（変えられない）。 */
 import { useState, useTransition, type ReactNode } from "react";
 import { updateSettings, type SettingsInput } from "@/lib/actions/admin";
+import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError, parseBannedWords } from "@/lib/banned-words";
 import { useFlash } from "./Flash";
 import { Modal } from "./Modal";
 
@@ -10,7 +11,7 @@ type NumKey = "feePercent" | "anonymousFee" | "videoFee" | "extendFeePerDay" | "
 type BoolKey = "registrationOpen" | "maintenance" | "mailOrder" | "mailKyc" | "mailPayout" | "modSpamFilter" | "transferEnabled";
 type TextKey = "notice" | "forwardingAddress" | "transferBank" | "transferBranch" | "transferType" | "transferNumber" | "transferHolder";
 
-export type SettingsValues = { [K in NumKey]: number } & { [K in BoolKey]: boolean } & { [K in TextKey]: string };
+export type SettingsValues = { [K in NumKey]: number } & { [K in BoolKey]: boolean } & { [K in TextKey]: string } & { bannedWords: string[] };
 
 const LABELS: Record<NumKey | BoolKey | TextKey, string> = {
   feePercent: "手数料率（%）",
@@ -35,6 +36,13 @@ const LABELS: Record<NumKey | BoolKey | TextKey, string> = {
   transferNumber: "口座番号（7桁）",
   transferHolder: "口座名義（カナ）",
 };
+
+const BANNED_LABEL = "禁止ワード（メッセージ）";
+
+/** 確認の窓に出す語の一覧（多いときは頭の5語と残りの数） */
+function wordList(list: string[]): string {
+  return list.length > 5 ? `${list.slice(0, 5).join("、")} ほか${list.length - 5}語` : list.join("、");
+}
 
 const ACCOUNT_TYPES = { ordinary: "普通", checking: "当座" } as const;
 
@@ -70,6 +78,8 @@ export default function SettingsForm({
     for (const k of TEXT_KEYS) o[k] = initial[k];
     return o;
   });
+  // 禁止ワードは1行に1語で書き、保存するときに語の並びに直す
+  const [wordsText, setWordsText] = useState(() => initial.bannedWords.join("\n"));
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
@@ -80,6 +90,7 @@ export default function SettingsForm({
     for (const k of NUM_KEYS) v[k] = toNum(nums[k]);
     for (const k of BOOL_KEYS) v[k] = bools[k];
     for (const k of TEXT_KEYS) v[k] = texts[k];
+    v.bannedWords = parseBannedWords(wordsText);
     return v;
   }
 
@@ -93,6 +104,14 @@ export default function SettingsForm({
       const label = (x: number | boolean | string) => (k === "transferType" ? ACCOUNT_TYPES[x as keyof typeof ACCOUNT_TYPES] : show(x));
       changes.push({ label: LABELS[k], from: label(a), to: label(b) });
     }
+  }
+  const addedWords = now.bannedWords.filter((w) => !saved.bannedWords.includes(w));
+  const removedWords = saved.bannedWords.filter((w) => !now.bannedWords.includes(w));
+  if (addedWords.length > 0 || removedWords.length > 0) {
+    const detail = [addedWords.length > 0 && `足す: ${wordList(addedWords)}`, removedWords.length > 0 && `消す: ${wordList(removedWords)}`]
+      .filter(Boolean)
+      .join("／");
+    changes.push({ label: BANNED_LABEL, from: `${saved.bannedWords.length}語`, to: `${now.bannedWords.length}語（${detail}）` });
   }
   const accountMissing =
     now.transferEnabled && [now.transferBank, now.transferBranch, now.transferNumber, now.transferHolder].some((x) => x.trim() === "");
@@ -114,6 +133,11 @@ export default function SettingsForm({
     }
     if (!/^([0-9]{7})?$/.test(now.transferNumber.trim())) {
       setError("口座番号は7桁の数字で入れてください。");
+      return;
+    }
+    const wordsError = bannedWordsError(now.bannedWords);
+    if (wordsError) {
+      setError(wordsError);
       return;
     }
     setError(null);
@@ -144,6 +168,7 @@ export default function SettingsForm({
       transferType: v.transferType === "checking" ? "checking" : "ordinary",
       transferNumber: v.transferNumber,
       transferHolder: v.transferHolder,
+      bannedWords: v.bannedWords,
     };
     start(async () => {
       try {
@@ -153,6 +178,7 @@ export default function SettingsForm({
           const trimmed = { ...v };
           for (const k of TEXT_KEYS) trimmed[k] = v[k].trim();
           setSaved(trimmed);
+          setWordsText(v.bannedWords.join("\n"));
           flash(r.message ?? "設定を保存しました。", "ok");
         } else {
           setError(r.error);
@@ -324,6 +350,27 @@ export default function SettingsForm({
               />
             </div>
             {toggle("modSpamFilter", "不審な投稿・メッセージを自動で保留にする")}
+            <div>
+              <label className="adm-label" htmlFor="set-banned">
+                {BANNED_LABEL}
+              </label>
+              <textarea
+                id="set-banned"
+                className="adm-textarea"
+                rows={6}
+                maxLength={BANNED_WORDS_MAX * (BANNED_WORD_MAX + 2)}
+                aria-describedby="set-banned-hint"
+                value={wordsText}
+                onChange={(e) => setWordsText(e.target.value)}
+                placeholder={"1行に1語\n例：LINE"}
+              />
+              <p className="adm-hint" id="set-banned-hint">
+                1行に1語（{BANNED_WORDS_MAX}語まで・1語{BANNED_WORD_MAX}字まで）。いま{now.bannedWords.length}語。
+                文の一部に入っていても止めます。全角と半角、大文字と小文字、空白の違いは区別しません。
+                入っていたメッセージは相手に届かず、送った人にだけ「この言葉は使えません」と知らせます。
+                2字以下の短い語は、関係のない文まで止めることがあります。
+              </p>
+            </div>
           </div>
         </div>
       </div>

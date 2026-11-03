@@ -1,5 +1,7 @@
 /* ユーザー管理（見本の panel-users）。一覧・絞り込み・検索・ページ送りと、ロールの変更申請の承認。
-   一覧ではメールアドレスを出さない（1人ずつの詳細ページでだけ Auth から読む）。 */
+   一覧ではメールアドレスを出さない（1人ずつの詳細ページでだけ Auth から読む）。
+   「ステータス」はアカウントの状態（利用中・停止中・退会済み）。ログインの様子は「ログイン」の列（last_seen_at。
+   画面を開いている間、components/Heartbeat が3分ごとに書く）で、10分以内なら「オンライン」と出す。 */
 import type { Metadata } from "next";
 import Link from "next/link";
 import ActionButton from "@/components/admin/ActionButton";
@@ -7,8 +9,9 @@ import AdminShell from "@/components/admin/AdminShell";
 import { kycBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import { Badge, Empty, FilterBar, Initial, Pager, TableTitle } from "@/components/admin/parts";
 import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
-import { dateJst, dateTimeJst, num, san } from "@/lib/format";
+import { dateJst, dateTimeJst, isOnline, num, relTime, san } from "@/lib/format";
 import { escapeLike, isUuid } from "@/lib/search";
+import { avatarImage } from "@/lib/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const metadata: Metadata = { title: "ユーザー管理" };
@@ -30,7 +33,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
   const service = createServiceClient();
   let query = service
     .from("profiles")
-    .select("id, nickname, role, status, kyc_status, created_at, sales_count, purchase_count", { count: "exact" });
+    .select("id, nickname, avatar_path, role, status, kyc_status, created_at, last_seen_at, sales_count, purchase_count", { count: "exact" });
   if (role) query = query.eq("role", role);
   if (status) query = query.eq("status", status);
   if (kyc) query = query.eq("kyc_status", kyc);
@@ -143,7 +146,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
               value: status,
               options: [
                 { value: "", label: "全ステータス" },
-                { value: "active", label: "アクティブ" },
+                { value: "active", label: "利用中" },
                 { value: "suspended", label: "停止中" },
                 { value: "withdrawn", label: "退会済み" },
               ],
@@ -177,6 +180,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                   <th>登録日</th>
                   <th>取引数</th>
                   <th>ステータス</th>
+                  <th>ログイン</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -184,7 +188,7 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                 {rows.map((u) => (
                   <tr key={u.id}>
                     <td>
-                      <Initial name={u.nickname} />
+                      <Initial name={u.nickname} src={avatarImage(u.avatar_path)} />
                       <span className="td-name">{u.nickname || "（名前なし）"}</span>
                     </td>
                     <td>
@@ -197,6 +201,9 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                     <td>{num(u.role === "seller" ? u.sales_count : u.purchase_count)}件</td>
                     <td>
                       <Badge b={userStatusBadge(u.status)} />
+                    </td>
+                    <td className="adm-nowrap" title={u.last_seen_at ? dateTimeJst(u.last_seen_at) : undefined}>
+                      {isOnline(u.last_seen_at) ? "🟢 オンライン" : <span className="adm-muted">{relTime(u.last_seen_at) || "記録なし"}</span>}
                     </td>
                     <td>
                       <Link href={`/admin/users/${u.id}`} className="action-btn">

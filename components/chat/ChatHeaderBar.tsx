@@ -1,5 +1,6 @@
 /* チャットの頭（見本の chat-header-bar）。メッセージの画面は SiteHeader を使わず、ここで書く */
 import Link from "next/link";
+import Heartbeat from "@/components/Heartbeat";
 import type { Viewer } from "@/lib/auth";
 import { SITE_NAME } from "@/lib/site";
 import { getUnread } from "@/lib/unread";
@@ -30,6 +31,7 @@ export default async function ChatHeaderBar({ viewer }: { viewer: Viewer }) {
           {san(viewer.nickname)}
         </Link>
       </div>
+      <Heartbeat />
     </header>
   );
 }

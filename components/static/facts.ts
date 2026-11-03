@@ -5,8 +5,8 @@ import { serverEnv } from "@/lib/env";
 import { KYC_DOC_TYPES } from "@/lib/labels";
 
 /** 規約などの最終更新日（変えたらここを直す） */
-export const TERMS_UPDATED = "2026年9月16日";
-export const TERMS_VERSION = "1.0";
+export const TERMS_UPDATED = "2026年11月3日";
+export const TERMS_VERSION = "1.1";
 
 export const KYC_DOCS_TEXT = KYC_DOC_TYPES.map((d) => d.label).join("・");
 

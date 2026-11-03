@@ -80,7 +80,7 @@ export default async function AdminModerationPage({ searchParams }: PageProps<"/
       "chat-images",
       rows.flatMap((x) => x.image_paths ?? []),
     );
-    items = rows.map((x) => ({ id: x.id, author: x.sender_id, title: null, body: x.body, images: (x.image_paths ?? []).map((p) => signed[p]).filter((u): u is string => !!u), at: x.created_at, link: null, status: x.status }));
+    items = rows.map((x) => ({ id: x.id, author: x.sender_id, title: null, body: x.body, images: (x.image_paths ?? []).map((p) => signed[p]).filter((u): u is string => !!u), at: x.created_at, link: `/admin/moderation/thread/${x.id}`, status: x.status }));
   } else {
     const r = await service.from("reviews").select("id, order_id, buyer_id, rating, title, body, status, created_at", { count: "exact" }).eq("status", view).order("created_at", { ascending: false }).range(from, to);
     loadError = !!r.error;
@@ -222,7 +222,7 @@ export default async function AdminModerationPage({ searchParams }: PageProps<"/
                         )}
                         {it.link && (
                           <Link href={it.link} className="adm-link adm-hint">
-                            {type === "review" ? "注文を見る →" : "つぶやきを開く →"}
+                            {type === "review" ? "注文を見る →" : type === "message" ? "前後の会話を見る →" : "つぶやきを開く →"}
                           </Link>
                         )}
                       </td>

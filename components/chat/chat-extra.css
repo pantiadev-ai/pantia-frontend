@@ -291,6 +291,30 @@
   color: var(--text-muted);
   font-weight: 600;
 }
+.pg-chat .chat-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 75, 145, 0.25);
+  border-radius: var(--radius-md);
+  background: var(--primary-light);
+  color: var(--text-sub);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.pg-chat .chat-consent input {
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: var(--primary);
+}
+.pg-chat .chat-consent a {
+  color: var(--primary);
+  font-weight: 700;
+}
 .pg-chat .chat-panel {
   margin-bottom: 10px;
   padding: 10px 12px;

@@ -47,8 +47,9 @@ function linkOf(type: string | null, id: string | null): string | null {
       return "/admin/sales?status=all";
     case "post":
     case "comment":
-    case "message":
       return "/admin/moderation";
+    case "message":
+      return `/admin/moderation/thread/${id}`;
     default:
       return null;
   }
@@ -66,6 +67,8 @@ export const AUDIT_KINDS = [
   { value: "ledger.", label: "台帳" },
   { value: "report.", label: "通報" },
   { value: "moderation.", label: "モデレーション" },
+  { value: "thread.", label: "会話の確認" },
+  { value: "message_terms.", label: "メッセージの同意" },
   { value: "review.", label: "レビュー" },
   { value: "settings.", label: "設定" },
 ] as const;
@@ -158,8 +161,17 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🚩", "red", "通報", `${by}${REPORT_TYPES[row.target_type ?? ""] ?? ""}を通報しました（#R${str(d.report_no)}）`);
     case "review.post":
       return v("⭐", "blue", "レビュー", `${by}★${int(d.rating) ?? ""}のレビューを投稿しました（${orderLabel}）`);
-    case "settings.update":
-      return v("⚙️", "pk", "設定", `${by}サイト設定を変えました`);
+    case "settings.update": {
+      // 禁止ワードは語を残さず、語の数だけ（DB の admin_update_settings が書く）
+      const words = int(d.banned_words);
+      return v("⚙️", "pk", "設定", `${by}サイト設定を変えました${words != null ? `（禁止ワード ${words}語）` : ""}`);
+    }
+    case "message_terms.agree":
+      return v("✍️", "blue", "同意", `${by}メッセージの確認に同意しました`);
+    case "message_terms.withdraw":
+      return v("↩️", "yellow", "同意", `${by}メッセージの確認への同意を取り消しました`);
+    case "thread.viewed":
+      return v("👁", "yellow", "会話", `${by}通報・保留のメッセージの前後の会話を見ました`);
     case "moderation.held":
       return v("🛡", "yellow", "モデレ", `${REPORT_TYPES[row.target_type ?? ""] ?? "投稿"}を自動で保留にしました`);
     case "moderation.approve":

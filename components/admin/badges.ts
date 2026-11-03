@@ -12,8 +12,9 @@ export function roleBadge(role: string | null | undefined): BadgeInfo {
   return unknown(role);
 }
 
+/** アカウントの状態（profiles.status）。ログインしているかどうかではない（それは last_seen_at。一覧の「ログイン」の列） */
 export function userStatusBadge(status: string | null | undefined): BadgeInfo {
-  if (status === "active") return { cls: "badge-active", label: "アクティブ" };
+  if (status === "active") return { cls: "badge-active", label: "利用中" };
   if (status === "suspended") return { cls: "badge-suspend", label: "停止中" };
   if (status === "withdrawn") return { cls: "badge-muted", label: "退会済み" };
   return unknown(status);
