@@ -1,9 +1,8 @@
--- 06 代理登録（0010）: 台帳の印・パスワードを決めるリンクの回数・本人に渡した印・本人確認の代理提出・権限
+-- 06 代理登録（0010・0013）: 台帳の印・本人確認を省く・パスワードを決めるリンクの回数・本人に渡した印・権限
 -- 本人確認の書類の置き場（その人のフォルダ）
 create function pg_temp.doc(p_user uuid) returns text language sql as $f$
   select p_user::text || '/' || gen_random_uuid()::text || '.webp';
 $f$;
-create function pg_temp.today() returns date language sql as $f$ select (now() at time zone 'Asia/Tokyo')::date; $f$;
 create function pg_temp.reg(p_admin uuid, p_user uuid, p_note text default '') returns text language sql as $f$
   select format('select public.admin_proxy_register(%L, %L, %L)', p_admin, p_user, p_note);
 $f$;
@@ -11,9 +10,8 @@ $f$;
 do $t$
 declare
   adm uuid; adm2 uuid; b1 uuid;
-  u1 uuid; u2 uuid; u3 uuid; u4 uuid; u5 uuid;
+  u1 uuid; u2 uuid; u3 uuid;
   x1 uuid; x2 uuid; x3 uuid; x4 uuid;
-  r text; app uuid;
 begin
   adm := pg_temp.mkuser('運営', 'buyer');
   adm2 := pg_temp.mkuser('運営2', 'buyer');
@@ -51,6 +49,14 @@ begin
     format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L and target_type = %L and target_id = %L', 'user.proxy_register', adm, 'user', u1), '1');
   perform pg_temp.eq('P16 断った人は台帳に載らない', null, 'postgres',
     format('select count(*)::text from public.proxy_registrations where user_id in (%L, %L, %L, %L, %L)', x1, x2, x3, x4, adm2), '0');
+  -- 代理で登録した人は、書類の提出と審査を省いて、その場で確認済みにする（0013）
+  perform pg_temp.eq('P17 代理登録すると本人確認は確認済み', u1, 'authenticated', 'select kyc_status from public.my_profile()', 'approved');
+  perform pg_temp.eq('P18 本人確認を省いたことが監査ログに残る', null, 'postgres',
+    format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L and target_type = %L and target_id = %L', 'kyc.proxy_skip', adm, 'user', u1), '1');
+  perform pg_temp.eq('P19 断った人の本人確認はそのままで、省いた記録も残らない', null, 'postgres',
+    format('select ((select count(*) from public.profiles where id in (%L, %L, %L) and kyc_status <> %L)'
+      || ' + (select count(*) from public.audit_logs where action = %L and target_id in (%L, %L, %L, %L, %L)))::text',
+      x1, x2, x4, 'unsubmitted', 'kyc.proxy_skip', x1, x2, x3, x4, adm2), '0');
 
   -- 台帳の表そのもの
   perform pg_temp.ng('P20 service_role でも表に直接は書けない', null, 'service_role',
@@ -85,51 +91,13 @@ begin
   perform pg_temp.ng('H06 渡したあとはリンクを作れない', null, 'service_role', format('select public.admin_proxy_link_issued(%L, %L)', adm, u1), 'bad_state');
   perform pg_temp.eq('H07 断ったときは回数が増えない', null, 'postgres', format('select link_issue_count::text from public.proxy_registrations where user_id = %L', u1), '2');
 
-  -- 4. 本人確認の代理提出 -----------------------------------------------------------
+  -- 4. 代理登録では本人確認を出さない（0013。書類の提出と審査の工程を無くした） -------------------
   u3 := pg_temp.mkuser('代理3', 'seller', 'unsubmitted');
   perform pg_temp.ok('S00 3人目を代理登録', null, 'service_role', pg_temp.reg(adm, u3));
-  perform pg_temp.ng('S01 画面（ログイン中）からは呼べない', adm, 'authenticated',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, u3, 'license', pg_temp.doc(u3), '1995-04-01'), 'permission denied');
-  perform pg_temp.ng('S02 管理者でない id では出せない', null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', b1, u3, 'license', pg_temp.doc(u3), '1995-04-01'), 'not_admin');
-  perform pg_temp.ng('S03 自分の分は出せない', null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, adm, 'license', pg_temp.doc(adm), '1995-04-01'), 'bad_request');
-  perform pg_temp.ng('S04 ふつうに登録した人の分は出せない', null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, b1, 'license', pg_temp.doc(b1), '1995-04-01'), 'bad_state');
-  perform pg_temp.ng('S05 他人のフォルダの書類は使えない', null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, u3, 'license', pg_temp.doc(b1), '1995-04-01'), 'bad_kyc');
-  r := pg_temp.val(null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L, %L], %L::date)::text', adm, u3, 'license', pg_temp.doc(u3), pg_temp.doc(u3), '1995-04-01'));
-  perform pg_temp.chk('S06 代理で出せる', r !~ '^ERR' and r::jsonb ->> 'status' = 'pending', r);
-  app := (r::jsonb ->> 'app_id')::uuid;
-  perform pg_temp.eq('S07 出した運営が申請に残る', null, 'postgres',
-    format('select submitted_by::text || %L || provider || %L || status from public.kyc_applications where id = %L', '/', '/', app), adm::text || '/manual/pending');
-  perform pg_temp.eq('S08 本人の印は審査中', u3, 'authenticated', 'select kyc_status from public.my_profile()', 'pending');
-  perform pg_temp.eq('S09 監査ログに申請と本人が残る', null, 'postgres',
-    format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L and target_type = %L and target_id = %L and detail ->> %L = %L',
-      'kyc.proxy_submit', adm, 'kyc', app, 'user', u3), '1');
-  perform pg_temp.ng('S10 審査中は2回目を出せない', null, 'service_role',
-    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, u3, 'license', pg_temp.doc(u3), '1995-04-01'), 'kyc_in_progress');
-  perform pg_temp.ng('S11 本人からは出した運営の列を読めない', u3, 'authenticated',
-    format('select submitted_by from public.kyc_applications where id = %L', app), 'permission denied');
-  perform pg_temp.eq('S12 本人は自分の申請をふつうに読める', u3, 'authenticated',
-    format('select status from public.kyc_applications where id = %L', app), 'pending');
-  perform pg_temp.ok('S13 審査はふつうどおり（別の運営が承認）', null, 'service_role', format('select public.admin_kyc_decide(%L, %L, true, %L)', adm2, app, ''));
-  perform pg_temp.eq('S14 承認されると確認済み', u3, 'authenticated', 'select kyc_status from public.my_profile()', 'approved');
-
-  -- 本人が出した申請には、出した運営は入らない
-  u4 := pg_temp.mkuser('代理4', 'buyer', 'unsubmitted');
-  perform pg_temp.ok('S20 4人目を代理登録', null, 'service_role', pg_temp.reg(adm, u4));
-  r := pg_temp.val(null, 'service_role', format('select public.submit_kyc(%L, %L, %L, array[%L], %L::date)::text', u4, 'manual', 'passport', pg_temp.doc(u4), '1990-01-01'));
-  perform pg_temp.eq('S21 本人が出した申請は出した運営が空', null, 'postgres',
-    format('select (submitted_by is null)::text from public.kyc_applications where id = %L', (r::jsonb ->> 'app_id')::uuid), 'true');
-
-  -- 18歳未満は代理でも止まる（書類は消す対象になり、利用を止める）
-  u5 := pg_temp.mkuser('代理5', 'buyer', 'unsubmitted');
-  perform pg_temp.ok('S30 5人目を代理登録', null, 'service_role', pg_temp.reg(adm, u5));
-  r := pg_temp.val(null, 'service_role', format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)::text',
-    adm, u5, 'license', pg_temp.doc(u5), (pg_temp.today() - interval '17 years')::date));
-  perform pg_temp.chk('S31 18歳未満は却下して書類を消す対象に', r !~ '^ERR' and r::jsonb ->> 'status' = 'rejected_underage' and jsonb_array_length(r::jsonb -> 'purge_paths') = 1, r);
-  perform pg_temp.eq('S32 18歳未満は利用を止める', null, 'postgres', format('select status from public.profiles where id = %L', u5), 'suspended');
-  perform pg_temp.ng('S33 止めたあとはリンクを作れない', null, 'service_role', format('select public.admin_proxy_link_issued(%L, %L)', adm, u5), 'bad_state');
+  perform pg_temp.eq('S01 登録しただけで、確認済みの利用者になる', null, 'postgres', format('select public.is_verified(%L)::text', u3), 'true');
+  perform pg_temp.ng('S02 代理で本人確認を出す関数はもう無い', null, 'service_role',
+    format('select public.admin_proxy_submit_kyc(%L, %L, %L, array[%L], %L::date)', adm, u3, 'license', pg_temp.doc(u3), '1995-04-01'), 'does not exist');
+  perform pg_temp.ng('S03 本人が出そうとしても、済んでいるので出せない', null, 'service_role',
+    format('select public.submit_kyc(%L, %L, %L, array[%L], %L::date)', u3, 'manual', 'license', pg_temp.doc(u3), '1995-04-01'), 'kyc_in_progress');
+  perform pg_temp.eq('S04 申請は作られない', null, 'postgres', format('select count(*)::text from public.kyc_applications where user_id = %L', u3), '0');
 end $t$;

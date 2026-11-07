@@ -130,7 +130,7 @@ export default function ProxyRegisterForm({ closed }: { closed: boolean }) {
       {role === "seller" && (
         <div>
           <label className="adm-label" htmlFor="proxy-age">
-            年齢（出品者は必須・本人の申告。本当の確認は本人確認で行います）
+            年齢（出品者は必須・本人の申告）
           </label>
           <input
             id="proxy-age"
@@ -165,7 +165,7 @@ export default function ProxyRegisterForm({ closed }: { closed: boolean }) {
       </label>
       <label className="adm-check">
         <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} disabled={pending || closed} />
-        本人が18歳以上だと申告しました（このあと本人確認の書類で確かめます）
+        本人が18歳以上だと申告しました
       </label>
       {error && (
         <p className="adm-msg error" role="alert">
@@ -184,7 +184,7 @@ export default function ProxyRegisterForm({ closed }: { closed: boolean }) {
             ログインに使うメールアドレスは <strong>{email.trim()}</strong> です。
           </p>
           <p className="adm-hint">
-            作っただけでは出品も購入もできません。本人確認の書類を出して、審査で承認されてから使えます。登録したことは記録に残ります。
+            本人確認の書類と審査は省き、登録した時点で「確認済み」になります。本人がパスワードを決めれば、すぐ出品・購入できます。登録したことは記録に残ります。
           </p>
           <div className="adm-modal-actions">
             <button type="button" className="adm-btn" onClick={() => setConfirming(false)} disabled={pending}>

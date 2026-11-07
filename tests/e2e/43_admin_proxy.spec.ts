@@ -1,11 +1,10 @@
 /* 管理画面: 代理登録（担当 D）
    本人に頼まれて運営が代わりにアカウントを作る → パスワードを決めるリンクを本人に送る → 本人が決めると「渡し済み」。
-   本人確認は運営が代わりに出せるが、年齢の確認は省かない（18歳未満は手元で止める・審査はふつうどおり）。
+   代理で登録した人は、本人確認の書類と審査を省いて、その場で「確認済み」にする（2026-11-07 に決めた。年齢は本人の申告と18歳以上の印で受ける）。
    リンクは /auth/start（開いただけでは使わない）を通り、ボタンを押したときだけ /auth/callback で使う。 */
 import type { Page } from "@playwright/test";
 import { admin, cast, type Cast, freshUser, lit, sql } from "./_db";
 import { act, asAdmin, auditOf, closeKyc, rid, rowOf } from "./_d";
-import { jpegWithExif, pngImage } from "./_b";
 import { expect, test } from "./_fixtures";
 
 /** 代理登録した人を直に作る（画面の登録と同じ道: createUser → admin_proxy_register） */
@@ -25,13 +24,6 @@ async function ledgerOf(userId: string) {
     `select registered_by, note, link_issue_count, handed_over_at from public.proxy_registrations where user_id = ${lit(userId)}`,
   );
   return r;
-}
-
-/** 今日から years 年前の日（YYYY-MM-DD） */
-function yearsAgo(years: number): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - years);
-  return d.toISOString().slice(0, 10);
 }
 
 /** 登録のフォームを埋める */
@@ -106,6 +98,7 @@ test.describe("代理で登録する", () => {
     const dialog = page.getByRole("dialog", { name: "代理で登録しますか？" });
     await expect(dialog).toContainText(name);
     await expect(dialog).toContainText("出品者・24歳");
+    await expect(dialog).toContainText("本人確認の書類と審査は省き");
     await dialog.getByRole("button", { name: "登録する", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/proxy\/[0-9a-f-]{36}$/);
     // 知らせは、移った先の詳しい画面でも読める（移る前の一瞬だけではない）
@@ -113,20 +106,27 @@ test.describe("代理で登録する", () => {
     await expect(page.locator(".adm-toasts").getByText("代理で登録しました。次に、パスワードを決めるリンクを作って本人に送ってください。")).toBeVisible();
     const id = page.url().split("/").pop() ?? "";
 
-    // 作られた人: ふつうの登録と同じで、本人確認は未提出。台帳には登録した運営とメモ
+    // 作られた人: 本人確認は省いて確認済み（申請は作らない）。台帳には登録した運営とメモ
     const [p] = await sql<{ role: string; kyc_status: string; status: string; email: string; confirmed: boolean; signed_in: boolean }>(`
       select p.role, p.kyc_status, p.status, u.email, u.email_confirmed_at is not null as confirmed, u.last_sign_in_at is not null as signed_in
       from public.profiles p join auth.users u on u.id = p.id where p.id = ${lit(id)}`);
-    expect(p).toEqual({ role: "seller", kyc_status: "unsubmitted", status: "active", email, confirmed: true, signed_in: false });
+    expect(p).toEqual({ role: "seller", kyc_status: "approved", status: "active", email, confirmed: true, signed_in: false });
+    const [apps] = await sql<{ n: number }>(`select count(*)::int as n from public.kyc_applications where user_id = ${lit(id)}`);
+    expect(apps.n).toBe(0);
     const led = await ledgerOf(id);
     expect(led.registered_by).toBe(adm.id);
     expect(led.note).toBe(`E2E メモ${r}`);
     expect(led.link_issue_count).toBe(0);
-    expect((await auditOf(id)).map((a) => a.action)).toContain("user.proxy_register");
+    const actions = (await auditOf(id)).map((a) => a.action);
+    expect(actions).toContain("user.proxy_register");
+    expect(actions).toContain("kyc.proxy_skip");
 
-    // 詳細
+    // 詳細: 本人確認は省いた印。代理で書類を出す欄は無い
     await expect(page.getByText(email)).toBeVisible();
     await expect(page.getByText(adm.nickname).first()).toBeVisible();
+    await expect(page.getByText("代理で登録したので、本人確認は省いています（確認済み）。")).toBeVisible();
+    await expect(page.getByRole("button", { name: "本人確認を代理で出す" })).toHaveCount(0);
+    await expect(page.getByText(/代理登録のため、本人確認を省きました/)).toBeVisible();
 
     // 一覧: メールアドレスは出さない
     await page.goto(`/admin/proxy?q=${encodeURIComponent(name)}&handover=waiting`);
@@ -205,76 +205,6 @@ test.describe("代理で登録する", () => {
     await expect(rowOf(page, name)).toContainText("渡し済み");
     await page.goto(`/admin/users/${id}`);
     await expect(page.locator(".alert-banner").filter({ hasText: "運営が代理で登録した人です（本人に渡し済み" })).toBeVisible();
-  });
-});
-
-test.describe("本人確認の代理提出", () => {
-  test("18歳未満は送らず、正しく出すと審査中になり、出した運営が残り、審査の画面に注意が出る", async ({ page, context }) => {
-    const adm = await asAdmin(context);
-    const u = await seedProxy(adm, { role: "seller" });
-    let appId: string | null = null;
-    try {
-      await page.goto(`/admin/proxy/${u.id}`);
-      await page.getByLabel(/^書類の種類/).selectOption("mynumber");
-      await expect(page.getByText(/裏面（12桁の個人番号がある面）は受け取らない・送らないでください/)).toBeVisible();
-      await page.getByLabel(/^書類の種類/).selectOption("license");
-      await page.getByLabel(/^書類の表/).setInputFiles({ name: "front.jpg", mimeType: "image/jpeg", buffer: await jpegWithExif() });
-      await page.getByLabel(/^本人と書類/).setInputFiles({ name: "selfie.png", mimeType: "image/png", buffer: await pngImage("#c9f") });
-
-      // 同意の印なし
-      await page.getByLabel(/^生年月日/).fill("1990-01-01");
-      await page.getByRole("button", { name: "本人確認を代理で出す", exact: true }).click();
-      await expect(page.getByRole("alert").filter({ hasText: "同意したことを確かめてください" })).toBeVisible();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
-
-      // 18歳未満は手元で止める
-      await page.getByRole("checkbox", { name: /書類の写真を運営に預けて/ }).check();
-      await page.getByLabel(/^生年月日/).fill(yearsAgo(17));
-      await page.getByRole("button", { name: "本人確認を代理で出す", exact: true }).click();
-      await expect(page.getByRole("alert").filter({ hasText: "生年月日では18歳未満です。" })).toBeVisible();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
-      const none = await sql<{ n: number }>(`select count(*)::int as n from public.kyc_applications where user_id = ${lit(u.id)}`);
-      expect(none[0].n).toBe(0);
-
-      await page.getByLabel(/^生年月日/).fill("1990-01-01");
-      await act(page, page, {
-        button: "本人確認を代理で出す",
-        title: "本人確認を代理で出しますか？",
-        confirm: "出す",
-        done: "本人確認の書類を出しました。KYC審査の画面から、ふつうどおり審査してください。",
-      });
-
-      const [app] = await sql<{ id: string; status: string; provider: string; submitted_by: string; document_paths: string[]; birth_date: string }>(
-        `select id, status, provider, submitted_by, document_paths, birth_date::text from public.kyc_applications where user_id = ${lit(u.id)}`,
-      );
-      appId = app.id;
-      expect(app.status).toBe("pending");
-      expect(app.provider).toBe("manual");
-      expect(app.submitted_by).toBe(adm.id);
-      expect(app.birth_date).toBe("1990-01-01");
-      expect(app.document_paths).toHaveLength(2);
-      for (const p of app.document_paths) expect(p).toMatch(new RegExp(`^${u.id}/[0-9a-f-]{36}\\.webp$`));
-      const audit = await sql<{ n: number }>(
-        `select count(*)::int as n from public.audit_logs where action = 'kyc.proxy_submit' and actor_id = ${lit(adm.id)} and target_id = ${lit(app.id)} and detail ->> 'user' = ${lit(u.id)}`,
-      );
-      expect(audit[0].n).toBe(1);
-
-      // 詳細: 審査中・代理で出した印。もう出せない
-      await expect(page.getByText("審査中です。KYC審査の画面から、ふつうどおり審査してください。")).toBeVisible();
-      await expect(page.getByText(`運営が代理で提出（${adm.nickname}）`)).toBeVisible();
-      await expect(page.getByRole("button", { name: "本人確認を代理で出す", exact: true })).toHaveCount(0);
-
-      // 審査の画面: 出した本人が開くと注意が出る。出した人の欄
-      await page.getByRole("link", { name: /^申請 #\d+/ }).click();
-      await expect(page).toHaveURL(new RegExp(`/admin/kyc/${app.id}$`));
-      await expect(page.locator(".alert-banner").filter({ hasText: "この申請は、あなたが代理で出しました。" })).toBeVisible();
-      await expect(page.getByRole("link", { name: `運営が代理で提出（${adm.nickname}）` })).toBeVisible();
-    } finally {
-      if (appId) await closeKyc(appId);
-      const { data } = await admin().storage.from("kyc-documents").list(u.id);
-      const paths = (data ?? []).map((f) => `${u.id}/${f.name}`);
-      if (paths.length) await admin().storage.from("kyc-documents").remove(paths);
-    }
   });
 });
 
