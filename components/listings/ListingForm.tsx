@@ -595,6 +595,12 @@ export default function ListingForm({
                   <span>+ {yen(l.amount)}</span>
                 </div>
               ))}
+              {estimate && estimate.lines.length > 0 && (
+                <div className="pp-row lf-pp-sum">
+                  <span>合計（オプション込み）</span>
+                  <span>{rangeText(estimate.subtotal)}</span>
+                </div>
+              )}
               <div className="pp-row">
                 <span>手数料（{feePct}%）</span>
                 <span style={{ color: "var(--err)" }}>{estimate ? `- ${rangeText(estimate.fee)}` : "- ¥ ---"}</span>
@@ -855,6 +861,9 @@ export default function ListingForm({
                 {sellerName}
               </div>
               <div className="preview-price">{priceOk(price) ? yen(price as number) : "¥ ---"}</div>
+              {estimate && estimate.lines.length > 0 && (
+                <div className="lf-preview-sum">オプション込み {rangeText(estimate.subtotal)}</div>
+              )}
               {badges.length > 0 && (
                 <div className="preview-badges">
                   {badges.map((b) => (

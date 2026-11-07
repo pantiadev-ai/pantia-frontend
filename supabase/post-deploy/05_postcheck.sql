@@ -36,7 +36,7 @@ with
     ('ship_order'), ('spam_hold'), ('submit_kyc'), ('suspend_internal'), ('toggle_message_heart'), ('touch_last_seen'),
     ('touch_updated_at'), ('trend_tags'), ('viewer_context'), ('weekly_ranking'), ('withdraw_account'), ('withdraw_internal'),
     -- 0010 代理登録
-    ('admin_proxy_link_issued'), ('admin_proxy_register'), ('admin_proxy_submit_kyc'), ('proxy_mark_handed_over'),
+    ('admin_proxy_link_issued'), ('admin_proxy_register'), ('proxy_mark_handed_over'),
     -- 0011 銀行振込・有料オプション
     ('admin_confirm_transfer'), ('admin_mark_refunded_manual'), ('listing_reserved'), ('paid_options_ok'),
     -- 0012 禁止ワード・メッセージの同意・運営が会話を見る
@@ -78,7 +78,7 @@ select 2, '新しい表は全部 RLS が入っている',
 union all
 select 3, '関数が全部ある',
   case when exists (select 1 from missing_functions) then 'NG' else 'OK' end,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '110 個')
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '109 個')
 union all
 select 4, 'SECURITY DEFINER の関数は search_path が固定',
   case when exists (select 1 from open_definer) then 'NG' else 'OK' end,
@@ -178,4 +178,12 @@ select 21, 'メッセージの同意（message_consents）は関数からしか�
          or has_table_privilege('authenticated', 'public.message_consents', 'DELETE')
          or has_table_privilege('anon', 'public.message_consents', 'SELECT') then 'NG'
        else 'OK' end, ''
+union all
+select 22, '代理で本人確認を出す関数（admin_proxy_submit_kyc）は消した（0013）',
+  case when exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                    where n.nspname = 'public' and p.proname = 'admin_proxy_submit_kyc') then 'NG' else 'OK' end, ''
+union all
+select 23, '代理登録した人で、本人確認が未提出のまま残っている人（0013 で確認済みにした。利用中のみ）', '記録',
+  (select count(*)::text from public.proxy_registrations r join public.profiles p on p.id = r.user_id
+   where p.status = 'active' and p.kyc_status = 'unsubmitted') || ' 人'
 order by no;

@@ -3,20 +3,16 @@
 
    ▼守り（28 §B1・§B6）
    ・すべて actionAdminStrict()（管理者＋二段階認証）と回数の上限から始める（lib/actions/admin.ts と同じ）。
-   ・年齢の確認は省かない。作っただけでは本人確認は「未提出」で、書類を出して審査で承認されるまで、
-     ふつうの登録と同じく出品も購入もできない。
+   ・本人確認の書類と審査は省く（2026-11-07 に決めた）。admin_proxy_register が、登録した時点で「確認済み」にし、
+     省いたことを記録に残す（kyc.proxy_skip）。年齢は本人の申告（出品者は年齢・18歳以上の印）で受ける。
    ・パスワードは運営が決めない。本人がリンクから決める。リンクは画面に1回だけ出し、DB にもログにも残さない。
-     本人が決めたら（updatePassword → proxy_mark_handed_over）、運営からはリンクを作れなくなる。
-   ・本人確認の代理提出は「本人の同意を得た」の印が必須。出した運営は kyc_applications.submitted_by と記録に残る。
-     書類を目で見る受け方（manual）のときだけ。TRUSTDOCK で受けているときは本人の端末で出してもらう。 */
+     本人が決めたら（updatePassword → proxy_mark_handed_over）、運営からはリンクを作れなくなる。 */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, runAction, type ActionResult } from "@/lib/auth";
-import { assertKycReady, KycNotReadyError, type KycProvider } from "@/lib/adapters/kyc";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
-import { dbCode, type DbError } from "@/lib/db-errors";
+import { dbCode } from "@/lib/db-errors";
 import { publicEnv } from "@/lib/env";
-import { birthDateOk, manualKycFiles, submitWithDocuments } from "@/lib/kyc-submit";
 import { isUuid } from "@/lib/search";
 import { getSettings } from "@/lib/settings";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -63,7 +59,7 @@ const RegisterInput = z
     consent: z.literal(true, { error: "本人から頼まれ、規約とプライバシーポリシーに同意してもらったことを確かめてください。" }),
     adult: z.literal(true, { error: "本人が18歳以上だと申告したことを確かめてください。" }),
   })
-  .refine((v) => v.role !== "seller" || v.age !== null, "出品者は年齢を入力してください（本人の申告。本当の確認は本人確認で行います）。");
+  .refine((v) => v.role !== "seller" || v.age !== null, "出品者は年齢を入力してください（本人の申告）。");
 
 /** 戻り値の id は作った利用者。画面はその人の代理登録のページへ移る */
 export async function proxyRegister(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -138,80 +134,5 @@ export async function proxyIssueLink(userId: unknown): Promise<ActionResult<{ ur
     const query = new URLSearchParams({ token_hash: token });
     refresh();
     return { ok: true, data: { url: `${publicEnv.siteUrl}/auth/start?${query.toString()}`, count: count ?? 1 } };
-  });
-}
-
-/* ───────────── 本人確認の代理提出 ───────────── */
-
-const KycInput = z.object({
-  userId: Id,
-  docType: z.enum(["license", "mynumber", "passport"]),
-  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  consent: z.literal("1"),
-});
-
-const KYC_MESSAGES: Record<string, string> = {
-  bad_kyc: "書類の種類・写真・生年月日を確かめてください。",
-  kyc_in_progress: "この人の本人確認は、審査中か、もう済んでいます。",
-  kyc_resubmit_closed: "この人の本人確認は、再提出を受け付けていません（KYC審査の画面で再申請を受け付けると出せます）。",
-  not_allowed: "この人は利用を止めているため、本人確認を出せません。",
-  bad_state: "代理登録した人ではありません。本人確認は本人の画面から出してもらってください。",
-};
-
-function throwKyc(error: DbError): void {
-  if (!error) return;
-  const code = dbCode(error);
-  if (code && KYC_MESSAGES[code]) throw new ActionError(KYC_MESSAGES[code]);
-  adminThrowDb(error);
-}
-
-export async function proxySubmitKyc(form: FormData): Promise<ActionResult> {
-  return runAction(async () => {
-    const me = await begin();
-    const parsed = KycInput.safeParse({
-      userId: form.get("userId"),
-      docType: form.get("docType"),
-      birthDate: form.get("birthDate"),
-      consent: form.get("consent"),
-    });
-    if (!parsed.success) throw new ActionError("書類の種類・生年月日・本人の同意を確かめてください。");
-    const { userId, docType, birthDate } = parsed.data;
-    if (!birthDateOk(birthDate)) throw new ActionError("生年月日を確かめてください。");
-
-    // 書類を目で見る受け方のときだけ（TRUSTDOCK は本人が確認の会社の画面で撮る）
-    let provider: KycProvider;
-    try {
-      provider = assertKycReady();
-    } catch (e) {
-      if (e instanceof KycNotReadyError) throw new ActionError("ただいま本人確認の受付を止めています。");
-      throw e;
-    }
-    if (provider !== "manual") {
-      throw new ActionError("本人確認を確認の会社（TRUSTDOCK）で受けているため、代理では出せません。本人の端末で出してもらってください。");
-    }
-
-    // 写真を置く前に、代理登録した人かを確かめる（DB の admin_proxy_submit_kyc でも確かめ直す）
-    const service = createServiceClient();
-    const { data: row, error: rowError } = await service.from("proxy_registrations").select("user_id").eq("user_id", userId).maybeSingle();
-    adminThrowDb(rowError);
-    if (!row) throw new ActionError(KYC_MESSAGES.bad_state!);
-
-    const files = manualKycFiles(form, docType);
-    const { underage } = await submitWithDocuments(userId, files, async (paths) => {
-      const { data, error } = await service.rpc("admin_proxy_submit_kyc", {
-        p_admin: me.id,
-        p_user: userId,
-        p_doc_type: docType,
-        p_paths: paths,
-        p_birth_date: birthDate,
-      });
-      throwKyc(error);
-      return data;
-    });
-    refresh();
-    if (underage) {
-      throw new ActionError("18歳未満のため受け付けられません。この人の利用を止め、書類の写真は消しました。");
-    }
-    return { ok: true, message: "本人確認の書類を出しました。KYC審査の画面から、ふつうどおり審査してください。" };
   });
 }

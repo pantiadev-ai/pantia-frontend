@@ -147,6 +147,8 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🪪", "pk", "KYC", `${by}本人確認を申請しました`);
     case "kyc.proxy_submit":
       return v("🪪", "blue", "KYC", `${by}本人確認を代理で提出しました${d.status === "rejected_underage" ? "（18歳未満のため否認・停止）" : ""}`);
+    case "kyc.proxy_skip":
+      return v("🪪", "green", "KYC", `${by}代理登録のため、本人確認を省きました（確認済み）`);
     case "kyc.view_documents":
       return v("👁", "blue", "KYC", `${by}本人確認の書類を見ました`);
     case "kyc.approve":
