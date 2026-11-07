@@ -278,6 +278,43 @@ test.describe("本人確認の代理提出", () => {
   });
 });
 
+test.describe("一覧での見分け", () => {
+  test("ユーザー一覧と本人確認の一覧で、代理登録の人・代理で出した申請にだけ「代理登録」の札が付く", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const r = rid();
+    const proxy = await seedProxy(adm, { role: "seller", nickname: `F代理${r}` });
+    const self = await freshUser("d-self", { role: "seller", kyc: "unsubmitted", nickname: `F本人${r}` });
+    const apps: string[] = [];
+    try {
+      for (const [u, by] of [[proxy, adm.id], [self, null]] as const) {
+        const [a] = await sql<{ id: string }>(`
+          insert into public.kyc_applications (user_id, provider, doc_type, birth_date, status, submitted_by)
+          values (${lit(u.id)}, 'manual', 'license', '1990-01-01', 'pending', ${by ? lit(by) : "null"}) returning id`);
+        apps.push(a.id);
+      }
+
+      await page.goto(`/admin/users?q=${encodeURIComponent(r)}`);
+      await expect(rowOf(page, proxy.nickname).getByText("代理登録", { exact: true })).toBeVisible();
+      await expect(rowOf(page, self.nickname)).toBeVisible();
+      await expect(rowOf(page, self.nickname).getByText("代理登録", { exact: true })).toHaveCount(0);
+
+      await page.goto("/admin/kyc?status=all");
+      await expect(rowOf(page, proxy.nickname).getByText("代理登録", { exact: true })).toBeVisible();
+      await expect(rowOf(page, self.nickname)).toBeVisible();
+      await expect(rowOf(page, self.nickname).getByText("代理登録", { exact: true })).toHaveCount(0);
+
+      // 審査の画面: 申請者の欄に登録の仕方
+      await page.goto(`/admin/kyc/${apps[0]}`);
+      await expect(page.getByRole("link", { name: "運営が代理で登録", exact: true })).toHaveAttribute("href", `/admin/proxy/${proxy.id}`);
+      await page.goto(`/admin/kyc/${apps[1]}`);
+      await expect(page.getByText("本人が登録", { exact: true })).toBeVisible();
+      await expect(page.getByRole("link", { name: "運営が代理で登録", exact: true })).toHaveCount(0);
+    } finally {
+      for (const id of apps) await closeKyc(id);
+    }
+  });
+});
+
 test.describe("代理登録でない人・おかしなリンク", () => {
   test.use({ consoleAllow: [/status of 404/] });
 

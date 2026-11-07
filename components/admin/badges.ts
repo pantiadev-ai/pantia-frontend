@@ -6,6 +6,9 @@ export type BadgeInfo = { cls: string; label: string };
 
 const unknown = (v: string | null | undefined): BadgeInfo => ({ cls: "badge-muted", label: v || "不明" });
 
+/** 運営が代理で登録した人（proxy_registrations にいる）。一覧で本人の登録と見分ける */
+export const proxyBadge: BadgeInfo = { cls: "badge-proxy", label: "代理登録" };
+
 export function roleBadge(role: string | null | undefined): BadgeInfo {
   if (role === "seller") return { cls: "badge-new", label: "出品者" };
   if (role === "buyer") return { cls: "badge-ship", label: "購入者" };

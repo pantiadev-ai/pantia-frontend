@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ActionButton from "@/components/admin/ActionButton";
 import AdminShell from "@/components/admin/AdminShell";
-import { kycBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
+import { kycBadge, proxyBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import { Badge, Empty, FilterBar, Initial, Pager, TableTitle } from "@/components/admin/parts";
 import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
 import { dateJst, dateTimeJst, isOnline, num, relTime, san } from "@/lib/format";
@@ -50,8 +50,14 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
   ]);
   if (users.error) console.error("[admin] users", users.error.message);
   if (requests.error) console.error("[admin] role requests", requests.error.message);
-  const names = await nicknamesOf(service, (requests.data ?? []).map((r) => r.user_id));
   const rows = users.data ?? [];
+  const [names, proxies] = await Promise.all([
+    nicknamesOf(service, (requests.data ?? []).map((r) => r.user_id)),
+    rows.length > 0 ? service.from("proxy_registrations").select("user_id").in("user_id", rows.map((u) => u.id)) : null,
+  ]);
+  if (proxies?.error) console.error("[admin] proxy marks", proxies.error.message);
+  // 運営が代理で登録した人（app/admin/proxy）。本人の登録と見分けられるように、名前の横に札を出す
+  const proxied = new Set((proxies?.data ?? []).map((p) => p.user_id));
   const reqs = requests.data ?? [];
   const filter = { q, role, status, kyc };
 
@@ -190,6 +196,12 @@ export default async function AdminUsersPage({ searchParams }: PageProps<"/admin
                     <td>
                       <Initial name={u.nickname} src={avatarImage(u.avatar_path)} />
                       <span className="td-name">{u.nickname || "（名前なし）"}</span>
+                      {proxied.has(u.id) && (
+                        <>
+                          {" "}
+                          <Badge b={proxyBadge} />
+                        </>
+                      )}
                     </td>
                     <td>
                       <Badge b={roleBadge(u.role)} />

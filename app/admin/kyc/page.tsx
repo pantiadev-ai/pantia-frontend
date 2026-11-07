@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
-import { kycAppBadge, roleBadge } from "@/components/admin/badges";
+import { kycAppBadge, proxyBadge, roleBadge } from "@/components/admin/badges";
 import { Badge, Empty, FilterBar, Initial, Pager, TableTitle } from "@/components/admin/parts";
 import { pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
 import { dateTimeJst, num } from "@/lib/format";
@@ -36,8 +36,16 @@ export default async function AdminKycPage({ searchParams }: PageProps<"/admin/k
   if (apps.error) console.error("[admin] kyc", apps.error.message);
   const rows = apps.data ?? [];
   const ids = [...new Set(rows.map((r) => r.user_id))];
-  const { data: people } = ids.length > 0 ? await service.from("profiles").select("id, nickname, role").in("id", ids) : { data: [] };
+  const [{ data: people }, { data: proxies }] =
+    ids.length > 0
+      ? await Promise.all([
+          service.from("profiles").select("id, nickname, role").in("id", ids),
+          service.from("proxy_registrations").select("user_id").in("user_id", ids),
+        ])
+      : [{ data: [] }, { data: [] }];
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
+  // 運営が代理で登録した人の申請（app/admin/proxy）。本人の登録と見分けられるように、名前の横に札を出す
+  const proxied = new Set((proxies ?? []).map((p) => p.user_id));
   const openCount = open.count ?? 0;
 
   return (
@@ -99,6 +107,12 @@ export default async function AdminKycPage({ searchParams }: PageProps<"/admin/k
                       <td>
                         <Initial name={name} />
                         <span className="td-name">{name}</span>
+                        {proxied.has(a.user_id) && (
+                          <>
+                            {" "}
+                            <Badge b={proxyBadge} />
+                          </>
+                        )}
                       </td>
                       <td>{p ? <Badge b={roleBadge(p.role)} /> : <span className="adm-muted">—</span>}</td>
                       <td>
