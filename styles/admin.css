@@ -766,6 +766,7 @@
 .pg-admin .badge-open { background: var(--yellow); color: var(--yellow2); border: 1px solid rgba(243, 156, 18, 0.3); }
 .pg-admin .badge-resolved { background: var(--green); color: var(--green2); border: 1px solid rgba(46, 204, 113, 0.3); }
 .pg-admin .badge-warn { background: rgba(231, 76, 60, 0.15); color: var(--red2); border: 1px solid rgba(231, 76, 60, 0.25); }
+.pg-admin .badge-proxy { background: var(--blue); color: var(--blue2); border: 1px solid rgba(52, 152, 219, 0.3); }
 
 /* ACTION BUTTONS */
 .pg-admin .action-btn {

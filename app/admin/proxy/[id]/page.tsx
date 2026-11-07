@@ -1,6 +1,6 @@
 /* 代理登録した人1人（管理画面）。本人に渡すまでの作業をここでする。
    ① パスワードを決めるリンクを作って本人に送る（本人が決めたら「渡し済み」になり、ここからは作れない）
-   ② 本人から受け取った書類で、本人確認を代理で出す（書類を目で見る受け方のときだけ。審査は KYC審査の画面でふつうどおり）
+   ② 本人確認は省く（代理登録した人は、登録した時点で確認済み。2026-11-07 に決めた）
    代理登録の台帳（proxy_registrations）に無い人は 404（ふつうに登録した人は、ここから操作できない）。 */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -8,10 +8,8 @@ import { notFound } from "next/navigation";
 import { describeAudit } from "@/components/admin/audit";
 import AdminShell from "@/components/admin/AdminShell";
 import { kycAppBadge, kycBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
-import ProxyKycForm from "@/components/admin/ProxyKycForm";
 import ProxyLinkIssuer from "@/components/admin/ProxyLinkIssuer";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
-import { kycProvider } from "@/lib/adapters/kyc";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
 import { dateTimeJst } from "@/lib/format";
 import { isUuid } from "@/lib/search";
@@ -19,14 +17,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 
 export const metadata: Metadata = { title: "代理登録の詳細" };
 
-const PROXY_ACTIONS = ["user.proxy_register", "user.proxy_link", "user.proxy_handover", "kyc.proxy_submit"];
-
-/** 今日の日付（日本時間、YYYY-MM-DD） */
-function todayJst(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(
-    new Date(),
-  );
-}
+const PROXY_ACTIONS = ["user.proxy_register", "user.proxy_link", "user.proxy_handover", "kyc.proxy_skip", "kyc.proxy_submit"];
 
 export default async function AdminProxyDetailPage({ params }: PageProps<"/admin/proxy/[id]">) {
   await requireAdminPage();
@@ -70,8 +61,6 @@ export default async function AdminProxyDetailPage({ params }: PageProps<"/admin
   const names = await nicknamesOf(service, [r.registered_by, app?.submitted_by, ...(logs.data ?? []).map((l) => l.actor_id)]);
   const name = p.nickname || "（名前なし）";
   const active = p.status === "active";
-  const manual = kycProvider() === "manual";
-  const canSubmitKyc = active && (p.kyc_status === "unsubmitted" || (p.kyc_status === "rejected" && app?.status === "rejected" && app.resubmit_allowed));
 
   return (
     <AdminShell active="proxy" title="代理登録の詳細">
@@ -79,7 +68,7 @@ export default async function AdminProxyDetailPage({ params }: PageProps<"/admin
         ← 代理登録の一覧へ
       </Link>
 
-      {p.status === "suspended" && <div className="alert-banner danger">⛔ この利用者は利用停止中です。リンクの作成も本人確認の提出もできません。</div>}
+      {p.status === "suspended" && <div className="alert-banner danger">⛔ この利用者は利用停止中です。リンクの作成はできません。</div>}
       {p.status === "withdrawn" && <div className="alert-banner warn">この利用者は退会済みです。</div>}
 
       <div className="dual-grid">
@@ -124,7 +113,7 @@ export default async function AdminProxyDetailPage({ params }: PageProps<"/admin
         </Card>
       </div>
 
-      <Card icon="🪪" tone="green" title="② 本人確認を代理で出す">
+      <Card icon="🪪" tone="green" title="② 本人確認">
         {app && (
           <div className="adm-row" style={{ marginBottom: 12 }}>
             <div>
@@ -142,17 +131,11 @@ export default async function AdminProxyDetailPage({ params }: PageProps<"/admin
           </div>
         )}
         {p.kyc_status === "approved" ? (
-          <Empty>本人確認は済んでいます。</Empty>
+          <Empty>{app ? "本人確認は済んでいます。" : "代理で登録したので、本人確認は省いています（確認済み）。"}</Empty>
         ) : p.kyc_status === "pending" ? (
           <Empty>審査中です。KYC審査の画面から、ふつうどおり審査してください。</Empty>
-        ) : !active ? (
-          <Empty>この利用者は利用を止めているため、本人確認を出せません。</Empty>
-        ) : !canSubmitKyc ? (
-          <Empty>本人確認の再提出を受け付けていません。KYC審査の画面で再申請を受け付けると、ここから出せます。</Empty>
-        ) : !manual ? (
-          <Empty>本人確認を確認の会社（TRUSTDOCK）で受けているため、代理では出せません。本人の端末で、ログインしてから出してもらってください。</Empty>
         ) : (
-          <ProxyKycForm userId={p.id} userName={name} today={todayJst()} />
+          <Empty>本人確認は済んでいません（{p.kyc_status === "rejected" ? "以前の申請を却下しました" : "未提出"}）。KYC審査の画面で確かめてください。</Empty>
         )}
       </Card>
 

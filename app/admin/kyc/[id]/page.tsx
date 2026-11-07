@@ -30,10 +30,12 @@ export default async function AdminKycDetailPage({ params }: PageProps<"/admin/k
   if (error) console.error("[admin] kyc app", error.message);
   if (!a) notFound();
 
-  const [profile, history] = await Promise.all([
+  const [profile, history, proxy] = await Promise.all([
     service.from("profiles").select("id, nickname, role, status, kyc_status, created_at").eq("id", a.user_id).maybeSingle(),
     service.from("kyc_applications").select("id, app_no, status, reject_reason, created_at").eq("user_id", a.user_id).neq("id", id).order("created_at", { ascending: false }).limit(10),
+    service.from("proxy_registrations").select("user_id").eq("user_id", a.user_id).maybeSingle(),
   ]);
+  if (proxy.error) console.error("[admin] proxy mark", proxy.error.message);
   const names = await nicknamesOf(service, [a.decided_by, a.submitted_by]);
   // 運営が代理で出した申請（lib/actions/proxy.ts）。出した本人が審査するときは注意を出す（止めはしない。運営が1人でも回るように）
   const selfSubmitted = !!a.submitted_by && a.submitted_by === me.id;
@@ -108,6 +110,16 @@ export default async function AdminKycDetailPage({ params }: PageProps<"/admin/k
                   ["状態", <Badge b={userStatusBadge(p.status)} key="s" />],
                   ["本人確認", <Badge b={kycBadge(p.kyc_status)} key="k" />],
                   ["登録日", dateJst(p.created_at)],
+                  [
+                    "登録の仕方",
+                    proxy.data ? (
+                      <Link key="pr" href={`/admin/proxy/${p.id}`} className="adm-link">
+                        運営が代理で登録
+                      </Link>
+                    ) : (
+                      "本人が登録"
+                    ),
+                  ],
                 ]}
               />
               <div className="adm-actions" style={{ marginTop: 12 }}>

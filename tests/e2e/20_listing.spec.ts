@@ -429,4 +429,28 @@ test.describe("プレビュー確認と有料オプション", () => {
     const [r] = await sql<{ paid_options: unknown[] }>(`select paid_options from public.listings where id = ${lit(own)}`);
     expect(r.paid_options).toEqual([]);
   });
+
+  test("有料オプションを足すと、右側の見本と価格設定に、オプション込みの合計が出る（足さなければ出ない）", async ({ page, context }) => {
+    const seller = await freshUser("b-sel", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await page.getByLabel("販売価格（円）").fill("3000");
+    const card = page.locator(".sidebar .preview-card");
+    const prices = page.locator(".price-preview");
+    await expect(card).toContainText("¥3,000");
+    await expect(card).not.toContainText("オプション込み");
+    await expect(prices).not.toContainText("合計（オプション込み）");
+
+    await page.getByRole("button", { name: "＋ 自由に追加する" }).click();
+    await page.getByLabel("有料オプション1の名前").fill("着用写真集");
+    await page.getByLabel("有料オプション1の料金（円）").fill("2000");
+    await expect(card).toContainText("オプション込み ¥3,000 〜 ¥5,000");
+    await expect(prices).toContainText("合計（オプション込み）¥3,000 〜 ¥5,000");
+
+    await page.getByRole("button", { name: "＋ 自由に追加する" }).click();
+    await page.getByLabel("有料オプション2の名前").fill("おな動画");
+    await page.getByLabel("有料オプション2の料金（円）").fill("5000");
+    await expect(card).toContainText("オプション込み ¥3,000 〜 ¥10,000");
+    await expect(prices).toContainText("合計（オプション込み）¥3,000 〜 ¥10,000");
+  });
 });

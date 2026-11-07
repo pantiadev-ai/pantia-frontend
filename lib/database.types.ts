@@ -1894,16 +1894,6 @@ export type Database = {
         Args: { p_admin: string; p_note: string; p_user: string }
         Returns: undefined
       }
-      admin_proxy_submit_kyc: {
-        Args: {
-          p_admin: string
-          p_birth_date: string
-          p_doc_type: string
-          p_paths: string[]
-          p_user: string
-        }
-        Returns: Json
-      }
       admin_report_update: {
         Args: {
           p_admin: string
