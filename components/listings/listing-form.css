@@ -16,6 +16,19 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+/* 有料オプションを足したときの合計（販売価格〜全部選ばれたとき） */
+.pg-item-form .lf-pp-sum {
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+  margin-top: 2px;
+  padding-top: 6px;
+  color: var(--text-main);
+}
+.pg-item-form .lf-preview-sum {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
 
 /* ボタンの字を本文と同じにする（見本は div だったチップを button にしたため） */
 .pg-item-form button {

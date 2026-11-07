@@ -489,6 +489,22 @@ test.describe("有料オプションと銀行振込", () => {
     await expect(total).toHaveText("¥8,000");
   });
 
+  for (const who of ["ログインしていない人", "出品者本人"] as const) {
+    test(`${who}が見ても、有料オプションを押すと右側の合計金額に足される`, async ({ page, context }) => {
+      const { seller } = await freshPair();
+      const id = await seedListing(seller, {
+        price: 3000,
+        set: `paid_options = '[{"id":"e2ephoto","name":"着用写真集","price":2000}]'::jsonb`,
+      });
+      if (who === "出品者本人") await loginAs(context, seller);
+      await page.goto(`/items/${id}`);
+      const total = page.locator(".purchase-total .pt-price");
+      await expect(total).toHaveText("¥3,000");
+      await page.getByRole("group", { name: "有料オプション", exact: true }).getByRole("button", { name: "着用写真集 (+¥2,000)" }).click();
+      await expect(total).toHaveText("¥5,000");
+    });
+  }
+
   test("出品者が決めた有料オプションを選んで買うと、料金が小計に足され、注文に名前と料金の写しが残る", async ({ page, context }) => {
     const { seller, buyer } = await freshPair();
     const id = await seedListing(seller, {
