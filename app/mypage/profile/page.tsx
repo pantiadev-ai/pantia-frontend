@@ -24,6 +24,7 @@ export default async function ProfilePage() {
     bio: me?.bio ?? "",
     avatar: image(me?.avatar_path ?? null),
     cover: image(me?.cover_path ?? null),
+    photos: (me?.photo_paths ?? []).map(image).filter((p): p is NonNullable<typeof p> => p !== null),
     age: me?.age ?? null,
     occupation: me?.occupation ?? "",
     heightCm: me?.height_cm ?? null,

@@ -51,9 +51,21 @@ type Props = {
   className?: string;
   label?: string;
   disabled?: boolean;
+  /** 上げ口を替えるとき（管理画面で、本人の代わりに本人のフォルダへ上げる）。既定は本人の上げ口 */
+  upload?: typeof uploadImage;
 };
 
-export default function ImageUploader({ kind, value, onChange, max, threadId, className, label = "画像を追加", disabled }: Props) {
+export default function ImageUploader({
+  kind,
+  value,
+  onChange,
+  max,
+  threadId,
+  className,
+  label = "画像を追加",
+  disabled,
+  upload = uploadImage,
+}: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +91,7 @@ export default function ImageUploader({ kind, value, onChange, max, threadId, cl
         fd.set("kind", kind);
         if (threadId) fd.set("threadId", threadId);
         fd.set("file", blob, "image.jpg");
-        const r = await uploadImage(fd);
+        const r = await upload(fd);
         if (!r.ok) {
           setError(r.error);
           break;

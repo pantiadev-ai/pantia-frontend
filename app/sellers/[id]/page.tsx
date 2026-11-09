@@ -19,16 +19,19 @@ import {
   isFollowing,
   likedPostIds,
   searchListings,
+  sellerListingOptionFlags,
   sellerPosts,
   sellerReviews,
 } from "@/lib/catalogue";
+import { optionLabel, sellerOptionKeys } from "@/lib/listing-options";
 import { isUuid } from "@/lib/search";
 import { avatarImage, postImage } from "@/lib/storage";
-import { BODY_TYPES, SHIP_ESTIMATES, SUPPORTED_OPTIONS, labelOf } from "@/lib/labels";
+import { BODY_TYPES, SHIP_ESTIMATES, labelOf } from "@/lib/labels";
 import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, relTime } from "@/lib/format";
 import ItemCard from "@/components/catalogue/ItemCard";
 import MessageButton from "@/components/catalogue/MessageButton";
 import Pager from "@/components/catalogue/Pager";
+import ProfilePhotos from "@/components/catalogue/ProfilePhotos";
 import SellerTabs, { type SellerTab } from "@/components/catalogue/SellerTabs";
 import { categoryIcon, initialOf, metaLine } from "@/components/catalogue/card-helpers";
 
@@ -37,17 +40,6 @@ const MAX_ITEM_PAGE = 50;
 const POSTS = 20;
 const REVIEWS = 20;
 const TAB_KEYS = ["intro", "items", "tweets", "reviews"] as const;
-
-/** 対応オプションの札（見本の opt-tag） */
-const OPTION_ICONS: Record<string, string> = {
-  photo: "📸",
-  days: "📅",
-  same_day: "⚡",
-  anonymous: "📦",
-  letter: "💌",
-  request: "🎀",
-  bundle: "🛍",
-};
 
 function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
@@ -102,7 +94,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
 
   // どちらかがブロックしていれば、出品とつぶやきは出さない（DB の RLS でも隠れる）
   const blocked = own ? false : await blockedWith(viewer?.id, seller.id);
-  const [following, iBlocked, reviews, items, posts] = await Promise.all([
+  const [following, iBlocked, reviews, items, posts, listingFlags] = await Promise.all([
     own ? Promise.resolve(false) : isFollowing(viewer?.id, seller.id),
     own ? Promise.resolve(false) : hasBlocked(viewer?.id, seller.id),
     sellerReviews(seller.id, REVIEWS),
@@ -110,7 +102,10 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
       ? Promise.resolve(null)
       : searchListings({ seller: seller.id, sort: "new", limit: ITEMS_PER_PAGE, offset: (page - 1) * ITEMS_PER_PAGE }),
     blocked ? Promise.resolve({ total: 0, posts: [] }) : sellerPosts(seller.id, POSTS),
+    blocked ? Promise.resolve([]) : sellerListingOptionFlags(seller.id),
   ]);
+  // プロフィールで選んだ物に、公開中の出品で選ばれている物を足す（商品のページと食い違わないように）
+  const options = sellerOptionKeys(seller.supportedOptions, listingFlags);
   const [favs, liked] = await Promise.all([
     own ? Promise.resolve(new Set<string>()) : favoriteIds(viewer?.id, items?.items.map((i) => i.id) ?? []),
     likedPostIds(viewer?.id, posts.posts.map((p) => p.id)),
@@ -119,7 +114,10 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const name = displayName(seller.publicName);
   const avatar = avatarImage(seller.avatarPath);
   const cover = avatarImage(seller.coverPath);
+  const photos = seller.photoPaths.map((p) => avatarImage(p)).filter((u): u is string => !!u);
   const online = isOnline(seller.lastSeenAt);
+  // 一度もログインしていない人（代理登録など）は空になる。空の札は出さず、表では「—」にする
+  const lastSeen = presence(seller.lastSeenAt);
   const meta = metaLine(seller.occupation, seller.age, " ");
   const avg = ratingAvg(seller.ratingSum, seller.ratingCount);
   const avgStars = seller.ratingCount ? Math.round(seller.ratingSum / seller.ratingCount) : 0;
@@ -144,18 +142,19 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             <span className="icon-pill">👋</span> 自己紹介
           </div>
           <div className="intro-text">{seller.bio || "まだ自己紹介はありません。"}</div>
+          <ProfilePhotos urls={photos} />
           <div className="cat-mt20">
             <div className="sec-label">
               <span className="icon-pill">✅</span> 対応オプション
             </div>
-            {seller.supportedOptions.length ? (
-              <div className="intro-options">
-                {seller.supportedOptions.map((o) => (
-                  <div className="opt-tag" key={o}>
-                    {OPTION_ICONS[o] ?? "✔"} {labelOf(SUPPORTED_OPTIONS, o) || o}
-                  </div>
+            {options.length ? (
+              <ul className="intro-options" aria-label="対応オプション">
+                {options.map((o) => (
+                  <li className="opt-tag" key={o}>
+                    {optionLabel(o)}
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
               <div className="cat-note">登録されていません</div>
             )}
@@ -322,7 +321,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             <h1 className="profile-name">{name}</h1>
             {seller.kycStatus !== "approved" ? <div className="profile-handle">本人確認が済むまで、このページはあなたにだけ見えています</div> : null}
             <div className="profile-tags">
-              {online ? <span className="ptag online">🟢 オンライン</span> : <span className="ptag">{presence(seller.lastSeenAt)}</span>}
+              {online ? <span className="ptag online">🟢 オンライン</span> : lastSeen ? <span className="ptag">{lastSeen}</span> : null}
               {seller.age ? <span className="ptag age">{seller.age}歳</span> : null}
               {seller.occupation ? <span className="ptag job">{seller.occupation}</span> : null}
               {seller.supportedOptions.includes("same_day") ? <span className="ptag">即日発送</span> : null}
@@ -401,7 +400,7 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
             </div>
             <div className="info-row">
               <span className="info-label">最終ログイン</span>
-              <span className={`info-val${online ? " green" : ""}`}>{online ? "🟢 オンライン" : presence(seller.lastSeenAt)}</span>
+              <span className={`info-val${online ? " green" : ""}`}>{online ? "🟢 オンライン" : lastSeen || "—"}</span>
             </div>
             <div className="info-row">
               <span className="info-label">発送目安</span>

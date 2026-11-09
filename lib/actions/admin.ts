@@ -15,9 +15,11 @@ import { refundOrder } from "@/lib/adapters/payment";
 import { actionAdmin, ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
 import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banned-words";
+import { ImageError, processImage, type ImageKind } from "@/lib/images";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
-import { removeImages, signedUrls, type Bucket } from "@/lib/storage-server";
+import { publicImageUrl } from "@/lib/storage";
+import { putImage, removeImages, signedUrls, type Bucket } from "@/lib/storage-server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -208,6 +210,119 @@ export async function withdrawUser(userId: string, reason: string): Promise<Acti
     if (failed > 0) notes.push(`画像・書類のうち ${failed} 件を消せませんでした（Supabase の Storage から手で消してください）`);
     if (banErr) notes.push("ログインの停止に失敗しました（Supabase の Authentication から手で止めてください）");
     return { ok: true, message: notes.length ? `退会にしました。ただし、${notes.join("。")}。` : "退会にしました。" };
+  });
+}
+
+/* プロフィールの編集（本人の編集画面と同じ項目）。メールアドレスとパスワードは扱わない。
+   出品者だけの項目は、購入者のときは DB が書かない（admin_update_profile） */
+
+const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const ImagePath = z.string().regex(new RegExp(`^${UUID_RE}/${UUID_RE}\\.webp$`), "画像をもう一度選び直してください。");
+
+function hasCtrl(s: string): boolean {
+  for (const ch of s) {
+    const n = ch.codePointAt(0) ?? 0;
+    if (n < 0x20 || (n >= 0x7f && n <= 0x9f)) return true;
+  }
+  return false;
+}
+
+/* DB の CHECK（20261015000002_core.sql の profiles と 20261109000014 の photo_paths）を写したもの */
+const AdminProfileSchema = z
+  .object({
+    nickname: z
+      .string()
+      .trim()
+      .min(1, "ニックネームは1〜20字で入れてください。")
+      .max(20, "ニックネームは1〜20字で入れてください。")
+      .refine((s) => !hasCtrl(s), "ニックネームに使えない文字があります。"),
+    bio: z.string().trim().max(1000, "自己紹介は1000字以内で入れてください。"),
+    avatar_path: ImagePath.nullable(),
+    cover_path: ImagePath.nullable(),
+    photo_paths: z.array(ImagePath).max(6, "プロフィール写真は6枚までです。"),
+    age: z.number().int().min(18).max(99).nullable(),
+    occupation: z
+      .string()
+      .trim()
+      .max(20, "職業は20字以内で入れてください。")
+      .refine((s) => !hasCtrl(s), "職業に使えない文字があります。"),
+    height_cm: z.number().int().min(120).max(200).nullable(),
+    body_type: z.enum(["slim", "normal", "glamour", "chubby"]).nullable(),
+    ship_estimate: z.enum(["same_next", "d1_2", "d2_3", "d3_5"]).nullable(),
+    supported_options: z.array(z.enum(["photo", "days", "same_day", "anonymous", "letter", "request", "bundle"])).max(7),
+    ng_note: z.string().trim().max(200, "NG・注意事項は200字以内で入れてください。"),
+    accept_messages: z.boolean(),
+  })
+  .strict();
+
+export type AdminProfileInput = z.input<typeof AdminProfileSchema>;
+
+/** 管理者がプロフィールを直す。理由は必須で、記録（user.profile_edit）に残る。使わなくなった画像は置き場から消す */
+export async function adminUpdateProfile(userId: string, input: AdminProfileInput, reason: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, userId);
+    const why = parse(need(500, "直した理由"), reason);
+    const d = parse(AdminProfileSchema, input);
+    // 画像はその人のフォルダの物だけ（DB の paths_ok でも止まる）
+    const own = (p: string | null) => p == null || p.startsWith(`${id}/`);
+    const photos = Array.from(new Set(d.photo_paths));
+    if (!own(d.avatar_path) || !own(d.cover_path) || !photos.every(own)) {
+      throw new ActionError("画像をもう一度選び直してください。");
+    }
+    const { data, error } = await createServiceClient().rpc("admin_update_profile", {
+      p_admin: v.id,
+      p_user: id,
+      p_nickname: d.nickname,
+      p_bio: d.bio,
+      p_avatar_path: d.avatar_path,
+      p_cover_path: d.cover_path,
+      p_photo_paths: photos,
+      p_age: d.age,
+      p_occupation: d.occupation || null,
+      p_height_cm: d.height_cm,
+      p_body_type: d.body_type,
+      p_ship_estimate: d.ship_estimate,
+      p_supported_options: Array.from(new Set(d.supported_options)),
+      p_ng_note: d.ng_note,
+      p_accept_messages: d.accept_messages,
+      p_reason: why,
+    });
+    adminThrowDb(error);
+    // 保存は済んでいるので、消せなくても取り消さない（残った物は容量の問題だけ）
+    await purge("avatars", strings(data).filter((p) => p.startsWith(`${id}/`)));
+    refresh();
+    revalidatePath(`/sellers/${id}`);
+    return { ok: true, message: "プロフィールを直しました。" };
+  });
+}
+
+const ADMIN_UPLOAD_KIND: Record<"avatar" | "cover" | "photo", ImageKind> = { avatar: "avatar", cover: "cover", photo: "photo" };
+
+/** 管理者が、本人の代わりに本人のフォルダへ画像を上げる（プロフィールの編集の前段）。カバーと写真は出品者だけ */
+export async function adminUploadProfileImage(form: FormData): Promise<ActionResult<{ path: string; url: string }>> {
+  return runAction(async () => {
+    await begin();
+    const id = parse(Id, String(form.get("userId") ?? ""));
+    const kind = parse(z.enum(["avatar", "cover", "photo"], "画像の種類が違います。"), String(form.get("kind") ?? ""));
+    const { data: target, error } = await createServiceClient()
+      .from("profiles")
+      .select("role, status")
+      .eq("id", id)
+      .maybeSingle();
+    adminThrowDb(error);
+    if (!target || target.status === "withdrawn") throw new ActionError("対象が見つかりません。画面を読み込み直してください。");
+    if (kind !== "avatar" && target.role !== "seller") throw new ActionError("カバー画像とプロフィール写真は出品者だけです。");
+
+    let data: Buffer;
+    try {
+      ({ data } = await processImage(form.get("file"), ADMIN_UPLOAD_KIND[kind]));
+    } catch (e) {
+      if (e instanceof ImageError) throw new ActionError(e.message);
+      throw e;
+    }
+    const path = await putImage("avatars", id, data);
+    return { ok: true, data: { path, url: publicImageUrl("avatars", path) ?? "" } };
   });
 }
 

@@ -434,7 +434,10 @@
   color: var(--primary);
 }
 
-.pg-item-detail .opt-chip.disabled { opacity: 0.4; cursor: not-allowed; }
+/* 選ばなくても付いてくる物（押せない札） */
+.pg-item-detail .opt-included { margin: 0; padding: 0; list-style: none; }
+.pg-item-detail .opt-chip.included { cursor: default; color: var(--text-main); }
+.pg-item-detail .opt-chip.included:hover { background: rgba(255,255,255,0.8); color: var(--text-main); }
 
 /* PURCHASE AREA */
 .pg-item-detail .purchase-card {
@@ -555,6 +558,10 @@
 .pg-item-detail .dv { font-size: 12px; color: var(--text-main); font-weight: 700; text-align: right; }
 .pg-item-detail .dv.pk { color: var(--primary); }
 .pg-item-detail .dv.green { color: var(--green2); }
+/* 有料オプションは1つずつ行を分ける（「・」でつないだ1つの文のままだと、スマホで名前の途中で割れた）。
+   1行に入らないときは名前と値段の間で折る（値段の中では折らない） */
+.pg-item-detail .dv .po { display: block; }
+.pg-item-detail .dv .po-price { white-space: nowrap; }
 
 /* DESCRIPTION */
 .pg-item-detail .desc-text { font-size: 13px; color: var(--text-sub); line-height: 1.8; font-weight: 500; }

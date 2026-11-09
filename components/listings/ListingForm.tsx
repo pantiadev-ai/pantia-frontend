@@ -724,7 +724,7 @@ export default function ListingForm({
                           aria-label={`有料オプション${i + 1}の名前`}
                           placeholder="オプションの名前"
                           maxLength={PAID_OPTION_NAME_MAX}
-                          list="lf-po-suggest"
+                          autoComplete="off"
                           value={r.name}
                           onChange={(e) => editCustom(r.id, { name: e.target.value })}
                         />
@@ -734,6 +734,7 @@ export default function ListingForm({
                             className="form-input"
                             aria-label={`有料オプション${i + 1}の料金（円）`}
                             inputMode="numeric"
+                            autoComplete="off"
                             placeholder="1000"
                             value={r.price}
                             onChange={(e) => editCustom(r.id, { price: e.target.value })}
@@ -751,11 +752,6 @@ export default function ListingForm({
                     ))}
                   </ul>
                 )}
-                <datalist id="lf-po-suggest">
-                  {PAID_OPTION_SUGGESTIONS.map((s) => (
-                    <option key={s} value={s} />
-                  ))}
-                </datalist>
                 {extras.length > 0 && extrasError && <div className="lf-po-err">{extrasError}</div>}
                 {custom.length < PAID_OPTION_MAX ? (
                   <>

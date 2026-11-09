@@ -1,5 +1,5 @@
 "use client";
-/* プロフィールの編集。アイコン・ニックネーム・紹介文は全員、カバーと属性（年齢・職業など）は出品者だけ */
+/* プロフィールの編集。アイコン・ニックネーム・紹介文は全員、カバー・プロフィール写真と属性（年齢・職業など）は出品者だけ */
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import ImageUploader, { type UploadedImage } from "@/components/ImageUploader";
@@ -16,6 +16,7 @@ export type ProfileInitial = {
   bio: string;
   avatar: UploadedImage | null;
   cover: UploadedImage | null;
+  photos: UploadedImage[];
   age: number | null;
   occupation: string;
   heightCm: number | null;
@@ -26,6 +27,8 @@ export type ProfileInitial = {
   acceptMessages: boolean;
 };
 
+/** プロフィール写真の上限（DB の profiles_photo_paths_ok と同じ） */
+const PHOTO_MAX = 6;
 const AGES = Array.from({ length: 99 - 18 + 1 }, (_, i) => 18 + i);
 const HEIGHTS = Array.from({ length: 200 - 120 + 1 }, (_, i) => 120 + i);
 
@@ -44,6 +47,7 @@ export default function ProfileForm({ isSeller, initial }: { isSeller: boolean; 
   const [bio, setBio] = useState(initial.bio);
   const [avatar, setAvatar] = useState<UploadedImage[]>(initial.avatar ? [initial.avatar] : []);
   const [cover, setCover] = useState<UploadedImage[]>(initial.cover ? [initial.cover] : []);
+  const [photos, setPhotos] = useState<UploadedImage[]>(initial.photos);
   const [age, setAge] = useState(initial.age);
   const [occupation, setOccupation] = useState(initial.occupation);
   const [heightCm, setHeightCm] = useState(initial.heightCm);
@@ -71,6 +75,7 @@ export default function ProfileForm({ isSeller, initial }: { isSeller: boolean; 
       ? {
           ...base,
           cover_path: cover[0]?.path ?? null,
+          photo_paths: photos.map((p) => p.path),
           age,
           occupation: occupation.trim() || null,
           height_cm: heightCm,
@@ -104,6 +109,22 @@ export default function ProfileForm({ isSeller, initial }: { isSeller: boolean; 
               <span className="mp-label">カバー画像</span>
               <ImageUploader kind="cover" max={1} value={cover} onChange={setCover} label="カバー画像を選ぶ" disabled={pending} />
               <span className="mp-hint">プロフィールの上に横長で出ます。</span>
+            </div>
+          )}
+          {isSeller && (
+            <div className="mp-field">
+              <span className="mp-label">プロフィール写真</span>
+              <ImageUploader
+                kind="photo"
+                max={PHOTO_MAX}
+                value={photos}
+                onChange={setPhotos}
+                label="写真を選ぶ"
+                disabled={pending}
+              />
+              <span className="mp-hint">
+                {PHOTO_MAX}枚まで。出品者のページの自己紹介の下に並びます。顔や個人情報が分かる写真は使わないでください。
+              </span>
             </div>
           )}
           <div className="mp-field">

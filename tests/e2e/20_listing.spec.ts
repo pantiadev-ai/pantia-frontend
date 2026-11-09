@@ -453,4 +453,29 @@ test.describe("プレビュー確認と有料オプション", () => {
     await expect(card).toContainText("オプション込み ¥3,000 〜 ¥10,000");
     await expect(prices).toContainText("合計（オプション込み）¥3,000 〜 ¥10,000");
   });
+
+  // 2026-11-09 に運営から「PC で入力すると、足した行にリストが出てくる。行の下に候補があるので、リストは消して」
+  test("有料オプションの名前の欄は、入力しても候補のリストが出ない（候補は行の下のボタンだけ）", async ({ page, context }) => {
+    const seller = await freshUser("b-sel", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await page.getByRole("button", { name: "＋ 自由に追加する" }).click();
+    const name = page.getByLabel("有料オプション1の名前");
+    await expect(name).toBeVisible();
+    await expect(name).not.toHaveAttribute("list", /.*/);
+    await expect(name).toHaveAttribute("autocomplete", "off");
+    await expect(page.getByLabel("有料オプション1の料金（円）")).toHaveAttribute("autocomplete", "off");
+    await expect(page.locator("datalist")).toHaveCount(0);
+    // 行の下の候補のボタンは残る
+    await expect(page.getByRole("group", { name: "有料オプションの候補" }).getByRole("button", { name: "＋ おもらし" })).toBeVisible();
+  });
+
+  test("有料オプションの行の「+¥」は1行に収まり、「+」と「¥」が2行に割れない", async ({ page, context }) => {
+    const seller = await freshUser("b-po", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await page.getByRole("group", { name: "有料オプションの候補" }).getByRole("button", { name: "＋ おもらし" }).click();
+    const r = await page.locator(".lf-po-price > span").first().evaluate((el) => ({ h: el.getBoundingClientRect().height, fs: parseFloat(getComputedStyle(el).fontSize) }));
+    expect(r.h, `「+¥」の高さ ${r.h}px（文字 ${r.fs}px）`).toBeLessThanOrEqual(r.fs * 1.6);
+  });
 });

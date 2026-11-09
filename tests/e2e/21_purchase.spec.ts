@@ -16,6 +16,7 @@ import {
   seedPendingOrder,
   seedShipped,
 } from "./_b";
+import { setListingStatus } from "./_a";
 import { asAdmin, notificationsOf, rowOf } from "./_d";
 import { expect, test } from "./_fixtures";
 
@@ -598,6 +599,116 @@ test.describe("有料オプションと銀行振込", () => {
       expect(notes.some((n) => n.title === "入金が確認できました。発送してください")).toBe(true);
     } finally {
       await transferOff();
+    }
+  });
+});
+
+// 2026-11-09 に運営から「購入者側から見るとオプションが入力されてる箇所、されてない箇所があった」。
+// 出品者のページ・商品のページの札・購入の欄が、同じ決まり（lib/listing-options.ts）で出す
+test.describe("対応オプションの見え方", () => {
+  const sellerOptions = (page: Page) => page.getByRole("list", { name: "対応オプション" }).getByRole("listitem");
+  const included = (page: Page) => page.getByRole("list", { name: "付いてくる物" }).getByRole("listitem");
+  // listings の列は、写真・手紙・即日発送が初めから true。試験の出品は全部外してから印を付ける
+  const none = "opt_photo = false, opt_letter = false, same_day = false";
+
+  test("出品者のページは、プロフィールで選んだ物に、公開中の出品で選ばれている物を足して出す", async ({ page }) => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    await sql(`update public.profiles set supported_options = array['letter'] where id = ${lit(seller.id)}`);
+    const pub = await seedListing(seller, { set: `${none}, opt_video = true, opt_ziplock = true` });
+    // 公開していない出品の印は足さない
+    const draft = await seedListing(seller, { status: "draft", set: `${none}, opt_card = true` });
+    try {
+      await page.goto(`/sellers/${seller.id}`);
+      await expect(sellerOptions(page)).toHaveText(["💌 手紙", "🎬 着用動画", "🧴 ジップロック梱包"]);
+    } finally {
+      await setListingStatus([pub, draft], "deleted");
+    }
+  });
+
+  test("出品者のページは、プロフィールが空でも、出品で選ばれていれば出す", async ({ page }) => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    const pub = await seedListing(seller, { set: `${none}, opt_card = true` });
+    try {
+      await page.goto(`/sellers/${seller.id}`);
+      await expect(sellerOptions(page)).toHaveText(["✉️ メッセージカード"]);
+      await expect(page.getByText("登録されていません")).toHaveCount(0);
+    } finally {
+      await setListingStatus([pub], "deleted");
+    }
+  });
+
+  test("出品者のページは、公開中の出品が200件を超えても、古い出品で選ばれている物を落とさない", async ({ page }) => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    const old = await seedListing(seller, { set: `${none}, opt_video = true, published_at = now() - interval '30 days'` });
+    // 新しい出品を200件（印なし）。古い1件の印は、新しい順に200件だけ読むと見えなくなる
+    await sql(`
+      insert into public.listings (seller_id, title, description, category, worn_days, price, image_paths, status, opt_photo, opt_letter, same_day)
+      select seller_id, 'E2E多い ' || g, description, category, worn_days, price, image_paths, 'published', false, false, false
+      from public.listings, generate_series(1, 200) g
+      where id = ${lit(old)}`);
+    try {
+      await page.goto(`/sellers/${seller.id}`);
+      await expect(sellerOptions(page)).toHaveText(["🎬 着用動画"]);
+      await expect(page.getByText("登録されていません")).toHaveCount(0);
+    } finally {
+      await sql(`update public.listings set status = 'deleted' where seller_id = ${lit(seller.id)}`);
+    }
+  });
+
+  test("DB の seller_listing_option_flags は、見る人が見られない出品（フォロワー限定）の印を数えない", async () => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    const buyer = await freshUser("b-opt", { role: "buyer" });
+    const open = await seedListing(seller, { set: `${none}, opt_video = true` });
+    const fans = await seedListing(seller, { set: `${none}, opt_card = true, followers_only = true` });
+    const flagsAs = async (who: Cast) =>
+      (await userClient(who)).rpc("seller_listing_option_flags" as never, { p_seller: seller.id } as never) as unknown as Promise<{
+        data: { opt_video: boolean; opt_card: boolean }[] | null;
+        error: unknown;
+      }>;
+    try {
+      const seen = await flagsAs(buyer);
+      expect(seen.error).toBeNull();
+      expect(seen.data).toHaveLength(1);
+      expect(seen.data?.[0], "フォローしていない人").toMatchObject({ opt_video: true, opt_card: false });
+      expect((await flagsAs(seller)).data?.[0], "出品者本人は全部見える").toMatchObject({ opt_video: true, opt_card: true });
+    } finally {
+      await setListingStatus([open, fans], "deleted");
+    }
+  });
+
+  test("商品のページは、選べる物だけを追加オプションに出し、ジップロック・メッセージカードは付いてくる物と札に出す", async ({ page, context }) => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    const id = await seedListing(seller, { set: "opt_photo = true, opt_letter = false, same_day = false, opt_ziplock = true, opt_card = true" });
+    const buyer = await freshUser("b-opt", { role: "buyer" });
+    try {
+      await loginAs(context, buyer);
+      await page.goto(`/items/${id}`);
+      const adds = page.getByRole("group", { name: "追加オプション" }).getByRole("button");
+      await expect(adds).toHaveCount(1);
+      await expect(adds).toHaveText(/^📸 着用写真/);
+      await expect(page.getByText(/対応なし/)).toHaveCount(0);
+      await expect(included(page)).toHaveText(["🧴 ジップロック梱包", "✉️ メッセージカード"]);
+      const badges = page.locator(".badges-row");
+      await expect(badges.getByText("🧴 ジップロック梱包")).toBeVisible();
+      await expect(badges.getByText("✉️ メッセージカード")).toBeVisible();
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
+  });
+
+  test("商品のページは、オプションの無い出品では追加オプションも付いてくる物も出さない", async ({ page, context }) => {
+    const seller = await freshUser("b-opt", { role: "seller" });
+    const id = await seedListing(seller, { set: none });
+    const buyer = await freshUser("b-opt", { role: "buyer" });
+    try {
+      await loginAs(context, buyer);
+      await page.goto(`/items/${id}`);
+      await expect(page.getByRole("button", { name: "💳 今すぐ購入する" })).toBeVisible();
+      await expect(page.getByText("追加オプション")).toHaveCount(0);
+      await expect(page.getByText(/対応なし/)).toHaveCount(0);
+      await expect(page.getByRole("list", { name: "付いてくる物" })).toHaveCount(0);
+    } finally {
+      await setListingStatus([id], "deleted");
     }
   });
 });

@@ -4,10 +4,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ActionButton from "@/components/admin/ActionButton";
+import AdminProfileForm from "@/components/admin/AdminProfileForm";
 import AdminShell from "@/components/admin/AdminShell";
 import { kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import LedgerAdjustForm from "@/components/admin/LedgerAdjustForm";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
+import type { UploadedImage } from "@/components/ImageUploader";
+import type { ProfileInitial } from "@/components/mypage/ProfileForm";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
 import { dateJst, dateTimeJst, excerpt, isOnline, num, orderNo, ratingAvg, relTime, san, yen } from "@/lib/format";
 import { labelOf, LEDGER_KINDS, REPORT_REASONS } from "@/lib/labels";
@@ -26,6 +29,11 @@ const SANCTION: Record<string, { label: string; cls: string }> = {
   withdraw: { label: "強制退会", cls: "badge-reject" },
 };
 
+function image(path: string | null): UploadedImage | null {
+  const url = avatarImage(path);
+  return path && url ? { path, url } : null;
+}
+
 export default async function AdminUserDetailPage({ params }: PageProps<"/admin/users/[id]">) {
   const me = await requireAdminPage();
   const { id } = await params;
@@ -34,7 +42,9 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   const service = createServiceClient();
   const { data: p, error } = await service
     .from("profiles")
-    .select("id, nickname, avatar_path, role, status, kyc_status, created_at, last_seen_at, sales_count, purchase_count, rating_sum, rating_count, follower_count, bio")
+    .select(
+      "id, nickname, avatar_path, role, status, kyc_status, created_at, last_seen_at, sales_count, purchase_count, rating_sum, rating_count, follower_count, bio, cover_path, photo_paths, age, occupation, height_cm, body_type, ship_estimate, supported_options, ng_note, accept_messages",
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) console.error("[admin] user", error.message);
@@ -78,6 +88,22 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   const self = me.id === id;
   const name = p.nickname || "（名前なし）";
   const photo = avatarImage(p.avatar_path);
+  // プロフィールの編集の初めの値（本人の編集画面 app/mypage/profile と同じ組み立て）
+  const profileInitial: ProfileInitial = {
+    nickname: p.nickname ?? "",
+    bio: p.bio ?? "",
+    avatar: image(p.avatar_path),
+    cover: image(p.cover_path),
+    photos: (p.photo_paths ?? []).map(image).filter((x): x is UploadedImage => x !== null),
+    age: p.age ?? null,
+    occupation: p.occupation ?? "",
+    heightCm: p.height_cm ?? null,
+    bodyType: p.body_type ?? null,
+    shipEstimate: p.ship_estimate ?? null,
+    supportedOptions: p.supported_options ?? [],
+    ngNote: p.ng_note ?? "",
+    acceptMessages: p.accept_messages ?? true,
+  };
   const bannedUntil = user?.banned_until && !Number.isNaN(Date.parse(user.banned_until)) ? user.banned_until : null;
 
   return (
@@ -252,6 +278,12 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
           </>
         )}
       </Card>
+
+      {!self && p.status !== "withdrawn" && (
+        <Card icon="✏️" tone="blue" title="プロフィールの編集">
+          <AdminProfileForm userId={p.id} userName={p.nickname} isSeller={p.role === "seller"} initial={profileInitial} />
+        </Card>
+      )}
 
       <div className="dual-grid">
         <Card icon="📋" tone="yellow" title="処分の記録">

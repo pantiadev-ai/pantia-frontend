@@ -28,6 +28,7 @@ import { isUuid } from "@/lib/search";
 import { avatarImage, listingImage } from "@/lib/storage";
 import { COLORS, MATERIALS, SHIP_ESTIMATES, SIZES, categoryLabel, labelOf } from "@/lib/labels";
 import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, yen } from "@/lib/format";
+import { includedOptionKeys } from "@/lib/listing-options";
 import Gallery from "@/components/catalogue/Gallery";
 import MessageButton from "@/components/catalogue/MessageButton";
 import PurchasePanel, { type PurchaseMode } from "@/components/catalogue/PurchasePanel";
@@ -145,6 +146,8 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
     item.anonymousOk && <span key="an" className="badge badge-lilac">📦 匿名配送可</span>,
     item.optLetter && <span key="lt" className="badge badge-yellow">💌 手紙同封</span>,
     item.optVideo && <span key="vd" className="badge badge-pk">🎬 動画対応</span>,
+    item.optZiplock && <span key="zl" className="badge badge-green">🧴 ジップロック梱包</span>,
+    item.optCard && <span key="cd" className="badge badge-yellow">✉️ メッセージカード</span>,
     item.preMessageOk && <span key="pm" className="badge badge-lilac">💬 事前相談OK</span>,
     item.coolShipping && <span key="cs" className="badge badge-green">❄️ 冷凍便</span>,
     item.followersOnly && <span key="fo" className="badge badge-yellow">🔒 フォロワー限定</span>,
@@ -243,7 +246,14 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
             {item.paidOptions.length > 0 ? (
               <div className="detail-row">
                 <span className="dl">有料オプション</span>
-                <span className="dv">{item.paidOptions.map((o) => `${o.name}（+${yen(o.price)}）`).join("・")}</span>
+                <span className="dv">
+                  {item.paidOptions.map((o) => (
+                    <span key={o.id} className="po">
+                      {o.name}
+                      <span className="po-price">（+{yen(o.price)}）</span>
+                    </span>
+                  ))}
+                </span>
               </div>
             ) : null}
             <div className="detail-row">
@@ -294,6 +304,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
             videoFee={settings.videoFee}
             anonymousFee={settings.anonymousFee}
             supports={{ photo: item.optPhoto, letter: item.optLetter, anonymous: item.anonymousOk, video: item.optVideo }}
+            included={includedOptionKeys(item)}
             paidOptions={item.paidOptions}
             initialQuote={quote}
             fallbackPrice={item.price}

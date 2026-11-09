@@ -1,7 +1,7 @@
 /* 担当 A: 設定（通知・パスワードの変更・退会）・プロフィール（ニックネーム・紹介文・アイコン）・マイページの出し分け。
    人を壊す操作（パスワード変更・退会）と、プロフィールの書き換えは、使い捨ての人（freshUser）で行う */
 import type { Page } from "@playwright/test";
-import { admin, cast, freshUser, lit, loginAs, seedListing, sql } from "./_db";
+import { admin, cast, freshUser, lit, loginAs, seedImage, seedListing, sql, userClient } from "./_db";
 import { expect, test } from "./_fixtures";
 import { anonClient, jpegWithExif, loginKnowingPassword, noisyPng, pngBuffer, tok, uniqueIp, webpBuffer } from "./_a";
 
@@ -243,6 +243,116 @@ test.describe("プロフィール", () => {
     await expect(page).toHaveURL(`/sellers/${seller.id}`);
     await expect(page.getByText(nick).first()).toBeVisible();
     await expect(page.getByText(bio)).toBeVisible();
+  });
+});
+
+/* ───────── プロフィール写真（出品者だけ・最大6枚） ───────── */
+
+const photoField = (page: Page) => page.locator(".mp-field", { hasText: "プロフィール写真" });
+
+async function photoPaths(id: string): Promise<string[]> {
+  return (await sql<{ p: string[] }>(`select to_json(photo_paths) as p from public.profiles where id = ${lit(id)}`))[0]!.p;
+}
+
+async function stored(path: string): Promise<boolean> {
+  const { data, error } = await admin().storage.from("avatars").download(path);
+  return !error && !!data;
+}
+
+test.describe("プロフィール写真", () => {
+  test("出品者は写真を6枚まで登録でき、公開中のページの自己紹介の下に並び、押すと大きく見られる", async ({ page, context }) => {
+    test.setTimeout(90_000);
+    const seller = await freshUser("set-photos", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/mypage/profile");
+    const field = photoField(page);
+    await expect(field).toBeVisible();
+    const files = await Promise.all(
+      Array.from({ length: 6 }, async (_, i) => ({ name: `p${i}.png`, mimeType: "image/png", buffer: await pngBuffer(80 + i, 60) })),
+    );
+    await field.locator('input[type="file"]').setInputFiles(files);
+    await expect(field.locator("img")).toHaveCount(6, { timeout: 30_000 });
+    await expect(field.locator(".pt-uploader-add"), "6枚になったら足すボタンは消える").toHaveCount(0);
+    await page.getByRole("button", { name: "保存する" }).click();
+    await expect(page.getByText("プロフィールを保存しました。")).toBeVisible();
+    const paths = await photoPaths(seller.id);
+    expect(paths).toHaveLength(6);
+    for (const p of paths) expect(p).toMatch(new RegExp(`^${seller.id}/[0-9a-f-]{36}\\.webp$`));
+    for (const p of paths) expect(await stored(p), p).toBe(true);
+
+    await page.goto(`/sellers/${seller.id}`);
+    const gallery = page.getByRole("list", { name: "プロフィール写真" });
+    await expect(gallery.getByRole("button")).toHaveCount(6);
+    await expect(page.locator(".intro-card .intro-text ~ .profile-photos"), "自己紹介の下に並ぶ").toHaveCount(1);
+    await gallery.getByRole("button", { name: "写真 3 を大きく見る" }).click();
+    const viewer = page.getByRole("dialog", { name: "プロフィール写真" });
+    await expect(viewer).toBeVisible();
+    await expect(viewer.getByRole("img")).toHaveAttribute("alt", "写真 3");
+    await viewer.getByRole("button", { name: "次の写真" }).click();
+    await expect(viewer.getByRole("img")).toHaveAttribute("alt", "写真 4");
+    await viewer.getByRole("button", { name: "前の写真" }).click();
+    await viewer.getByRole("button", { name: "前の写真" }).click();
+    await expect(viewer.getByRole("img")).toHaveAttribute("alt", "写真 2");
+    await viewer.getByRole("button", { name: "閉じる" }).click();
+    await expect(viewer).toBeHidden();
+  });
+
+  test("写真を1枚外して保存すると、置き場からも消え、残した写真はそのまま", async ({ page, context }) => {
+    const seller = await freshUser("set-photo-rm", { role: "seller" });
+    const a = await seedImage("avatars", seller.id);
+    const b = await seedImage("avatars", seller.id);
+    await sql(`update public.profiles set photo_paths = array[${lit(a)}, ${lit(b)}] where id = ${lit(seller.id)}`);
+    await loginAs(context, seller);
+    await page.goto("/mypage/profile");
+    const field = photoField(page);
+    await expect(field.locator("img")).toHaveCount(2);
+    await field.getByRole("button", { name: "外す" }).first().click();
+    await expect(field.locator("img")).toHaveCount(1);
+    await page.getByRole("button", { name: "保存する" }).click();
+    await expect(page.getByText("プロフィールを保存しました。")).toBeVisible();
+    expect(await photoPaths(seller.id)).toEqual([b]);
+    await expect.poll(() => stored(a), { message: "外した写真は置き場から消える" }).toBe(false);
+    expect(await stored(b)).toBe(true);
+  });
+
+  test("写真の無い出品者のページには、写真の並びを出さない", async ({ page }) => {
+    const seller = await freshUser("set-photo-none", { role: "seller" });
+    await page.goto(`/sellers/${seller.id}`);
+    await expect(page.locator(".intro-text")).toBeVisible();
+    await expect(page.getByRole("list", { name: "プロフィール写真" })).toHaveCount(0);
+  });
+
+  test("購入者の編集画面には、写真の欄が無い", async ({ page, context }) => {
+    const buyer = await freshUser("set-photo-buyer", { role: "buyer" });
+    await loginAs(context, buyer);
+    await page.goto("/mypage/profile");
+    await expect(page.getByRole("heading", { name: "プロフィールの編集" })).toBeVisible();
+    await expect(photoField(page)).toHaveCount(0);
+  });
+
+  test("DB は、7枚・他人のフォルダの写真・同じ写真の重複を断り、6枚までは通す", async () => {
+    const seller = await freshUser("set-photo-db", { role: "seller" });
+    const other = await freshUser("set-photo-db2", { role: "seller" });
+    const mine = await Promise.all(Array.from({ length: 7 }, () => seedImage("avatars", seller.id)));
+    const theirs = await seedImage("avatars", other.id);
+    const c = await userClient(seller);
+    const write = async (p: string[]) => (await c.from("profiles").update({ photo_paths: p }).eq("id", seller.id)).error;
+    expect(await write(mine), "7枚").not.toBeNull();
+    expect(await write([mine[0]!, theirs]), "他人のフォルダ").not.toBeNull();
+    expect(await write([mine[0]!, mine[0]!]), "重複").not.toBeNull();
+    expect(await photoPaths(seller.id)).toEqual([]);
+    expect(await write(mine.slice(0, 6)), "6枚").toBeNull();
+    expect(await photoPaths(seller.id)).toEqual(mine.slice(0, 6));
+  });
+
+  test("退会すると、写真も置き場から消す対象に入り、photo_paths は空になる", async () => {
+    const seller = await freshUser("set-photo-wd", { role: "seller" });
+    const a = await seedImage("avatars", seller.id);
+    await sql(`update public.profiles set photo_paths = array[${lit(a)}] where id = ${lit(seller.id)}`);
+    const { data, error } = await admin().rpc("withdraw_account", { p_user: seller.id, p_reason: "E2E の退会" });
+    expect(error).toBeNull();
+    expect((data as { purge_paths: { avatars: string[] } }).purge_paths.avatars).toContain(a);
+    expect(await photoPaths(seller.id)).toEqual([]);
   });
 });
 

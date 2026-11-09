@@ -10,12 +10,14 @@ import sharp from "sharp";
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-export type ImageKind = "listing" | "cover" | "avatar" | "post" | "chat" | "kyc";
+export type ImageKind = "listing" | "cover" | "avatar" | "photo" | "post" | "chat" | "kyc";
 
 /** 用途ごとの作り直し方。side は長辺、quality は WebP の画質 */
 export const IMAGE_SPEC: Record<ImageKind, { side: number; quality: number }> = {
   listing: { side: 1080, quality: 55 },
   post: { side: 1080, quality: 55 },
+  // プロフィール写真（出品者のページの自己紹介の下）。出品・つぶやきの写真と同じ粗さ
+  photo: { side: 1080, quality: 55 },
   // カバーは横長で大きめに見せるので、粗くせずに大きく残す
   cover: { side: 1600, quality: 82 },
   avatar: { side: 600, quality: 82 },

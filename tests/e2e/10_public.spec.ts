@@ -305,6 +305,15 @@ test.describe("出品者・ランキング・つぶやき", () => {
     }
   });
 
+  // 一度もログインしていない出品者（運営の代理登録など）は最終ログインの時刻が無い（2026-11-09 に写真で見つけた）
+  test("一度もログインしていない出品者のページは、名前の下に空の札が出ず、最終ログインは「—」", async ({ page }) => {
+    const seller = await publicSeller("pub-nev");
+    await page.goto(`/sellers/${seller.id}`);
+    const tags = page.locator(".profile-tags .ptag");
+    for (const text of await tags.allInnerTexts()) expect(text.trim(), "空の札").not.toBe("");
+    await expect(page.locator(".info-row", { hasText: "最終ログイン" }).locator(".info-val")).toHaveText("—");
+  });
+
   test("% や _ を入れて出品者を探しても、全員が出たりエラーになったりしない", async ({ page }) => {
     for (const q of ["%", "_", "%_%", '",()']) {
       const res = await page.goto(`/sellers?q=${encodeURIComponent(q)}`);

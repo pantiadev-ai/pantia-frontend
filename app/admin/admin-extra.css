@@ -243,6 +243,11 @@
   font-family: inherit;
   outline: none;
 }
+/* iPhone の Safari は、作りが明るいままだと選ぶ欄を白く塗り、白い文字の値が読めなくなる。
+   地の色を濃くしても直らず、暗い作りを宣言すると暗く出る（2026-11-09 に WebKit で確かめた） */
+.pg-admin select {
+  color-scheme: dark;
+}
 .pg-admin .adm-textarea {
   border-radius: var(--r-sm);
   min-height: 84px;
@@ -299,6 +304,46 @@
   background: var(--green);
   color: var(--green2);
   border: 1px solid rgba(46, 204, 113, 0.4);
+}
+/* 管理者によるプロフィールの編集（/admin/users/[id]） */
+.pg-admin .adm-pf-images {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pg-admin .adm-pf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.pg-admin .adm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pg-admin .adm-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2-solid);
+  color: var(--text2);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.pg-admin .adm-chip:hover {
+  border-color: var(--pk3);
+}
+.pg-admin .adm-chip[aria-pressed="true"] {
+  background: var(--pk1);
+  border-color: var(--pk3);
+  color: var(--text);
+  font-weight: 700;
+}
+.pg-admin .adm-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .pg-admin .adm-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -375,6 +420,12 @@
   background: var(--red2);
   border-color: var(--red2);
   color: #fff;
+}
+/* スマホでは、窓の「やめる」「直す」などを指で押せる高さにする（約39pxだった。管理の窓のどれにも効く） */
+@media (max-width: 768px) {
+  .pg-admin .adm-modal-actions .adm-btn {
+    min-height: 44px;
+  }
 }
 
 /* 本人確認の書類 */

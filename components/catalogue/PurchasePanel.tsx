@@ -8,6 +8,7 @@ import { addToCart } from "@/lib/actions/cart";
 import { quoteListing } from "@/lib/actions/catalogue";
 import { FormMessage, useAction } from "@/components/useAction";
 import { yen } from "@/lib/format";
+import { optionLabel, type OptionKey } from "@/lib/listing-options";
 import type { PaidOption } from "@/lib/paid-options";
 import MessageButton from "./MessageButton";
 import type { Quote, QuoteOptions } from "./types";
@@ -32,6 +33,8 @@ type Props = {
   videoFee: number;
   anonymousFee: number;
   supports: Record<AddKey, boolean>;
+  /** 選ばなくても付いてくる物（ジップロック梱包・メッセージカード） */
+  included: OptionKey[];
   /** 出品者が決めた有料オプション（名前と料金） */
   paidOptions: PaidOption[];
   initialQuote: Quote | null;
@@ -73,6 +76,8 @@ export default function PurchasePanel(p: Props) {
   const cart = useAction();
 
   const selectable = p.mode !== "unavailable";
+  // 出品が対応している物だけを並べる（対応していない物は出さない）
+  const visibleAdds = ADDS.filter((a) => p.supports[a.key]);
   const fee = (k: AddKey) => (k === "anonymous" ? p.anonymousFee : k === "video" ? p.videoFee : 0);
 
   function optionsOf(d: number | null, a: Record<AddKey, boolean>, x: string[]): QuoteOptions {
@@ -138,7 +143,7 @@ export default function PurchasePanel(p: Props) {
       </div>
       {p.badges}
 
-      {selectable && (dayChoices.length > 0 || ADDS.some((a) => p.supports[a.key]) || p.paidOptions.length > 0) ? (
+      {selectable && (dayChoices.length > 0 || visibleAdds.length > 0 || p.paidOptions.length > 0 || p.included.length > 0) ? (
         <div className="options-card">
           <div className="opt-title">オプションを選択</div>
           {dayChoices.length > 0 && std !== null ? (
@@ -163,32 +168,46 @@ export default function PurchasePanel(p: Props) {
               </div>
             </div>
           ) : null}
-          <div className="opt-group">
-            <div className="opt-label">
-              追加オプション
-              <span className="opt-optional">任意・複数可</span>
+          {visibleAdds.length > 0 ? (
+            <div className="opt-group">
+              <div className="opt-label">
+                追加オプション
+                <span className="opt-optional">任意・複数可</span>
+              </div>
+              <div className="opt-chips" role="group" aria-label="追加オプション">
+                {visibleAdds.map((a) => {
+                  const on = adds[a.key];
+                  const f = fee(a.key);
+                  return (
+                    <button
+                      key={a.key}
+                      type="button"
+                      aria-pressed={on}
+                      className={`opt-chip${on ? " selected" : ""}`}
+                      onClick={() => requote(days, { ...adds, [a.key]: !adds[a.key] }, extras)}
+                    >
+                      {a.label} ({f ? `+${yen(f)}` : "無料"})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="opt-chips">
-              {ADDS.map((a) => {
-                const ok = p.supports[a.key];
-                const on = ok && adds[a.key];
-                const f = fee(a.key);
-                return (
-                  <button
-                    key={a.key}
-                    type="button"
-                    aria-pressed={on}
-                    disabled={!ok}
-                    title={ok ? undefined : "この商品では選べません"}
-                    className={`opt-chip${on ? " selected" : ""}${ok ? "" : " disabled"}`}
-                    onClick={() => ok && requote(days, { ...adds, [a.key]: !adds[a.key] }, extras)}
-                  >
-                    {a.label} ({ok ? (f ? `+${yen(f)}` : "無料") : "対応なし"})
-                  </button>
-                );
-              })}
+          ) : null}
+          {p.included.length > 0 ? (
+            <div className="opt-group">
+              <div className="opt-label">
+                付いてくる物
+                <span className="opt-optional">選ばなくても付きます</span>
+              </div>
+              <ul className="opt-chips opt-included" aria-label="付いてくる物">
+                {p.included.map((k) => (
+                  <li key={k} className="opt-chip included">
+                    {optionLabel(k)}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          ) : null}
           {p.paidOptions.length > 0 ? (
             <div className="opt-group">
               <div className="opt-label">
