@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { ListingCard, Quote } from "@/components/catalogue/types";
 import { toPaidOptions, type PaidOption } from "@/lib/paid-options";
+import type { ListingOptionFlags } from "@/lib/listing-options";
 
 /* ───────── jsonb を読む小さな道具 ───────── */
 
@@ -290,6 +291,8 @@ export async function countPublicSellers(): Promise<number | null> {
 export type SellerProfile = SellerCard & {
   role: string;
   coverPath: string | null;
+  /** プロフィール写真の置き場所（並びは本人が決めた順） */
+  photoPaths: string[];
   heightCm: number | null;
   bodyType: string | null;
   ngNote: string;
@@ -303,7 +306,7 @@ export const getSellerProfile = cache(async (id: string): Promise<SellerProfile 
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, public_name, avatar_path, age, occupation, bio, last_seen_at, follower_count, sales_count, rating_sum, rating_count, supported_options, ship_estimate, created_at, role, cover_path, height_cm, body_type, ng_note, accept_messages, kyc_status, status",
+      "id, public_name, avatar_path, age, occupation, bio, last_seen_at, follower_count, sales_count, rating_sum, rating_count, supported_options, ship_estimate, created_at, role, cover_path, photo_paths, height_cm, body_type, ng_note, accept_messages, kyc_status, status",
     )
     .eq("id", id)
     .maybeSingle();
@@ -313,6 +316,7 @@ export const getSellerProfile = cache(async (id: string): Promise<SellerProfile 
     ...toSeller(data as SellerRow),
     role: data.role,
     coverPath: data.cover_path,
+    photoPaths: data.photo_paths ?? [],
     heightCm: data.height_cm,
     bodyType: data.body_type,
     ngNote: data.ng_note ?? "",
@@ -410,6 +414,26 @@ export const getListingDetail = cache(async (id: string): Promise<ListingDetail 
     createdAt: data.created_at,
   };
 });
+
+/** 出品者の公開中の出品で選ばれている対応オプションの印（出品者のページの「対応オプション」に足す）。
+    DB が全部の公開中の出品をまとめて1行で返す（件数で切らない）。
+    利用者の権限で読むので、見られない出品（フォロワー限定・ブロック）の印は数えない */
+export async function sellerListingOptionFlags(sellerId: string): Promise<ListingOptionFlags[]> {
+  if (!isUuid(sellerId)) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("seller_listing_option_flags", { p_seller: sellerId });
+  if (error) console.error("[catalogue] seller options", error.message);
+  return (data ?? []).map((d) => ({
+    optPhoto: d.opt_photo,
+    optExtend: d.opt_extend,
+    sameDay: d.same_day,
+    anonymousOk: d.anonymous_ok,
+    optLetter: d.opt_letter,
+    optVideo: d.opt_video,
+    optZiplock: d.opt_ziplock,
+    optCard: d.opt_card,
+  }));
+}
 
 /** 見積もり（quote_listing の答え）を読みやすい形にする。形が違えば null */
 export function toQuote(v: unknown): Quote | null {

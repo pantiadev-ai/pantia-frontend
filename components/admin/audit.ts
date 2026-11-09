@@ -97,6 +97,8 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return d.by_admin === true
         ? v("🚪", "red", "退会", `${by}利用者を強制退会にしました${why}`)
         : v("🚪", "yellow", "退会", `${by}退会しました`);
+    case "user.profile_edit":
+      return v("✏️", "blue", "プロフィール", `${by}プロフィールを直しました${why}`);
     case "user.role_request":
       return v("🔄", "blue", "ロール", `${by}${d.to === "seller" ? "出品者" : "購入者"}への変更を申請しました`);
     case "user.role_approve":

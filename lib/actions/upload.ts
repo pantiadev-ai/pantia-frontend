@@ -13,12 +13,13 @@ import { putImage, signedUrls } from "@/lib/storage-server";
 import { publicImageUrl, type PublicBucket } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 
-export type UploadKind = "listing" | "avatar" | "cover" | "post" | "chat";
+export type UploadKind = "listing" | "avatar" | "cover" | "photo" | "post" | "chat";
 
 const TARGET: Record<UploadKind, { bucket: PublicBucket | "chat-images"; image: ImageKind }> = {
   listing: { bucket: "listing-images", image: "listing" },
   avatar: { bucket: "avatars", image: "avatar" },
   cover: { bucket: "avatars", image: "cover" },
+  photo: { bucket: "avatars", image: "photo" },
   post: { bucket: "post-images", image: "post" },
   chat: { bucket: "chat-images", image: "chat" },
 };
@@ -30,7 +31,7 @@ export async function uploadImage(form: FormData): Promise<ActionResult<{ path: 
     if (!(kind in TARGET)) throw new ActionError("画像の種類が違います。");
 
     let folder = v.id;
-    if (kind === "listing" && v.role !== "seller") throw new ActionError("出品者のアカウントで使えます。");
+    if ((kind === "listing" || kind === "photo") && v.role !== "seller") throw new ActionError("出品者のアカウントで使えます。");
     if (kind === "post") {
       if (v.role !== "seller") throw new ActionError("出品者のアカウントで使えます。");
       assertKyc(v);

@@ -309,6 +309,14 @@
   font-weight: 800;
   color: var(--primary);
 }
+/* 「+¥」は縮めない（料金の欄に幅を取られて「+」と「¥」が2行に割れていた） */
+.pg-item-form .lf-po-price > span {
+  flex: none;
+  white-space: nowrap;
+}
+.pg-item-form .lf-po-price > input {
+  min-width: 0;
+}
 .pg-item-form .lf-po-del {
   width: 36px;
   height: 36px;

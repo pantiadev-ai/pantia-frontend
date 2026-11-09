@@ -2,10 +2,12 @@
    主な画面が横にはみ出さないこと・右上の「☰ メニュー」から主な画面へ行けること・
    貼り付く欄が中身に重ならないこと・入力欄で iPhone が拡大しないこと（2026-11-03 に運営から指摘） */
 import type { Page } from "@playwright/test";
-import { freshUser, loginAs, seedListing, type Cast } from "./_db";
+import { randomUUID } from "node:crypto";
+import { freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
 import { clippedItems, overflowOf, setListingStatus, tok } from "./_a";
 import { seedThread } from "./_c";
+import { asAdmin } from "./_d";
 
 async function expectNoOverflow(page: Page, path: string) {
   const res = await page.goto(path);
@@ -236,6 +238,85 @@ test.describe("マイページの中の画面", () => {
     await page.getByRole("link", { name: "マイページに戻る" }).click();
     await expect(page).toHaveURL(/\/mypage$/);
   });
+
+  // 2026-11-09 に運営から「出品管理の表示が見にくい。テキストの表記ずれがある」
+  test("出品管理の行は、長い題名でも、題名に幅があり、数字・値段・ボタンが行の中で重ならない", async ({ page, context }) => {
+    const seller = await freshUser("mob-items", { role: "seller" });
+    const ids = [
+      await seedListing(seller, { title: `E2E出品管理の長い題名${"い".repeat(28)}` }),
+      await seedListing(seller, { title: `E2E下書き${tok()}`, status: "draft" }),
+    ];
+    try {
+      await loginAs(context, seller);
+      await page.goto("/mypage/items");
+      const rows = page.locator(".my-item");
+      await expect(rows).toHaveCount(2);
+      const problems = await rows.evaluateAll((els) =>
+        els.flatMap((row, i) => {
+          const out: string[] = [];
+          const r = row.getBoundingClientRect();
+          const name = row.querySelector(".my-item-name")!.getBoundingClientRect();
+          if (name.width < r.width * 0.4) out.push(`${i + 1}行目: 題名の幅が狭い（${Math.round(name.width)}px／行 ${Math.round(r.width)}px）`);
+          /** 文字の箱（飾りの箱は含めない） */
+          const textBoxes = (el: HTMLElement) => {
+            const boxes: DOMRect[] = [];
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+              if (!n.textContent?.trim()) continue;
+              const range = document.createRange();
+              range.selectNodeContents(n);
+              boxes.push(...Array.from(range.getClientRects()).filter((b) => b.width > 0));
+            }
+            return boxes;
+          };
+          // 文字が何行に分かれているか。文字の箱だけを見て、縦に重ならない所で行を分ける
+          // （余白で高さが変わっても、公開の札の丸い点のような飾りがあっても、数は変わらない）
+          const lines = (el: HTMLElement) => {
+            const boxes = textBoxes(el).sort((a, b) => a.top - b.top);
+            let count = 0;
+            let bottom = -Infinity;
+            for (const b of boxes) {
+              if (b.top >= bottom - 1) {
+                count++;
+                bottom = b.bottom;
+              } else bottom = Math.max(bottom, b.bottom);
+            }
+            return count;
+          };
+          const parts = Array.from(row.querySelectorAll<HTMLElement>(".my-item-name, .my-item-meta > span, .my-item-price, .ia-btn"))
+            .filter((el) => el.getClientRects().length > 0)
+            .map((el) => ({ label: el.textContent?.trim() ?? "", b: el.getBoundingClientRect(), lines: lines(el), oneLine: !el.classList.contains("my-item-name") }));
+          for (const p of parts) {
+            if (p.b.left < r.left - 1 || p.b.right > r.right + 1) out.push(`${i + 1}行目:「${p.label}」が行からはみ出す`);
+            // 数字・値段・ボタンは1行（文字の途中で折り返すと読みにくい）
+            if (p.oneLine && p.lines > 1) out.push(`${i + 1}行目:「${p.label}」が ${p.lines} 行に折り返されている`);
+          }
+          // ボタンは、文字が真ん中にあり、字体が揃っている（リンクの「編集」だけ左に寄り、字体も違っていた）
+          const buttons = Array.from(row.querySelectorAll<HTMLElement>(".ia-btn")).filter((el) => el.getClientRects().length > 0);
+          for (const el of buttons) {
+            const b = el.getBoundingClientRect();
+            const t = textBoxes(el);
+            const mid = (Math.min(...t.map((x) => x.left)) + Math.max(...t.map((x) => x.right))) / 2;
+            if (Math.abs(mid - (b.left + b.right) / 2) > 3) out.push(`${i + 1}行目:「${el.textContent?.trim()}」の文字が真ん中にない`);
+          }
+          const fonts = new Set(buttons.map((el) => getComputedStyle(el).fontFamily));
+          if (fonts.size > 1) out.push(`${i + 1}行目: ボタンの字体が揃っていない（${[...fonts].join(" ／ ")}）`);
+          for (let a = 0; a < parts.length; a++)
+            for (let c = a + 1; c < parts.length; c++) {
+              const x = parts[a].b;
+              const y = parts[c].b;
+              const w = Math.min(x.right, y.right) - Math.max(x.left, y.left);
+              const h = Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top);
+              if (w > 1 && h > 1) out.push(`${i + 1}行目:「${parts[a].label}」と「${parts[c].label}」が重なる`);
+            }
+          return out;
+        }),
+      );
+      expect(problems).toEqual([]);
+    } finally {
+      await setListingStatus(ids, "deleted");
+    }
+  });
 });
 
 test.describe("貼り付く欄と入力欄", () => {
@@ -318,6 +399,122 @@ test.describe("貼り付く欄と入力欄", () => {
     }
   });
 });
+
+test.describe("選ぶ欄と有料オプションの行", () => {
+  // iPhone の Safari は、暗い地の色を付けても作りが明るいままだと選ぶ欄を白く塗り、白い文字の値が読めなくなる（2026-11-09 に写真で見つけた）
+  test("管理の画面の選ぶ欄は暗い地の作りで出て、iPhone でも値が白く抜けない", async ({ page, context }) => {
+    const seller = await freshUser("mob-sel", { role: "seller" });
+    await asAdmin(context);
+    for (const path of [`/admin/users/${seller.id}`, "/admin/proxy", "/admin/settings"]) {
+      await page.goto(path);
+      const r = await page.evaluate(() => {
+        const all = Array.from(document.querySelectorAll<HTMLSelectElement>("select")).filter((el) => el.getClientRects().length > 0);
+        return {
+          count: all.length,
+          light: all.filter((el) => !getComputedStyle(el).colorScheme.includes("dark")).map((el) => el.id || el.name || el.getAttribute("aria-label") || ""),
+        };
+      });
+      expect(r.count, `${path} の選ぶ欄の数`).toBeGreaterThan(0);
+      expect(r.light, path).toEqual([]);
+    }
+  });
+
+  test("有料オプションの行の「+¥」は1行に収まり、「+」と「¥」が2行に割れない", async ({ page, context }) => {
+    const seller = await freshUser("mob-po", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    await page.getByRole("group", { name: "有料オプションの候補" }).getByRole("button", { name: "＋ おもらし" }).click();
+    const r = await page.locator(".lf-po-price > span").first().evaluate((el) => ({ h: el.getBoundingClientRect().height, fs: parseFloat(getComputedStyle(el).fontSize) }));
+    expect(r.h, `「+¥」の高さ ${r.h}px（文字 ${r.fs}px）`).toBeLessThanOrEqual(r.fs * 1.6);
+  });
+
+  // 写真の下の「← → ×」の帯は高さが約21pxで、外す（×）が後ろへ（→）のすぐ隣にあり押し間違えやすかった（2026-11-09 の点検）
+  test("写真の「前へ」「後ろへ」「外す」のボタンは、スマホで高さ44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-up", { role: "seller" });
+    const paths = [0, 1].map(() => `${seller.id}/${randomUUID()}.webp`);
+    await sql(`update public.profiles set photo_paths = array[${paths.map(lit).join(",")}] where id = ${lit(seller.id)}`);
+    await loginAs(context, seller);
+    await page.goto("/mypage/profile");
+    const field = page.locator(".mp-field", { hasText: "プロフィール写真" });
+    await expect(field.getByRole("button", { name: "外す" })).toHaveCount(2);
+    for (const name of ["前へ", "後ろへ", "外す"]) {
+      const h = await field.getByRole("button", { name }).first().evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  // 有料オプションを1つの文としてつないでいたので、スマホで名前の途中で行が変わっていた（2026-11-09 の点検）。
+  // iPhone mini では値の欄が約180pxで「ストッキング同梱（+¥1,000）」が1行に入らないので、折れてよいのは名前と値段の間だけ
+  test("商品のページの有料オプションの行は、名前も値段も途中で割れない", async ({ page }) => {
+    const seller = await freshUser("mob-pol", { role: "seller" });
+    const opts = [
+      { id: "stk", name: "ストッキング同梱", price: 1000 },
+      { id: "book", name: "着用写真集", price: 800 },
+      { id: "omo", name: "おもらし", price: 500 },
+      { id: "glv", name: "使用済みの手袋", price: 1500 },
+    ];
+    const id = await seedListing(seller, { set: `paid_options = ${lit(JSON.stringify(opts))}::jsonb` });
+    try {
+      await page.goto(`/items/${id}`);
+      const value = page.locator(".detail-row", { hasText: "有料オプション" }).locator(".dv");
+      await expect(value).toBeVisible();
+      const items = opts.flatMap((o) => [o.name, `（+¥${o.price.toLocaleString("ja-JP")}）`]);
+      const lines = await value.evaluate(linesOf, items);
+      items.forEach((s, i) => expect(lines[i], `「${s}」の行の数`).toBe(1));
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
+  });
+
+  // 理由の窓のボタンは共通の .adm-btn のままで約39px、文も2文を1つの行にしていて語の途中で割れていた。
+  // 見出しも「直し／ますか？」と割れた（2026-11-09 の点検。呼び名はそのときの長さに合わせる）
+  test("管理者がプロフィールを直す理由の窓は、スマホでボタンが44px以上あり、見出しと文が語の途中で割れない", async ({ page, context }) => {
+    const seller = await freshUser("mob-apf", { role: "seller", nickname: "みく1e16ac" });
+    await asAdmin(context);
+    await page.goto(`/admin/users/${seller.id}`);
+    await page.getByRole("form", { name: "プロフィールの編集" }).getByRole("button", { name: "プロフィールを保存する" }).click();
+    const dialog = page.getByRole("dialog", { name: /のプロフィールを直しますか？$/ });
+    await expect(dialog).toBeVisible();
+    for (const name of ["やめる", "直す"]) {
+      const h = await dialog.getByRole("button", { name, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const sentences = ["本人の画面と公開のページにすぐ出ます。", "本人には知らせません。", "直した理由は操作の記録に残ります。"];
+    const lines = await dialog.locator(".adm-pre").first().evaluate(linesOf, sentences);
+    sentences.forEach((s, i) => expect(lines[i], `「${s}」の行の数`).toBe(1));
+    // 名前は最大20字で1行に入らないことがあるので、折ってよいのは名前の側だけ
+    const [head] = await dialog.getByRole("heading").evaluate(linesOf, ["プロフィールを直しますか？"]);
+    expect(head, "見出しの「プロフィールを直しますか？」の行の数").toBe(1);
+  });
+});
+
+/** el の中の文字をつないだ文から、各 text が何行に渡って描かれているか（見つからなければ -1）。
+    字の形の違い（和文と欧文）で同じ行でも上端がずれるので、行は縦の中心が文字の大きさの6割より離れたら別とみなす */
+function linesOf(el: Element, texts: string[]): number[] {
+  const segs: { n: Text; start: number }[] = [];
+  let all = "";
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+    segs.push({ n, start: all.length });
+    all += n.data;
+  }
+  const at = (off: number): [Text, number] => {
+    for (let i = segs.length - 1; i >= 0; i--) if (segs[i]!.start <= off) return [segs[i]!.n, off - segs[i]!.start];
+    return [segs[0]!.n, 0];
+  };
+  const fs = parseFloat(getComputedStyle(el).fontSize);
+  return texts.map((t) => {
+    const a = all.indexOf(t);
+    if (a < 0) return -1;
+    const r = document.createRange();
+    r.setStart(...at(a));
+    r.setEnd(...at(a + t.length));
+    const mids = Array.from(r.getClientRects()).filter((q) => q.width > 0).map((q) => (q.top + q.bottom) / 2).sort((x, y) => x - y);
+    let count = mids.length > 0 ? 1 : 0;
+    for (let i = 1; i < mids.length; i++) if (mids[i]! - mids[i - 1]! > fs * 0.6) count++;
+    return count;
+  });
+}
 
 test.describe("商品一覧の絞り込み", () => {
   test("スマホでは絞り込みが畳まれていて、「絞り込み」を押すとその場（検索の上）に開き、もう一度押すと畳まれる", async ({ page }) => {

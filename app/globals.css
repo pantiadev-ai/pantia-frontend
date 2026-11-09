@@ -372,6 +372,16 @@ header .pt-name {
   opacity: 0.35;
   cursor: default;
 }
+/* スマホでは指で押せる高さにし、「外す」を「後ろへ」と線で分ける（約21pxで、外すを押し間違えやすかった） */
+@media (max-width: 768px) {
+  .pt-uploader-tools button {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  .pt-uploader-tools button:last-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+  }
+}
 .pt-uploader-add {
   aspect-ratio: 1;
   border: 2px dashed #ffc2db;

@@ -1,8 +1,8 @@
 "use server";
 /* プロフィールの保存。列は1つずつ選んで update する（受け取った object をそのまま渡さない）。
    画像の置き場所は本人の id で始まる物だけ受け付ける（DB の CHECK でも止まる）。
-   出品者だけの項目（カバー・年齢・職業・身長・体型・発送目安・対応オプション・NG・メッセージの受け付け）は、
-   購入者からは受け取っても書かない。 */
+   出品者だけの項目（カバー・プロフィール写真・年齢・職業・身長・体型・発送目安・対応オプション・NG・
+   メッセージの受け付け）は、購入者からは受け取っても書かない。 */
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionViewer, ActionError, runAction, type ActionResult } from "@/lib/auth";
@@ -37,6 +37,7 @@ const ProfileSchema = z
     avatar_path: z.string().regex(IMAGE_PATH).nullable(),
     // ここから下は出品者だけ
     cover_path: z.string().regex(IMAGE_PATH).nullable().optional(),
+    photo_paths: z.array(z.string().regex(IMAGE_PATH)).max(6).optional(),
     age: z.number().int().min(18).max(99).nullable().optional(),
     occupation: z
       .string()
@@ -68,14 +69,21 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
 
     // 画像は本人が上げた物だけ
     const own = (p: string | null | undefined) => p == null || p.startsWith(`${v.id}/`);
-    if (!own(d.avatar_path) || !own(d.cover_path)) throw new ActionError("画像をもう一度選び直してください。");
+    const photos = Array.from(new Set(d.photo_paths ?? []));
+    if (!own(d.avatar_path) || !own(d.cover_path) || !photos.every(own)) {
+      throw new ActionError("画像をもう一度選び直してください。");
+    }
 
     const limit = await takeRateLimit([{ rule: RULES.profileUser, kind: "user", id: v.id }], { failClosed: true });
     if (!limit.ok) throw new ActionError(limit.message);
 
     const supabase = await createClient();
     // 替える前の画像（保存のあとで、使わなくなった物を置き場から消す）
-    const { data: before } = await supabase.from("profiles").select("avatar_path, cover_path").eq("id", v.id).maybeSingle();
+    const { data: before } = await supabase
+      .from("profiles")
+      .select("avatar_path, cover_path, photo_paths")
+      .eq("id", v.id)
+      .maybeSingle();
     const { error } =
       v.role === "seller"
         ? await supabase
@@ -85,6 +93,7 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
               bio: d.bio,
               avatar_path: d.avatar_path,
               cover_path: d.cover_path ?? null,
+              photo_paths: photos,
               age: d.age ?? null,
               occupation: d.occupation ? d.occupation : null,
               height_cm: d.height_cm ?? null,
@@ -101,10 +110,15 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
             .eq("id", v.id);
     throwDb(error, "保存できませんでした。入力の内容を確かめてください。");
 
-    const unused = [
-      before?.avatar_path !== d.avatar_path ? before?.avatar_path : null,
-      v.role === "seller" && before?.cover_path !== (d.cover_path ?? null) ? before?.cover_path : null,
-    ].filter((p): p is string => !!p && own(p));
+    // 前に使っていて、保存のあとどこにも使っていない画像（購入者はアイコンだけを替えられる）
+    const kept = new Set(
+      v.role === "seller"
+        ? [d.avatar_path, d.cover_path, ...photos]
+        : [d.avatar_path, before?.cover_path, ...(before?.photo_paths ?? [])],
+    );
+    const unused = [before?.avatar_path, before?.cover_path, ...(before?.photo_paths ?? [])].filter(
+      (p): p is string => !!p && own(p) && !kept.has(p),
+    );
     if (unused.length) {
       // 消せなくても保存は済んでいるので、記録だけ残す（残った物は容量の問題だけ）
       const r = await removeImages("avatars", unused);

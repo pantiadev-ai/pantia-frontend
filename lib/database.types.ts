@@ -1248,6 +1248,7 @@ export type Database = {
           notify_news: boolean
           notify_order: boolean
           occupation: string | null
+          photo_paths: string[]
           public_name: string | null
           purchase_count: number
           rating_count: number
@@ -1282,6 +1283,7 @@ export type Database = {
           notify_news?: boolean
           notify_order?: boolean
           occupation?: string | null
+          photo_paths?: string[]
           public_name?: string | null
           purchase_count?: number
           rating_count?: number
@@ -1316,6 +1318,7 @@ export type Database = {
           notify_news?: boolean
           notify_order?: boolean
           occupation?: string | null
+          photo_paths?: string[]
           public_name?: string | null
           purchase_count?: number
           rating_count?: number
@@ -1930,6 +1933,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_update_profile: {
+        Args: {
+          p_accept_messages: boolean
+          p_admin: string
+          p_age: number | null
+          p_avatar_path: string | null
+          p_bio: string
+          p_body_type: string | null
+          p_cover_path: string | null
+          p_height_cm: number | null
+          p_ng_note: string
+          p_nickname: string
+          p_occupation: string | null
+          p_photo_paths: string[]
+          p_reason: string
+          p_ship_estimate: string | null
+          p_supported_options: string[]
+          p_user: string
+        }
+        Returns: string[]
+      }
       admin_update_settings: {
         Args: { p_admin: string; p_patch: Json }
         Returns: undefined
@@ -2110,6 +2134,7 @@ export type Database = {
           notify_news: boolean
           notify_order: boolean
           occupation: string | null
+          photo_paths: string[]
           public_name: string | null
           purchase_count: number
           rating_count: number
@@ -2210,6 +2235,19 @@ export type Database = {
         Returns: undefined
       }
       seller_is_public: { Args: { p_uid: string }; Returns: boolean }
+      seller_listing_option_flags: {
+        Args: { p_seller: string }
+        Returns: {
+          anonymous_ok: boolean
+          opt_card: boolean
+          opt_extend: boolean
+          opt_letter: boolean
+          opt_photo: boolean
+          opt_video: boolean
+          opt_ziplock: boolean
+          same_day: boolean
+        }[]
+      }
       seller_stats: { Args: { p_period?: string }; Returns: Json }
       send_message: {
         Args: {

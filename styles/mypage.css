@@ -619,6 +619,8 @@
   color: var(--text-sub);
   transition: all 0.2s;
   white-space: nowrap;
+  /* ボタンは字体を受け継がないので、リンクの「編集」とで字体がずれていた */
+  font-family: inherit;
 }
 
 .pg-mypage .ia-btn:hover { background: #fff; color: var(--primary); }
@@ -628,6 +630,17 @@
 .pg-mypage .item-pub-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
 .pg-mypage .pub-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green2); }
 .pg-mypage .pub-dot.off { background: var(--text-muted); }
+
+/* スマホでは2段にする。1段目に写真・題名・値段、2段目にボタンを幅いっぱいで。
+   1段のままだと、ボタンと値段に幅を取られて題名が 0px になり、1文字ずつ縦に折れていた（2026-11-09 に運営から指摘） */
+@media (max-width: 640px) {
+  .pg-mypage .my-item { flex-wrap: wrap; gap: 10px 12px; padding: 12px; }
+  .pg-mypage .my-item-name { overflow-wrap: anywhere; }
+  .pg-mypage .my-item-meta { flex-wrap: wrap; gap: 4px 10px; }
+  .pg-mypage .my-item-meta > span { white-space: nowrap; }
+  .pg-mypage .my-item-actions { flex: 1 1 100%; }
+  .pg-mypage .my-item-actions .ia-btn { flex: 1 1 0; justify-content: center; text-align: center; padding: 8px 10px; }
+}
 
 /* ── SALES PANEL ── */
 .pg-mypage .sales-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }

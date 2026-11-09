@@ -2,12 +2,22 @@
    一覧・検索・詳細、売上の残高（台帳の合計と合う）、台帳の調整、警告・停止・停止の解除・強制退会、
    ロールの変更申請の承認・却下。操作した人を壊す試験は、必ず freshUser の人で行う。 */
 import type { Page } from "@playwright/test";
-import { admin, freshUser, lit, loginAs, seedListing, sql } from "./_db";
+import { pngBuffer } from "./_a";
+import { admin, cast, freshUser, lit, loginAs, seedImage, seedListing, sql, userClient } from "./_db";
 import { act, asAdmin, auditOf, ledgerSum, notificationsOf, OLD, rid, rowOf, seedLedger } from "./_d";
 import { expect, test } from "./_fixtures";
 
 /** 詳細の「売上の残高」の金額 */
 const balanceOf = (page: Page) => page.locator(".adm-statline").filter({ hasText: "売上の残高" }).locator("b");
+/** 詳細の「プロフィールの編集」の欄 */
+const editForm = (page: Page) => page.getByRole("form", { name: "プロフィールの編集" });
+/** 編集の欄の中の画像の欄（アイコン・カバー画像・プロフィール写真） */
+const imageGroup = (page: Page, name: string) => editForm(page).getByRole("group", { name, exact: true });
+
+async function stored(path: string): Promise<boolean> {
+  const { data, error } = await admin().storage.from("avatars").download(path);
+  return !error && !!data;
+}
 
 test.describe("利用者の一覧と詳細", () => {
   test("名前や ID で探すと、その人だけが出て、一覧にはメールアドレスを出さず、詳細が開く", async ({ page, context }) => {
@@ -89,6 +99,161 @@ test.describe("利用者の一覧と詳細", () => {
     await expect(page.getByText("自分自身には操作できません。")).toBeVisible();
     await expect(page.getByRole("button", { name: "⛔ 利用を停止" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "強制退会" })).toHaveCount(0);
+    await expect(editForm(page)).toHaveCount(0);
+  });
+});
+
+test.describe("管理者によるプロフィールの編集", () => {
+  test("出品者のプロフィールを画像の差し替えも含めて直せ、理由が要り、公開のページと操作の記録に出る", async ({ page, context }) => {
+    const r = rid();
+    const name = `D編集${r}`;
+    const u = await freshUser("d-pe", { role: "seller", nickname: name });
+    const oldAvatar = await seedImage("avatars", u.id);
+    await sql(`update public.profiles set avatar_path = ${lit(oldAvatar)}, bio = '前の自己紹介', occupation = '前の職業',
+               supported_options = array['photo'], accept_messages = true where id = ${lit(u.id)}`);
+    const adm = await asAdmin(context);
+    await page.goto(`/admin/users/${u.id}`);
+    const form = editForm(page);
+    await expect(form.getByLabel("ニックネーム")).toHaveValue(name);
+    await expect(form.getByLabel("自己紹介")).toHaveValue("前の自己紹介");
+    await expect(form.getByLabel("職業")).toHaveValue("前の職業");
+
+    await form.getByLabel("ニックネーム").fill(`D直後${r}`);
+    await form.getByLabel("自己紹介").fill(`E2E直した自己紹介${r}`);
+    await form.getByLabel("職業").fill("会社員");
+    const anon = form.getByRole("button", { name: "📦 匿名配送" });
+    await anon.click();
+    await expect(anon).toHaveAttribute("aria-pressed", "true");
+    await form.getByRole("checkbox", { name: "メッセージを受け付ける" }).uncheck();
+    // アイコンは外してから選び直す
+    const icon = imageGroup(page, "アイコン");
+    await icon.getByRole("button", { name: "外す" }).click();
+    await icon.locator('input[type="file"]').setInputFiles({ name: "new.png", mimeType: "image/png", buffer: await pngBuffer(90, 90) });
+    await expect(icon.locator("img")).toHaveCount(1, { timeout: 30_000 });
+    // 写真を2枚足す
+    const photos = imageGroup(page, "プロフィール写真");
+    await photos.locator('input[type="file"]').setInputFiles([
+      { name: "a.png", mimeType: "image/png", buffer: await pngBuffer(81, 60) },
+      { name: "b.png", mimeType: "image/png", buffer: await pngBuffer(82, 60) },
+    ]);
+    await expect(photos.locator("img")).toHaveCount(2, { timeout: 30_000 });
+
+    // 理由が空なら直せない
+    await form.getByRole("button", { name: "プロフィールを保存する" }).click();
+    const dialog = page.getByRole("dialog", { name: `${name}さんのプロフィールを直しますか？` });
+    await dialog.getByRole("button", { name: "直す", exact: true }).click();
+    await expect(dialog.getByRole("alert")).toContainText("直した理由を入力してください。");
+    await dialog.getByRole("button", { name: "やめる" }).click();
+    await expect(dialog).toBeHidden();
+    expect((await sql<{ nickname: string }>(`select nickname from public.profiles where id = ${lit(u.id)}`))[0]!.nickname).toBe(name);
+
+    await act(page, form, {
+      button: "プロフィールを保存する",
+      title: `${name}さんのプロフィールを直しますか？`,
+      reason: `E2E編集${r}`,
+      confirm: "直す",
+      done: "プロフィールを直しました。",
+    });
+
+    const p = (
+      await sql<{ nickname: string; bio: string; occupation: string; opts: string[]; accept_messages: boolean; avatar_path: string; photos: string[] }>(
+        `select nickname, bio, occupation, to_json(supported_options) as opts, accept_messages, avatar_path, to_json(photo_paths) as photos
+           from public.profiles where id = ${lit(u.id)}`,
+      )
+    )[0]!;
+    expect(p).toMatchObject({ nickname: `D直後${r}`, bio: `E2E直した自己紹介${r}`, occupation: "会社員", accept_messages: false });
+    expect([...p.opts].sort()).toEqual(["anonymous", "photo"]);
+    const own = new RegExp(`^${u.id}/[0-9a-f-]{36}\\.webp$`);
+    expect(p.avatar_path).toMatch(own);
+    expect(p.avatar_path).not.toBe(oldAvatar);
+    expect(p.photos).toHaveLength(2);
+    for (const x of p.photos) expect(x).toMatch(own);
+    // 前のアイコンは置き場から消え、新しい画像は残る
+    await expect.poll(() => stored(oldAvatar), { timeout: 15_000 }).toBe(false);
+    for (const x of [p.avatar_path, ...p.photos]) expect(await stored(x)).toBe(true);
+
+    // 公開のページに出る
+    await page.goto(`/sellers/${u.id}`);
+    await expect(page.getByText(`E2E直した自己紹介${r}`)).toBeVisible();
+    await expect(page.getByText(`D直後${r}`).first()).toBeVisible();
+    await expect(page.getByRole("list", { name: "プロフィール写真" }).getByRole("button")).toHaveCount(2);
+
+    // 操作の記録
+    expect(await auditOf(u.id)).toContainEqual({ action: "user.profile_edit", actor_id: adm.id });
+    await page.goto(`/admin/logs?q=${u.id}`);
+    await expect(page.getByText(`${adm.nickname}さんがプロフィールを直しました（理由: E2E編集${r}）`)).toBeVisible();
+  });
+
+  test("購入者には、アイコン・ニックネーム・自己紹介の欄だけを出し、ニックネームが空なら確かめの窓を出さない", async ({ page, context }) => {
+    const u = await freshUser("d-pe-b", { role: "buyer", nickname: `D購入者${rid()}` });
+    await asAdmin(context);
+    await page.goto(`/admin/users/${u.id}`);
+    const form = editForm(page);
+    await expect(imageGroup(page, "アイコン")).toBeVisible();
+    await expect(form.getByLabel("ニックネーム")).toBeVisible();
+    await expect(form.getByLabel("自己紹介")).toBeVisible();
+    for (const g of ["カバー画像", "プロフィール写真"]) await expect(imageGroup(page, g)).toHaveCount(0);
+    for (const l of ["年齢", "職業", "身長", "体型", "発送目安", "NG・注意事項"]) await expect(form.getByLabel(l)).toHaveCount(0);
+    await expect(form.getByRole("checkbox", { name: "メッセージを受け付ける" })).toHaveCount(0);
+
+    await form.getByLabel("ニックネーム").fill("");
+    await form.getByRole("button", { name: "プロフィールを保存する" }).click();
+    await expect(form.getByRole("alert")).toContainText("ニックネームは1〜20字で入れてください。");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("DB の admin_update_profile は、本人からは呼べず、管理者でない人・他人のフォルダの画像・空の理由を断り、正しい呼び出しは外した画像を返す", async () => {
+    const r = rid();
+    const name = `D守り${r}`;
+    const u = await freshUser("d-pe-db", { role: "seller", nickname: name });
+    const other = await freshUser("d-pe-x", { role: "seller" });
+    const adm = await cast("admin");
+    const mine = await seedImage("avatars", u.id);
+    const theirs = await seedImage("avatars", other.id);
+    await sql(`update public.profiles set avatar_path = ${lit(mine)} where id = ${lit(u.id)}`);
+    const base = {
+      p_admin: adm.id,
+      p_user: u.id,
+      p_nickname: `D守り後${r}`,
+      p_bio: "",
+      p_avatar_path: null as string | null,
+      p_cover_path: null as string | null,
+      p_photo_paths: [] as string[],
+      p_age: null,
+      p_occupation: null,
+      p_height_cm: null,
+      p_body_type: null,
+      p_ship_estimate: null,
+      p_supported_options: [] as string[],
+      p_ng_note: null,
+      p_accept_messages: true,
+      p_reason: "E2E の守り",
+    };
+    const rpc = (args: Record<string, unknown>) => admin().rpc("admin_update_profile" as never, args as never);
+
+    const self = await userClient(u);
+    expect((await self.rpc("admin_update_profile" as never, { ...base, p_admin: u.id } as never)).error, "本人からは呼べない").not.toBeNull();
+    expect((await rpc({ ...base, p_admin: other.id })).error, "管理者でない人").not.toBeNull();
+    expect((await rpc({ ...base, p_avatar_path: theirs })).error, "他人のアイコン").not.toBeNull();
+    expect((await rpc({ ...base, p_photo_paths: [theirs] })).error, "他人の写真").not.toBeNull();
+    expect((await rpc({ ...base, p_reason: "  " })).error, "空の理由").not.toBeNull();
+    const before = (await sql<{ nickname: string; avatar_path: string }>(`select nickname, avatar_path from public.profiles where id = ${lit(u.id)}`))[0];
+    expect(before, "断ったあとは何も変わらない").toEqual({ nickname: name, avatar_path: mine });
+
+    // 理由は画面で500字まで書ける。記録はこの1か所だけなので、切らずに全部残す
+    const longReason = `理${"由".repeat(498)}末`;
+    const ok = await rpc({ ...base, p_avatar_path: null, p_reason: longReason });
+    expect(ok.error).toBeNull();
+    expect(ok.data).toEqual([mine]);
+    expect((await sql<{ nickname: string; avatar_path: string | null }>(`select nickname, avatar_path from public.profiles where id = ${lit(u.id)}`))[0]).toEqual({
+      nickname: `D守り後${r}`,
+      avatar_path: null,
+    });
+    const logged = await sql<{ reason: string }>(
+      `select detail->>'reason' as reason from public.audit_logs where target_id = ${lit(u.id)} and action = 'user.profile_edit' order by created_at desc limit 1`,
+    );
+    expect(logged[0]?.reason, "500字の理由が切れずに残る").toBe(longReason);
+    expect((await rpc({ ...base, p_reason: `${longReason}超` })).error, "501字の理由").not.toBeNull();
   });
 });
 
@@ -187,6 +352,7 @@ test.describe("利用者への処分", () => {
       });
       await expect(page.getByText("この利用者は退会済みです。")).toBeVisible();
       await expect(page.getByText("退会済みの利用者には操作できません。")).toBeVisible();
+      await expect(editForm(page)).toHaveCount(0);
 
       const p = (await sql<{ status: string; nickname: string }>(`select status, nickname from public.profiles where id = ${lit(u.id)}`))[0];
       expect(p).toEqual({ status: "withdrawn", nickname: "退会したユーザー" });

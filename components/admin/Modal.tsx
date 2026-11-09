@@ -10,7 +10,8 @@ export function Modal({
   busy = false,
   children,
 }: {
-  title: string;
+  /** 文字だけでよい。語の途中で割りたくない所があるときは span で囲んで渡す */
+  title: ReactNode;
   onClose: () => void;
   busy?: boolean;
   children: ReactNode;

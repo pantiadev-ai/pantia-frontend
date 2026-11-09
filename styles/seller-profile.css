@@ -449,7 +449,78 @@
 }
 
 .pg-seller-profile .intro-text { font-size: 13px; color: var(--text-sub); line-height: 1.8; font-weight: 500; }
-.pg-seller-profile .intro-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.pg-seller-profile .intro-options { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+
+/* プロフィール写真（自己紹介の下・最大6枚）。3列の正方形で並べ、押すと下の窓で大きく見る */
+.pg-seller-profile .profile-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pg-seller-profile .profile-photo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f4f4f6;
+  cursor: zoom-in;
+}
+.pg-seller-profile .profile-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pg-seller-profile .profile-photo:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* 写真を大きく見る窓（body の直下に出すので、ページの箱の外で効くように書く） */
+dialog.pt-photo-viewer[open] {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  border: 0;
+  background: rgba(20, 16, 22, 0.94);
+  color: #fff;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+dialog.pt-photo-viewer::backdrop { background: rgba(20, 16, 22, 0.94); }
+html:has(dialog.pt-photo-viewer[open]) { overflow: hidden; }
+.pt-photo-viewer-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.pt-photo-viewer-count { margin: 0; font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.85); }
+.pt-photo-viewer-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pt-photo-viewer-body img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.pt-photo-viewer-nav { display: flex; justify-content: center; gap: 12px; }
+.pt-photo-viewer-close,
+.pt-photo-viewer-nav button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pt-photo-viewer-close:focus-visible,
+.pt-photo-viewer-nav button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
 .pg-seller-profile .opt-tag {
   display: flex;

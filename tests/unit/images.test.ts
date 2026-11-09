@@ -54,9 +54,10 @@ test("用途ごとに長辺を縮め、WebP にして、EXIF を落とす", asyn
   }
 });
 
-test("出品とつぶやきの写真だけ長辺1080・画質55に落とし、ほかは画質80以上で残す", () => {
+test("出品・つぶやき・プロフィール写真だけ長辺1080・画質55に落とし、ほかは画質80以上で残す", () => {
   assert.deepEqual(IMAGE_SPEC.listing, { side: 1080, quality: 55 });
   assert.deepEqual(IMAGE_SPEC.post, { side: 1080, quality: 55 });
+  assert.deepEqual((IMAGE_SPEC as Record<string, unknown>).photo, { side: 1080, quality: 55 });
   for (const kind of ["cover", "avatar", "chat", "kyc"] as const) assert.ok(IMAGE_SPEC[kind].quality >= 80, kind);
 });
 
