@@ -307,7 +307,6 @@
 }
 
 .pg-seller-profile .btn-message:hover:not(:disabled) { background: #fff; }
-.pg-seller-profile .btn-message:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 出品者のアカウントで見たときの、送れない理由 */
 .pg-seller-profile .msg-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-sub); }
 

@@ -357,7 +357,8 @@ a.page-btn { text-decoration: none; color: inherit; }
   text-decoration: none;
   transition: all 0.2s;
 }
-.cat-btn:hover { background: #fff; }
+/* 押せないボタンは指を乗せても色を変えない（押せそうに見せない） */
+.cat-btn:hover:not(:disabled) { background: #fff; }
 .cat-btn.active { background: linear-gradient(135deg, var(--primary), #ff75a0); color: #fff; border-color: var(--primary); }
 .cat-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 出品者のアカウントで見たときの、送れない理由（ボタンの下に幅いっぱいで出す） */

@@ -76,6 +76,11 @@ test.describe("会話を始める", () => {
       await expect(btn, path).toBeDisabled();
       await expect(btn, path).toHaveAccessibleDescription(reason);
       await expect(page.getByText(reason), path).toBeVisible();
+      // 押せないボタンは、指を乗せても押せそうな色に変わらない
+      const bg = await btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+      await btn.hover();
+      await page.waitForTimeout(400);
+      await expect(btn, path).toHaveCSS("background-color", bg);
     }
     const db = await userClient(other);
     const { error } = await db.rpc("open_thread", { p_other: seller.id });
