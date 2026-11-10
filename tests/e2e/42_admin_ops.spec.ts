@@ -248,6 +248,23 @@ test.describe("保留の投稿とメッセージ", () => {
     await act(page, rowOf(page, body), { button: "非表示", title: "このメッセージを非表示にしますか？", confirm: "非表示にする", done: "非表示にしました。" });
     expect(await one<string>(`select status from public.messages where id = ${lit(msgId)}`)).toBe("hidden");
   });
+
+  // 客先から「管理サイトでメッセージを確認するところが見つからない」と言われた（2026-11-10）。
+  // 左の案内に何を見る所かを書き、メッセージのタブには、何が出るかと通報の場所を書く
+  test("左の案内のモデレーションに「投稿・メッセージ」と出て、メッセージのタブには何が出るかと通報対応の場所が書いてある", async ({ page, context }) => {
+    await asAdmin(context);
+    await page.goto("/admin");
+    await page.getByRole("navigation", { name: "管理メニュー" }).getByRole("link", { name: /モデレーション.*投稿・メッセージ/ }).click();
+    await expect(page).toHaveURL(/\/admin\/moderation$/);
+
+    await page.goto("/admin/moderation?type=message");
+    const note = page.getByRole("note");
+    await expect(note).toContainText("自動の見張りで保留になったメッセージ");
+    await expect(note).toContainText("「🚩 通報対応」");
+    await expect(note).toContainText("前後の会話");
+    await page.goto("/admin/moderation?view=hidden&type=message");
+    await expect(page.getByRole("note")).toContainText("非表示にしたメッセージ");
+  });
 });
 
 test.describe("注文", () => {

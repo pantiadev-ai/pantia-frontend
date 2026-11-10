@@ -360,6 +360,8 @@ a.page-btn { text-decoration: none; color: inherit; }
 .cat-btn:hover { background: #fff; }
 .cat-btn.active { background: linear-gradient(135deg, var(--primary), #ff75a0); color: #fff; border-color: var(--primary); }
 .cat-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 出品者のアカウントで見たときの、送れない理由（ボタンの下に幅いっぱいで出す） */
+.cat-msg-note { flex-basis: 100%; margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-sub); }
 .pg-item-detail button.opt-chip { font: inherit; }
 .pg-item-detail a.btn-buy,
 .pg-item-detail a.btn-cart { display: block; text-align: center; text-decoration: none; }

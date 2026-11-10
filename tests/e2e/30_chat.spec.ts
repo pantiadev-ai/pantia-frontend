@@ -62,12 +62,21 @@ test.describe("会話を始める", () => {
     await expect(page.getByRole("textbox", { name: "メッセージ" })).toHaveCount(0);
   });
 
-  test("出品者どうしでは、出品者のページに送るボタンが出ず、直に開こうとしても断られる", async ({ page, context }) => {
+  // 出品者のアカウントではボタンを出していなかったので、客先から「送るボタンが無くなった」と言われた（2026-11-10）。
+  // 消さずに、押せない形で理由を添えて出す
+  test("出品者のアカウントで見ると、出品者のページと商品のページに押せない送るボタンと理由が出て、直に開こうとしても断られる", async ({ page, context }) => {
     const seller = await freshSeller("ch-ss");
     const other = await freshSeller("ch-ss2");
+    const listingId = await seedListing(seller);
+    const reason = "出品者のアカウントからは送れません（購入者のアカウントで送れます）";
     await loginAs(context, other);
-    await page.goto(`/sellers/${seller.id}`);
-    await expect(page.getByRole("button", { name: /✉ メッセージ/ })).toHaveCount(0);
+    for (const path of [`/sellers/${seller.id}`, `/items/${listingId}`]) {
+      await page.goto(path);
+      const btn = page.getByRole("button", { name: "✉ メッセージを送る" });
+      await expect(btn, path).toBeDisabled();
+      await expect(btn, path).toHaveAccessibleDescription(reason);
+      await expect(page.getByText(reason), path).toBeVisible();
+    }
     const db = await userClient(other);
     const { error } = await db.rpc("open_thread", { p_other: seller.id });
     expect(error?.message ?? "").toMatch(/unavailable/);

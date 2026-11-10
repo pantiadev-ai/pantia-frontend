@@ -31,6 +31,7 @@ import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, yen 
 import { includedOptionKeys } from "@/lib/listing-options";
 import Gallery from "@/components/catalogue/Gallery";
 import MessageButton from "@/components/catalogue/MessageButton";
+import SellerMessageDisabled from "@/components/catalogue/SellerMessageDisabled";
 import PurchasePanel, { type PurchaseMode } from "@/components/catalogue/PurchasePanel";
 import { categoryIcon, initialOf } from "@/components/catalogue/card-helpers";
 import { payMethods } from "@/components/static/facts";
@@ -129,6 +130,8 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
   const maxDays = worn === null ? 0 : item.optExtend ? Math.min(MAX_DAYS, Math.max(item.maxWornDays ?? worn, worn)) : worn;
   // 出品者どうしの会話は DB が断るので、購入者とログインしていない人だけに出す（受け付けていない人には出さない）
   const canMessage = !own && (!viewer || viewer.role === "buyer") && !!seller?.acceptMessages;
+  // 出品者のアカウントで見たときは、押せないボタンに理由を添える（消すと「無くなった」と思われた。2026-11-10）
+  const sellerViewing = !own && viewer?.role === "seller" && !!seller?.acceptMessages;
 
   const images = item.imagePaths.map((p) => listingImage(p)).filter((u): u is string => !!u);
   const catText = categoryLabel(item.category);
@@ -209,7 +212,11 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
                     labels={["♡ フォローする", "♥ フォロー中"]}
                     ariaLabel={`${sellerName}をフォロー`}
                   />
-                  {canMessage ? <MessageButton sellerId={seller.id} loggedIn={!!viewer} className="cat-btn" /> : null}
+                  {canMessage ? (
+                    <MessageButton sellerId={seller.id} loggedIn={!!viewer} className="cat-btn" />
+                  ) : sellerViewing ? (
+                    <SellerMessageDisabled id="msg-seller-note" className="cat-btn" noteClassName="cat-msg-note" />
+                  ) : null}
                 </div>
               ) : null}
             </>

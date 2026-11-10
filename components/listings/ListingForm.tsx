@@ -295,7 +295,12 @@ export default function ListingForm({
       desc: `会社経由の転送便で住所を秘匿できます（別途送料+${yen(anonymousFee)}）`,
     },
     { key: "pre_message_ok", name: "💬 購入前メッセージ可", desc: "購入前に購入者からメッセージを受け付けます" },
-    { key: "followers_only", name: "🔒 フォロワー限定公開", desc: "フォロワーのみに商品を表示します" },
+    // 「限定で公開」を「全員に出て、買えるのがフォロワーだけ」と取り違えた客先がいた（2026-11-10）。見えない範囲まで書く
+    {
+      key: "followers_only",
+      name: "🔒 フォロワー限定公開",
+      desc: "フォローしている人だけに見せます。フォローしていない人には、一覧にも商品のページにも出ません",
+    },
     { key: "cool_shipping", name: "❄️ クール便で発送", desc: "冷蔵・冷凍が必要な商品（体液系など）はONにしてください" },
   ];
 

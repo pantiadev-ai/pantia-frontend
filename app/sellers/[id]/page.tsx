@@ -30,6 +30,7 @@ import { BODY_TYPES, SHIP_ESTIMATES, labelOf } from "@/lib/labels";
 import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, relTime } from "@/lib/format";
 import ItemCard from "@/components/catalogue/ItemCard";
 import MessageButton from "@/components/catalogue/MessageButton";
+import SellerMessageDisabled from "@/components/catalogue/SellerMessageDisabled";
 import Pager from "@/components/catalogue/Pager";
 import ProfilePhotos from "@/components/catalogue/ProfilePhotos";
 import SellerTabs, { type SellerTab } from "@/components/catalogue/SellerTabs";
@@ -122,8 +123,9 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const avg = ratingAvg(seller.ratingSum, seller.ratingCount);
   const avgStars = seller.ratingCount ? Math.round(seller.ratingSum / seller.ratingCount) : 0;
   const reviewTotal = reviews.total;
-  // 出品者どうしの会話は DB が断るので、購入者とログインしていない人だけに出す
-  const showMessage = !own && !blocked && (!viewer || viewer.role === "buyer");
+  // 出品者どうしの会話は DB が断るので、送れるボタンは購入者とログインしていない人だけ。
+  // 出品者のアカウントで見たときは、押せないボタンに理由を添える（消すと「無くなった」と思われた。2026-11-10）
+  const messageAs = own || blocked ? null : viewer?.role === "seller" ? "seller" : "visitor";
   const itemPages = items ? Math.min(MAX_ITEM_PAGE, Math.ceil(items.total / ITEMS_PER_PAGE)) : 0;
   const blockedNotice = (
     <div className="cat-empty cat-blocked">
@@ -348,15 +350,15 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
                   labels={["♡ フォローする", "♥ フォロー中"]}
                   ariaLabel={`${name}をフォロー`}
                 />
-                {showMessage ? (
-                  seller.acceptMessages ? (
-                    <MessageButton sellerId={seller.id} loggedIn={!!viewer} className="btn-message" />
-                  ) : (
-                    <button type="button" className="btn-message" disabled>
-                      ✉ メッセージは受け付けていません
-                    </button>
-                  )
-                ) : null}
+                {messageAs === null ? null : !seller.acceptMessages ? (
+                  <button type="button" className="btn-message" disabled>
+                    ✉ メッセージは受け付けていません
+                  </button>
+                ) : messageAs === "visitor" ? (
+                  <MessageButton sellerId={seller.id} loggedIn={!!viewer} className="btn-message" />
+                ) : (
+                  <SellerMessageDisabled id="msg-seller-note" className="btn-message" noteClassName="msg-note" />
+                )}
               </>
             )}
 

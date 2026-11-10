@@ -51,6 +51,27 @@
   background: var(--blue2);
   box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
 }
+/* 左の案内の名前の下の小さな説明（何を見る所か）。「メッセージを確認する所が見つからない」と言われた（2026-11-10） */
+.pg-admin .nav-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-admin .nav-sub {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text2);
+}
+/* 何が出る画面かの注記（モデレーション） */
+.pg-admin .adm-mod-note {
+  margin: 0;
+  padding: 10px 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
 
 /* 表（横に長い表は、表の中だけ横に動かす） */
 .pg-admin .adm-scroll {
@@ -636,6 +657,12 @@
   .pg-admin .nav-item {
     white-space: nowrap;
     padding: 8px 10px;
+  }
+  /* 横に並べる幅では、説明も同じ行に置く（その項目だけ背が高くならないように） */
+  .pg-admin .nav-label {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4px;
   }
   .pg-admin .nav-item.active {
     border-left: none;
