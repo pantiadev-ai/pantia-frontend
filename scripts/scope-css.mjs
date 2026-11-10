@@ -14,8 +14,11 @@
      先頭の @import（Google Fonts） → 消す（next/font で自前で配る。CSP で外のフォントを許さないため）
 
    使い方: node scripts/scope-css.mjs <見本の CSS のフォルダ> <出力のフォルダ>
-     見本の style.css は base.css として書き出す（見本の無い画面が使う共通の型）。 */
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
+     見本の style.css は base.css として書き出す（見本の無い画面が使う共通の型）。
+
+   いまの styles/*.css は、これで作ったあと手で直接直している（2026-11-11 から）。流し直すと直しが消えるので、
+   出力のフォルダに同じ名前のファイルがあるときは書かずに飛ばす。新しい見本を足すときは、空のフォルダに書き出して手で移す。 */
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import postcss from "postcss";
 
@@ -42,6 +45,11 @@ function scopeSelector(sel, scope) {
 for (const file of readdirSync(src).filter((f) => f.endsWith(".css")).sort()) {
   const name = basename(file, ".css") === "style" ? "base" : basename(file, ".css").replace(/_/g, "-");
   const scope = `.pg-${name}`;
+  const dest = join(out, `${name}.css`);
+  if (existsSync(dest)) {
+    console.log(`飛ばした ${name}.css（もうある。手で直しているので上書きしない。空のフォルダに書き出して手で移す）`);
+    continue;
+  }
   const root = postcss.parse(readFileSync(join(src, file), "utf8"));
   const frames = new Set();
 
@@ -66,8 +74,9 @@ for (const file of readdirSync(src).filter((f) => f.endsWith(".css")).sort()) {
   });
   // 囲いは body の代わりなので、画面の高さいっぱいに伸ばす
   root.prepend(postcss.rule({ selector: scope, nodes: [postcss.decl({ prop: "min-height", value: "100vh" })] }));
-  root.prepend(postcss.comment({ text: ` 自動生成（scripts/scope-css.mjs）。元: revivalworks.jp/labelname/${file}。手で直すときは元を直してから流し直す ` }));
+  root.prepend(postcss.comment({ text: ` 元は scripts/scope-css.mjs で作った（元: revivalworks.jp/labelname/${file}）。いまは手で直接直している。流し直さない（流し直すと直しが消える） ` }));
 
-  writeFileSync(join(out, `${name}.css`), root.toString());
+  // 確かめたあとに同じ名前のファイルができていても、上書きしない（wx）
+  writeFileSync(dest, root.toString(), { flag: "wx" });
   console.log(`書いた ${name}.css（囲い ${scope}・keyframes ${frames.size}）`);
 }

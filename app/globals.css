@@ -314,7 +314,10 @@ header .pt-name {
     font-size: 17px !important;
     white-space: nowrap;
   }
-  /* iPhone の Safari は、16px より小さい入力欄を押すと画面を拡大し、戻さない（2026-11-03 に運営から指摘） */
+}
+/* iPhone の Safari は、16px より小さい入力欄を押すと画面を拡大し、戻さない（2026-11-03 に運営から指摘）。
+   大きい iPhone の横向きは 768px を超える（例 814px）ので、幅だけでなく「指で触る端末」も条件にする（2026-11-11） */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
   input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="submit"], [type="button"], [type="reset"]),
   textarea,
   select {
