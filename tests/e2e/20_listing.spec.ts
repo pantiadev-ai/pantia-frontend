@@ -479,3 +479,18 @@ test.describe("プレビュー確認と有料オプション", () => {
     expect(r.h, `「+¥」の高さ ${r.h}px（文字 ${r.fs}px）`).toBeLessThanOrEqual(r.fs * 1.6);
   });
 });
+
+// 客先が「フォロワー限定公開」の意味を取り違え、2品目が購入者に出ないと言った（2026-11-10）。フォローしていない人にどう見えるかを書く
+test.describe("公開の範囲の説明", () => {
+  test("フォロワー限定公開の説明に、フォローしていない人には一覧にも商品のページにも出ないと書いてあり、そのとおりに出ない", async ({ page, context, request }) => {
+    const seller = await freshUser("b-fol", { role: "seller" });
+    await loginAs(context, seller);
+    await page.goto("/listings/new");
+    const row = page.locator(".toggle-row", { has: page.getByRole("checkbox", { name: "🔒 フォロワー限定公開" }) });
+    await expect(row).toContainText("フォローしていない人には、一覧にも商品のページにも出ません");
+
+    // 書いたとおり、ログインしていない人には商品のページも開けない
+    const id = await seedListing(seller, { set: "followers_only = true" });
+    expect((await request.get(`/items/${id}`)).status()).toBe(404);
+  });
+});

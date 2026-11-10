@@ -178,6 +178,13 @@ export default async function AdminModerationPage({ searchParams }: PageProps<"/
             <Tabs active={type} items={typeTabs} />
           </div>
         </div>
+        {/* 何が出る画面かを書く（「管理サイトでメッセージを確認する所が見つからない」と言われた。2026-11-10）。
+            利用者どうしの会話をまるごと見る画面は、規約で約束した範囲の外なので作らない */}
+        <p className="adm-mod-note" role="note">
+          {view === "held" ? `ここには、自動の見張りで保留になった${TYPE_LABEL[type]}が出ます。` : `ここには、非表示にした${TYPE_LABEL[type]}が出ます。`}
+          通報された物は「<Link href="/admin/reports">🚩 通報対応</Link>」に出ます。
+          {type === "message" ? "どちらからも、前後の会話を開けます。利用者どうしの会話を全部見る画面はありません。" : null}
+        </p>
         {loadError ? (
           <Empty>一覧を読めませんでした。時間をおいて読み込み直してください。</Empty>
         ) : items.length === 0 ? (

@@ -3,7 +3,7 @@
    名前は上限の20文字でも崩れないこと（2026-11-03、769〜1024px で「ログアウト」と名前が画面の外に出ていた） */
 import { freshUser, loginAs } from "./_db";
 import { expect, test } from "./_fixtures";
-import { clippedItems, overflowOf } from "./_a";
+import { clippedItems, coverGaps, overflowOf } from "./_a";
 
 const LONG_NAME = "あ".repeat(20);
 
@@ -50,4 +50,17 @@ test.describe("間の幅のヘッダー", () => {
     expect(fit.ellipsis).toBe("ellipsis");
     expect(fit.scroll).toBeGreaterThan(fit.client);
   });
+});
+
+// プロフィールの板がカバーの下の端に 48px かぶさっていた。客先から「重ねないで並べて」（2026-11-10）
+test("出品者のページのプロフィールの板と右の中身は、PC と間の幅でも、カバーに重ならず少し間を空けて並ぶ", async ({ page }) => {
+  const seller = await freshUser("tab-cov", { role: "seller" });
+  for (const width of [1280, 1024, 820, 769]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/sellers/${seller.id}`);
+    const g = await coverGaps(page);
+    expect(g.card, `${width}px カバーと板の間`).toBeGreaterThanOrEqual(8);
+    expect(g.card, `${width}px カバーと板の間`).toBeLessThanOrEqual(40);
+    expect(g.main, `${width}px カバーと右の中身の間`).toBeGreaterThanOrEqual(8);
+  }
 });

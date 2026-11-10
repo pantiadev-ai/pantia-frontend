@@ -25,7 +25,8 @@ export type AdminPanel =
   | "logs"
   | "search";
 
-type NavItem = { key: AdminPanel; href: string; icon: string; label: string; count?: number; tone?: "yellow" | "blue" | "" };
+/** sub は名前の下に出す小さな説明（何を見る所か） */
+type NavItem = { key: AdminPanel; href: string; icon: string; label: string; sub?: string; count?: number; tone?: "yellow" | "blue" | "" };
 
 function NavLink({ item, active }: { item: NavItem; active: AdminPanel }) {
   const on = item.key === active;
@@ -34,7 +35,13 @@ function NavLink({ item, active }: { item: NavItem; active: AdminPanel }) {
       <span className="nav-icon" aria-hidden="true">
         {item.icon}
       </span>{" "}
-      {item.label}
+      {item.sub ? (
+        <span className="nav-label">
+          {item.label} <small className="nav-sub">{item.sub}</small>
+        </span>
+      ) : (
+        item.label
+      )}
       {item.count != null && item.count > 0 && (
         <span className={`nav-badge${item.tone ? ` ${item.tone}` : ""}`} aria-label={`未処理 ${item.count}件`}>
           {item.count > 99 ? "99+" : item.count}
@@ -66,7 +73,8 @@ export default async function AdminShell({ active, title, children }: { active: 
       items: [
         { key: "kyc", href: "/admin/kyc", icon: "🪪", label: "KYC審査", count: c.kyc, tone: "yellow" },
         { key: "reports", href: "/admin/reports", icon: "🚩", label: "通報対応", count: c.reports, tone: "" },
-        { key: "moderation", href: "/admin/moderation", icon: "🛡", label: "モデレーション", count: c.held, tone: "" },
+        // 「メッセージを確認する所が見つからない」と言われた（2026-11-10）。何を見る所かを名前の下に書く
+        { key: "moderation", href: "/admin/moderation", icon: "🛡", label: "モデレーション", sub: "投稿・メッセージ", count: c.held, tone: "" },
       ],
     },
     {

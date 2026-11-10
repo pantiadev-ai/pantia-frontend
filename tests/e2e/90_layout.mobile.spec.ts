@@ -5,7 +5,7 @@ import type { Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
-import { clippedItems, overflowOf, setListingStatus, tok } from "./_a";
+import { clippedItems, coverGaps, overflowOf, setListingStatus, tok } from "./_a";
 import { seedThread } from "./_c";
 import { asAdmin } from "./_d";
 
@@ -37,6 +37,16 @@ test.describe("横にはみ出さない（ログインしていない）", () =>
       await setListingStatus([id], "deleted");
     }
   });
+});
+
+// プロフィールの板がカバーの下の端に 48px かぶさっていた。客先から「重ねないで並べて」（2026-11-10）
+test("出品者のページのプロフィールの板は、カバーに重ならず、少し間を空けて下に並ぶ", async ({ page }) => {
+  const seller = await freshUser("mob-cov", { role: "seller" });
+  await page.goto(`/sellers/${seller.id}`);
+  const g = await coverGaps(page);
+  expect(g.card, "カバーと板の間").toBeGreaterThanOrEqual(8);
+  expect(g.card, "カバーと板の間").toBeLessThanOrEqual(40);
+  expect(g.main, "カバーと右の中身の間").toBeGreaterThanOrEqual(8);
 });
 
 test.describe("横にはみ出さない（ログイン中）", () => {

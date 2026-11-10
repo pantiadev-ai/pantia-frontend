@@ -147,6 +147,15 @@ export async function overflowOf(page: Page): Promise<{ scrollWidth: number; inn
   });
 }
 
+/** 出品者のページで、カバーの下の端から、プロフィールの板と右の中身の上の端までの間（px）。負ならかぶさっている */
+export async function coverGaps(page: Page): Promise<{ card: number; main: number }> {
+  return page.evaluate(() => {
+    const top = (sel: string) => document.querySelector(sel)!.getBoundingClientRect().top;
+    const coverBottom = document.querySelector(".pg-seller-profile .cover-img")!.getBoundingClientRect().bottom;
+    return { card: top(".pg-seller-profile .profile-card") - coverBottom, main: top(".pg-seller-profile .main-content") - coverBottom };
+  });
+}
+
 /** 枠（nav など）の外に出て切れているリンク・ボタンの文字（全部見えていれば空）。
     overflow: hidden の枠では、外に出た項目は人には見えないのに toBeVisible も overflowOf も通るので、枠との位置で比べる */
 export async function clippedItems(box: Locator): Promise<string[]> {

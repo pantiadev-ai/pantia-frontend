@@ -180,7 +180,8 @@
 /* ── PROFILE MAIN LAYOUT ── */
 .pg-seller-profile .profile-main {
   max-width: 1060px;
-  margin: 0 auto;
+  /* カバーの下に間を空けて並べる（板をカバーに 48px かぶせていたら、客先から「重ねないで並べて」。2026-11-10） */
+  margin: 16px auto 0;
   padding: 0 28px;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -213,7 +214,6 @@
   border-radius: var(--r);
   padding: 24px 20px;
   text-align: center;
-  margin-top: -48px;
   position: relative;
   z-index: 10;
   box-shadow: var(--glass-shadow);
@@ -306,7 +306,9 @@
   transition: all 0.2s;
 }
 
-.pg-seller-profile .btn-message:hover { background: #fff; }
+.pg-seller-profile .btn-message:hover:not(:disabled) { background: #fff; }
+/* 出品者のアカウントで見たときの、送れない理由 */
+.pg-seller-profile .msg-note { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-sub); }
 
 .pg-seller-profile .profile-stats {
   display: grid;
@@ -398,7 +400,7 @@
 .pg-seller-profile .rbar-count { width: 20px; }
 
 /* ── RIGHT MAIN ── */
-.pg-seller-profile .main-content { display: flex; flex-direction: column; gap: 20px; padding-top: 24px; }
+.pg-seller-profile .main-content { display: flex; flex-direction: column; gap: 20px; }
 
 /* TABS */
 .pg-seller-profile .tabs {
