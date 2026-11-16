@@ -297,6 +297,28 @@ header .pt-name {
     cursor: pointer;
   }
 }
+/* 360px より狭い画面（320px など）では、ヘッダーの右端から「☰ メニュー」が 3〜26px はみ出していた（2026-11-16）。
+   文字は目に見えない形で残し（ボタンの名前と読み上げは「メニュー」のまま）、☰ だけにする */
+@media (max-width: 359px) {
+  .pt-mmenu-btn {
+    position: relative;
+    min-width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .pt-mmenu-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 /* スマホではヘッダーを1行に収める（見本はPCの幅だけ）。検索も隠す */
 @media (max-width: 768px) {
   header .header-search.pt-hide-sm {
@@ -375,8 +397,9 @@ header .pt-name {
   opacity: 0.35;
   cursor: default;
 }
-/* スマホでは指で押せる高さにし、「外す」を「後ろへ」と線で分ける（約21pxで、外すを押し間違えやすかった） */
-@media (max-width: 768px) {
+/* スマホでは指で押せる高さにし、「外す」を「後ろへ」と線で分ける（約21pxで、外すを押し間違えやすかった）。
+   幅だけの条件では、スマホの横向き（812px など）で 21〜23px に戻っていたので、「指で触る端末」も条件にする（2026-11-16） */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
   .pt-uploader-tools button {
     min-height: 44px;
     font-size: 15px;
