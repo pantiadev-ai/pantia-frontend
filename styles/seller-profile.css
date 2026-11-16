@@ -1,4 +1,4 @@
-/*  自動生成（scripts/scope-css.mjs）。元: revivalworks.jp/labelname/seller_profile.css。手で直すときは元を直してから流し直す  */
+/*  元は scripts/scope-css.mjs で作った（元: revivalworks.jp/labelname/seller_profile.css）。いまは手で直接直している。流し直さない（流し直すと直しが消える）  */
 .pg-seller-profile {
   min-height: 100vh;
 }
@@ -143,6 +143,7 @@
   margin: 0 auto;
   padding: 16px 28px 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   font-size: 12px;
@@ -153,6 +154,10 @@
 .pg-seller-profile .breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 700; }
 .pg-seller-profile .breadcrumb a:hover { text-decoration: underline; }
 .pg-seller-profile .bc-sep { color: var(--text-muted); }
+/* 長い名前に縮められて「トッ／プ」と割れていた（2026-11-11）。折れるのは項目の間と、最後の名前の中だけ */
+.pg-seller-profile .breadcrumb > a,
+.pg-seller-profile .bc-sep { white-space: nowrap; flex-shrink: 0; }
+.pg-seller-profile .breadcrumb > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 
 /* ── COVER ── */
 .pg-seller-profile .profile-cover {

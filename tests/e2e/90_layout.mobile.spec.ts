@@ -408,6 +408,22 @@ test.describe("貼り付く欄と入力欄", () => {
       expect(r.small, path).toEqual([]);
     }
   });
+
+  // 管理画面の入力欄の指定は 12〜13px（2026-11-10 の点検で指摘）。768px 以下は globals.css の指定で 16px になるが、
+  // 大きい iPhone の横向き（814px）はその幅を超える
+  test("管理画面の入力欄の文字も 16px 以上で、縦でも大きい iPhone の横向き（814px）でも、押して拡大されない", async ({ page, context }) => {
+    const seller = await freshUser("mob-ainp", { role: "seller" });
+    await asAdmin(context);
+    for (const size of [page.viewportSize()!, { width: 814, height: 380 }]) {
+      await page.setViewportSize(size);
+      for (const path of ["/admin/users", `/admin/users/${seller.id}`, "/admin/items", "/admin/proxy", "/admin/settings"]) {
+        await page.goto(path);
+        const r = await smallInputs(page);
+        expect(r.count, `${size.width}px ${path} の入力欄の数`).toBeGreaterThan(0);
+        expect(r.small, `${size.width}px ${path}`).toEqual([]);
+      }
+    }
+  });
 });
 
 test.describe("選ぶ欄と有料オプションの行", () => {
@@ -495,6 +511,37 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     // 名前は最大20字で1行に入らないことがあるので、折ってよいのは名前の側だけ
     const [head] = await dialog.getByRole("heading").evaluate(linesOf, ["プロフィールを直しますか？"]);
     expect(head, "見出しの「プロフィールを直しますか？」の行の数").toBe(1);
+  });
+
+  // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
+  test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-chip", { role: "seller" });
+    await asAdmin(context);
+    await page.goto(`/admin/users/${seller.id}`);
+    const chips = page.getByRole("group", { name: "対応できるオプション" }).getByRole("button");
+    await expect(chips.first()).toBeVisible();
+    const hs = await chips.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    hs.forEach((h, i) => expect(h, `${i + 1}つ目の札の高さ`).toBeGreaterThanOrEqual(44));
+  });
+
+  // パンくずの各項目が縮められて、「トッ／プ」「パン／ティ」と語の途中で割れていた（2026-11-10 の点検）。
+  // 折れてよいのは項目の間と、長い題名・名前の中だけ
+  test("商品と出品者のページのパンくずは、長い題名・名前でも、各項目が語の途中で割れない", async ({ page }) => {
+    const seller = await freshUser("mob-bc", { role: "seller", nickname: `E2E${"あ".repeat(17)}` });
+    const id = await seedListing(seller, { title: `E2Eパンくず${"い".repeat(30)}` });
+    try {
+      const cases: [string, string[]][] = [
+        [`/items/${id}`, ["トップ", "商品一覧", "パンティ"]],
+        [`/sellers/${seller.id}`, ["トップ", "女の子一覧"]],
+      ];
+      for (const [path, items] of cases) {
+        await page.goto(path);
+        const lines = await page.locator(".breadcrumb").evaluate(linesOf, items);
+        items.forEach((s, i) => expect(lines[i], `${path} の「${s}」の行の数`).toBe(1));
+      }
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
   });
 });
 
