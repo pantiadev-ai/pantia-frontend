@@ -86,7 +86,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | STRIPE_SECRET_KEY・STRIPE_WEBHOOK_SECRET | Vercel | サーバーだけ（制限つきキーにする） | Stripe の管理画面で鍵と webhook の署名秘密を回す |
 | PAYPAY_API_KEY・PAYPAY_API_SECRET・PAYPAY_MERCHANT_ID | Vercel | サーバーだけ | PayPay の管理画面で鍵を作り直す |
 | TRUSTDOCK_API_TOKEN・TRUSTDOCK_WEBHOOK_SECRET | Vercel | サーバーだけ | TRUSTDOCK に作り直しを頼む |
-| SENDGRID_API_KEY | Vercel（Mail Send だけの権限） | サーバーだけ | SendGrid で鍵を消して作り直す |
+| RESEND_API_KEY | Vercel（送信だけ・pan-tia.com だけの権限）。Supabase の SMTP の合言葉は別の鍵 | サーバーだけ | Resend で鍵を消して作り直す（Vercel 用と SMTP 用を別々に回せる） |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Vercel（ブラウザに配る。秘密ではない） | 公開 | 守りの本体は RLS なので差し替え不要。JWT 秘密を回したときだけ替わる |
 
 自前で暗号にする物（無ければ「なし」）。あるなら AES-256-GCM・タグ16バイト（28 §J1）: なし（口座番号は Supabase の保存時の暗号化と RLS に任せ、画面は下4桁）。webhook の署名・パスワードの再設定の札は HMAC-SHA256 を timingSafeEqual で比べる。
@@ -111,7 +111,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 | PayPay | 注文の金額・注文番号 | 品名は送らない | 決済の手数料だけ |
 | 銀行振込（運営の口座へ購入者が振り込む） | 外へは送らない（購入者が自分の銀行で、振込名義の記号と金額を入れる） | 名義は記号＋本人の名前だけ。品名は出さない | なし（振込の手数料は購入者） |
 | TRUSTDOCK | 本人確認の依頼（書類は TRUSTDOCK の画面で本人が上げる） | 利用者の id だけ | 1件ごとの契約の料金。 仮（社長・契約のとき） |
-| SendGrid | お知らせのメール（宛先・定型文） | 品名・住所は書かない | 無料枠。送れなければ控えだけ残す |
+| Resend | お知らせのメール（宛先・定型文）。Supabase Auth の SMTP として登録の確認・再設定のメールも | 品名・住所は書かない。開封・クリックの追跡は OFF | 無料枠（1日の上限あり）。送れなければ控えだけ残し、理由（Resend 状態 種類）を残す |
 
 AI を使うなら（使わないなら「なし」）:
 - 呼び出しはゲートウェイ経由だけか（28 §B11）: なし（AI を使わない）
