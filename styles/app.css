@@ -54,6 +54,11 @@
   margin: 0;
   padding: 0;
 }
+/* 上の p の余白を消す指定が、誤りの帯（app/globals.css の .pt-msg）の余白まで消していたので戻す */
+.pg-app .pt-msg {
+  margin: 8px 0;
+  padding: 10px 14px;
+}
 .pg-app ul,
 .pg-app ol {
   list-style: none;

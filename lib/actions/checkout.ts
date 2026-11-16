@@ -6,7 +6,6 @@
    ・決済会社の準備に失敗したら、作った支払い待ちをその場で取り消す（1点物を押さえたままにしない）。
    ・運営の口座への振込（transfer）は決済会社を通さない。create_checkout が振込名義の番号を決め、案内の画面へ移る。 */
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import {
   cancelProviderPayment,
   checkoutMethods,
@@ -16,6 +15,7 @@ import {
   syncGroupPayment,
 } from "@/lib/adapters/payment";
 import { actionViewer, ActionError, assertKyc, runAction, type ActionResult } from "@/lib/auth";
+import { parsePlaceInput, type PlaceOrderInput } from "@/lib/checkout-input";
 import { dbCode, throwDb } from "@/lib/db-errors";
 import { expireStaleOrders } from "@/lib/order-sweep";
 import { RULES, takeRateLimit } from "@/lib/rate-limit";
@@ -24,34 +24,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Json } from "@/lib/database.types";
 
-const Address = z
-  .object({
-    name: z.string().trim().min(1).max(30),
-    postal: z
-      .string()
-      .trim()
-      .regex(/^\d{3}-?\d{4}$/)
-      .transform((s) => (s.includes("-") ? s : `${s.slice(0, 3)}-${s.slice(3)}`)),
-    prefecture: z.string().trim().min(2).max(4),
-    address1: z.string().trim().min(1).max(100),
-    address2: z.string().trim().max(100).default(""),
-    phone: z
-      .string()
-      .transform((s) => s.replace(/[^0-9]/g, ""))
-      .pipe(z.string().regex(/^0\d{9,10}$/)),
-  })
-  .strict();
-
-const PlaceInput = z
-  .object({
-    listingIds: z.array(z.string().refine(isUuid)).min(1).max(10),
-    method: z.enum(["card", "bank", "paypay", "transfer", "mock"]),
-    address: Address,
-    saveAddress: z.boolean().optional(),
-  })
-  .strict();
-
-export type PlaceOrderInput = z.input<typeof PlaceInput>;
+// 入力の決まりと誤りの文は lib/checkout-input.ts（tests/unit/checkout-input.test.ts で試す）
+export type { PlaceOrderInput };
 
 /** 注文を作って、決済会社の画面（テスト決済なら /checkout/mock、振込なら /checkout/transfer）の URL を返す */
 export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<{ url: string }>> {
@@ -59,11 +33,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<ActionResult<{
     const v = await actionViewer();
     if (v.role !== "buyer") throw new ActionError("購入は購入者のアカウントで行えます。");
     assertKyc(v);
-    const parsed = PlaceInput.safeParse(input);
-    if (!parsed.success) {
-      const field = parsed.error.issues[0]?.path[0];
-      throw new ActionError(field === "address" ? "お届け先を確かめてください。" : "カートの中身と支払い方法を確かめてください。");
-    }
+    const parsed = parsePlaceInput(input);
+    if (!parsed.ok) throw new ActionError(parsed.message);
     const { listingIds, method, address, saveAddress } = parsed.data;
     if (!(await checkoutMethods()).includes(method)) throw new ActionError("この支払い方法は、いまは使えません。");
     const limit = await takeRateLimit([{ rule: RULES.checkoutUser, kind: "user", id: v.id }], { failClosed: true });
