@@ -124,12 +124,18 @@
   margin: 0 auto;
   padding: 16px 28px 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 600;
 }
+/* 320px の画面で、編集の画面のパンくずの各項目が語の途中で2行に割れていた（2026-11-16）。
+   項目は割らずに折り返し、最後の項目（今の画面の名前）だけ、入りきらないときに限って折る */
+.pg-item-form .breadcrumb > a,
+.pg-item-form .bc-sep { white-space: nowrap; flex-shrink: 0; }
+.pg-item-form .breadcrumb > span:last-child { min-width: 0; overflow-wrap: anywhere; }
 
 .pg-item-form .breadcrumb a { color: var(--primary); text-decoration: none; font-weight: 700; }
 .pg-item-form .breadcrumb a:hover { text-decoration: underline; }

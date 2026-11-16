@@ -28,7 +28,7 @@ export default function MobileMenu({ links, signedInAs }: Props) {
   return (
     <>
       <button type="button" className="pt-mmenu-btn" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
-        <span aria-hidden="true">☰</span> メニュー
+        <span aria-hidden="true">☰</span> <span className="pt-mmenu-label">メニュー</span>
       </button>
       {open
         ? createPortal(
