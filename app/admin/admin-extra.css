@@ -343,7 +343,8 @@
   gap: 8px;
 }
 .pg-admin .adm-chip {
-  min-height: 36px;
+  /* 指で押せる大きさ（2026-11-11。もとは 36px） */
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--border);

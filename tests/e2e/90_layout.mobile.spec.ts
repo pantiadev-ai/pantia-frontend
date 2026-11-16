@@ -171,6 +171,43 @@ test.describe("スマホのメニュー", () => {
     }
   });
 
+  // 320px（初代 iPhone SE など）では、どの種類のヘッダーも右端から「☰ メニュー」が 3〜26px はみ出していた（2026-11-16 の点検）。
+  // 360px 以上は収まっていた。360px より狭いときだけ ☰ だけにする（ボタンの名前は「メニュー」のまま）
+  test("320px の画面でも、ログインの有無にかかわらず、どの種類のヘッダーも項目が枠の外に出ず、メニューを開ける", async ({ page, context }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const seller = await freshUser("mob-320", { role: "seller" });
+    const id = await seedListing(seller);
+    const outside = () =>
+      page.locator("header").first().evaluate((el) => {
+        const vw = document.documentElement.clientWidth;
+        return Array.from(el.querySelectorAll<HTMLElement>("a, button"))
+          .filter((a) => a.getClientRects().length > 0)
+          .filter((a) => {
+            const b = a.getBoundingClientRect();
+            return b.left < -1 || b.right > vw + 1;
+          })
+          .map((a) => a.getAttribute("aria-label") || a.textContent?.trim() || "");
+      });
+    try {
+      // ログインしていない: トップ（左右 16px）・一覧・約款・商品・出品者（左右 28px）
+      for (const path of ["/", "/items", "/privacy", `/items/${id}`, `/sellers/${seller.id}`]) {
+        await page.goto(path);
+        expect(await outside(), `ログインしていない ${path} で枠の外に出た項目`).toEqual([]);
+      }
+      // ログイン中は 💬 🔔 が足される。マイページ・タイムライン・つぶやき・出品・カート（app の型）・チャットの頭も
+      await loginAs(context, seller);
+      for (const path of ["/", "/items", `/items/${id}`, "/mypage", "/timeline", "/tweets", "/listings/new", "/cart", "/messages"]) {
+        await page.goto(path);
+        expect(await outside(), `ログイン中 ${path} で枠の外に出た項目`).toEqual([]);
+      }
+      // ☰ だけになっても、名前は「メニュー」のままで開ける
+      await page.goto("/items");
+      await expect((await openMenu(page)).getByRole("link", { name: "マイページ", exact: true })).toBeVisible();
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
+  });
+
   test("トップの下のナビから、さがす・つぶやき・ログインへ行ける", async ({ page }) => {
     for (const [name, href, url] of [
       ["さがす", "/items", /\/items$/],
@@ -408,6 +445,22 @@ test.describe("貼り付く欄と入力欄", () => {
       expect(r.small, path).toEqual([]);
     }
   });
+
+  // 管理画面の入力欄の指定は 12〜13px（2026-11-10 の点検で指摘）。768px 以下は globals.css の指定で 16px になるが、
+  // 大きい iPhone の横向き（814px）はその幅を超える
+  test("管理画面の入力欄の文字も 16px 以上で、縦でも大きい iPhone の横向き（814px）でも、押して拡大されない", async ({ page, context }) => {
+    const seller = await freshUser("mob-ainp", { role: "seller" });
+    await asAdmin(context);
+    for (const size of [page.viewportSize()!, { width: 814, height: 380 }]) {
+      await page.setViewportSize(size);
+      for (const path of ["/admin/users", `/admin/users/${seller.id}`, "/admin/items", "/admin/proxy", "/admin/settings"]) {
+        await page.goto(path);
+        const r = await smallInputs(page);
+        expect(r.count, `${size.width}px ${path} の入力欄の数`).toBeGreaterThan(0);
+        expect(r.small, `${size.width}px ${path}`).toEqual([]);
+      }
+    }
+  });
 });
 
 test.describe("選ぶ欄と有料オプションの行", () => {
@@ -438,18 +491,22 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(r.h, `「+¥」の高さ ${r.h}px（文字 ${r.fs}px）`).toBeLessThanOrEqual(r.fs * 1.6);
   });
 
-  // 写真の下の「← → ×」の帯は高さが約21pxで、外す（×）が後ろへ（→）のすぐ隣にあり押し間違えやすかった（2026-11-09 の点検）
-  test("写真の「前へ」「後ろへ」「外す」のボタンは、スマホで高さ44px以上ある", async ({ page, context }) => {
+  // 写真の下の「← → ×」の帯は高さが約21pxで、外す（×）が後ろへ（→）のすぐ隣にあり押し間違えやすかった（2026-11-09 の点検）。
+  // 44px にする指定が 768px 以下だけで、スマホの横向き（812px など）では 21〜23px に戻っていた（2026-11-16 の点検）
+  test("写真の「前へ」「後ろへ」「外す」のボタンは、スマホの縦でも横向き（812px）でも高さ44px以上ある", async ({ page, context }) => {
     const seller = await freshUser("mob-up", { role: "seller" });
     const paths = [0, 1].map(() => `${seller.id}/${randomUUID()}.webp`);
     await sql(`update public.profiles set photo_paths = array[${paths.map(lit).join(",")}] where id = ${lit(seller.id)}`);
     await loginAs(context, seller);
-    await page.goto("/mypage/profile");
-    const field = page.locator(".mp-field", { hasText: "プロフィール写真" });
-    await expect(field.getByRole("button", { name: "外す" })).toHaveCount(2);
-    for (const name of ["前へ", "後ろへ", "外す"]) {
-      const h = await field.getByRole("button", { name }).first().evaluate((el) => el.getBoundingClientRect().height);
-      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    for (const size of [page.viewportSize()!, { width: 812, height: 375 }]) {
+      await page.setViewportSize(size);
+      await page.goto("/mypage/profile");
+      const field = page.locator(".mp-field", { hasText: "プロフィール写真" });
+      await expect(field.getByRole("button", { name: "外す" })).toHaveCount(2);
+      for (const name of ["前へ", "後ろへ", "外す"]) {
+        const h = await field.getByRole("button", { name }).first().evaluate((el) => el.getBoundingClientRect().height);
+        expect(h, `${size.width}px の「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+      }
     }
   });
 
@@ -495,6 +552,58 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     // 名前は最大20字で1行に入らないことがあるので、折ってよいのは名前の側だけ
     const [head] = await dialog.getByRole("heading").evaluate(linesOf, ["プロフィールを直しますか？"]);
     expect(head, "見出しの「プロフィールを直しますか？」の行の数").toBe(1);
+  });
+
+  // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
+  test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-chip", { role: "seller" });
+    await asAdmin(context);
+    await page.goto(`/admin/users/${seller.id}`);
+    const chips = page.getByRole("group", { name: "対応できるオプション" }).getByRole("button");
+    await expect(chips.first()).toBeVisible();
+    const hs = await chips.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    hs.forEach((h, i) => expect(h, `${i + 1}つ目の札の高さ`).toBeGreaterThanOrEqual(44));
+  });
+
+  // パンくずの各項目が縮められて、「トッ／プ」「パン／ティ」と語の途中で割れていた（2026-11-10 の点検）。
+  // 折れてよいのは項目の間と、長い題名・名前の中だけ
+  test("商品と出品者のページのパンくずは、長い題名・名前でも、各項目が語の途中で割れない", async ({ page }) => {
+    const seller = await freshUser("mob-bc", { role: "seller", nickname: `E2E${"あ".repeat(17)}` });
+    const id = await seedListing(seller, { title: `E2Eパンくず${"い".repeat(30)}` });
+    try {
+      const cases: [string, string[]][] = [
+        [`/items/${id}`, ["トップ", "商品一覧", "パンティ"]],
+        [`/sellers/${seller.id}`, ["トップ", "女の子一覧"]],
+      ];
+      for (const [path, items] of cases) {
+        await page.goto(path);
+        const lines = await page.locator(".breadcrumb").evaluate(linesOf, items);
+        items.forEach((s, i) => expect(lines[i], `${path} の「${s}」の行の数`).toBe(1));
+      }
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
+  });
+
+  // 出品の編集画面のパンくずは折り返さない作りで、320px では4つの項目がどれも縮められて2行に割れていた（2026-11-16 の点検）
+  test("出品と出品の編集の画面のパンくずは、320px でも各項目が語の途中で割れない", async ({ page, context }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const seller = await freshUser("mob-fbc", { role: "seller" });
+    const id = await seedListing(seller);
+    await loginAs(context, seller);
+    try {
+      const cases: [string, string[]][] = [
+        [`/listings/${id}/edit`, ["トップ", "マイページ", "出品管理", "出品を編集する"]],
+        ["/listings/new", ["トップ", "マイページ", "商品を出品する"]],
+      ];
+      for (const [path, items] of cases) {
+        await page.goto(path);
+        const lines = await page.locator(".breadcrumb").evaluate(linesOf, items);
+        items.forEach((s, i) => expect(lines[i], `${path} の「${s}」の行の数`).toBe(1));
+      }
+    } finally {
+      await setListingStatus([id], "deleted");
+    }
   });
 });
 
