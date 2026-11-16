@@ -48,10 +48,10 @@ npm run dev
    - 新しいアプリを出して動きを確かめた後に `supabase/post-deploy/10_lock_legacy.sql`（前の表を閉じる）。
 2. **Auth の設定**（Supabase の管理画面）:
    - URL Configuration の Site URL に `NEXT_PUBLIC_SITE_URL`、Redirect URLs に `${NEXT_PUBLIC_SITE_URL}/auth/callback**` を足す（Preview の URL も使うなら同じ形で）。
-   - Email Templates（登録の確認・パスワード再設定・メールアドレス変更）のリンクを token_hash 型にする。例（パスワード再設定）:
+   - Email Templates（登録の確認・パスワード再設定）を日本語の token_hash 型にする。件名・本文の雛形は `docs/auth-email.md`。例（パスワード再設定のリンク）:
      `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/update-password`
      （`/auth/callback` は `?code=` と `?token_hash=&type=` の両方を受ける。メールを別の端末・別のブラウザで開いても通るのは token_hash 型）
-   - **SMTP を自前の物にする**（SendGrid など）。Supabase の既定の送り口は1時間に数通しか送れず、登録の確認・再設定のメールが届かなくなる。
+   - **SMTP を自前の物にする**（Resend。値は `docs/auth-email.md`）。Supabase の既定の送り口は1時間に数通しか送れず、登録の確認・再設定のメールが届かなくなる。
    - 新規登録の時に利用者の行を作る DB の処理（`handle_new_user`）が失敗すると、Supabase は「Database error saving new user」としか返さない。原因は Supabase の Logs（Auth・Postgres）で見る。
    - 管理画面には二段階認証（TOTP）が要る。Auth の設定で TOTP を有効にしておく。
 3. **運営者を足す**: SQL で `insert into public.admin_users (user_id, note) values ('<利用者の id>', '<メモ>');`。その人が初めて `/admin` を開くと、二段階認証の登録に回される。

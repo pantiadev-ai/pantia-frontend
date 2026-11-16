@@ -34,7 +34,7 @@ export default function PrivacyPage() {
   ];
   if (methods.has("card") || methods.has("bank")) processors.push(["Stripe", "クレジットカード・銀行振込の決済"]);
   if (methods.has("paypay")) processors.push(["PayPay", "PayPay の決済"]);
-  processors.push(["SendGrid", "メールの送信"]);
+  processors.push(["Resend", "メールの送信"]);
   if (trustdock) processors.push(["TRUSTDOCK", "本人確認（18歳以上の確認）"]);
 
   return (

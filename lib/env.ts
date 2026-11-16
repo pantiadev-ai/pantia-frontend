@@ -90,8 +90,8 @@ export const serverEnv = {
   get mailMode(): AdapterMode {
     return mode("MAIL_MODE");
   },
-  get sendgridApiKey() {
-    return need("SENDGRID_API_KEY", process.env.SENDGRID_API_KEY);
+  get resendApiKey() {
+    return need("RESEND_API_KEY", process.env.RESEND_API_KEY);
   },
   get mailFrom() {
     return need("MAIL_FROM", process.env.MAIL_FROM);

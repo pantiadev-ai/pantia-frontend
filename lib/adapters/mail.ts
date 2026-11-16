@@ -1,9 +1,11 @@
 /* メールの送り口。MAIL_MODE=mock（既定）のあいだは送らずに mail_outbox に残す（管理画面の「送信メール」で見られる）。
-   MAIL_MODE=live にして SENDGRID_API_KEY・MAIL_FROM を入れると SendGrid から送る。
-   会員登録の確認・パスワード再設定のメールは Supabase Auth が送る（Auth の SMTP に SendGrid を設定する。README 参照）。
+   MAIL_MODE=live にして RESEND_API_KEY・MAIL_FROM を入れると Resend から送る（送る中身は lib/resend.ts）。
+   会員登録の確認・パスワード再設定のメールは Supabase Auth が送る（Auth の SMTP に Resend を設定する。README 参照）。
    ここで送るのは、注文・発送・振込などのお知らせだけ。 */
 import "server-only";
 import { serverEnv } from "@/lib/env";
+import { SITE_NAME } from "@/lib/site";
+import { RESEND_URL, fromHeader, resendRequest, retryDelayMs, resendErrorLabel } from "@/lib/resend";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /** replyTo: 返信の宛先（お問い合わせで、運営が返信すると送った人に届くように）。入力を検めたアドレスだけを渡す */
@@ -17,22 +19,21 @@ export async function sendMail(mail: Mail): Promise<{ sent: boolean }> {
   let error: string | null = null;
   if (mode === "live") {
     try {
-      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${serverEnv.sendgridApiKey}`, "content-type": "application/json" },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: mail.to }] }],
-          from: { email: serverEnv.mailFrom },
-          ...(mail.replyTo ? { reply_to: { email: mail.replyTo } } : {}),
-          subject: mail.subject,
-          content: [{ type: "text/plain", value: mail.text }],
-          // 開封・クリックの追跡を付けない（URL が書き換わり、届いたリンクが外のドメインを通る）
-          tracking_settings: { click_tracking: { enable: false }, open_tracking: { enable: false } },
-        }),
-        signal: AbortSignal.timeout(10_000),
-      });
+      // 鍵・送信元が未設定ならここで止まり、控えに理由が残る
+      const req = resendRequest(mail, { apiKey: serverEnv.resendApiKey, from: fromHeader(SITE_NAME, serverEnv.mailFrom) });
+      let res = await fetch(RESEND_URL, { ...req, signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) {
+        let bodyText = await res.text().catch(() => "");
+        // 1秒あたりの上限（10通）に当たったときだけ、少し待って1回だけ送り直す
+        const wait = retryDelayMs(res.status, res.headers.get("retry-after"), bodyText);
+        if (wait !== null) {
+          await new Promise((r) => setTimeout(r, wait));
+          res = await fetch(RESEND_URL, { ...req, signal: AbortSignal.timeout(10_000) });
+          bodyText = res.ok ? "" : await res.text().catch(() => "");
+        }
+        if (!res.ok) error = resendErrorLabel(res.status, bodyText);
+      }
       sent = res.ok;
-      if (!res.ok) error = `SendGrid ${res.status}`;
     } catch (e) {
       error = e instanceof Error ? e.message.slice(0, 200) : "送信に失敗";
     }
