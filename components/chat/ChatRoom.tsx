@@ -10,6 +10,7 @@ import { chatImageUrls, loadLatest, loadOlder, markRead, sendMessage, toggleHear
 import { yen } from "@/lib/format";
 import { listingImage } from "@/lib/storage";
 import { createClient, realtimeReady } from "@/lib/supabase/browser";
+import { useNegotiating } from "./NegotiatingToggle";
 import type { ChatMessage, ChatPage, ChatPerson, MessageKind, MyListing } from "./types";
 import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, KINDS, UUID_RE, clock, dayKey, dayLabel, initialOf, normIso, sortKey } from "./view";
 
@@ -206,11 +207,14 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     return fromOther;
   });
 
+  const nego = useNegotiating();
   const onThread = useEffectEvent((raw: unknown) => {
     if (!raw || typeof raw !== "object") return;
     const r = raw as Record<string, unknown>;
     const at = normIso(isSeller ? r.buyer_last_read_at : r.seller_last_read_at);
     if (at) setOtherReadAt(at);
+    // 売手が「交渉中」を付け外ししたら、見出しと一覧の札を読み込み直さずに変える
+    if (typeof r.negotiating === "boolean") nego?.setOn(r.negotiating);
   });
 
   const resync = useEffectEvent(() => refreshLatest());

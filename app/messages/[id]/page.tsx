@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import ChatHeaderBar from "@/components/chat/ChatHeaderBar";
 import ChatRoom from "@/components/chat/ChatRoom";
 import MuteToggle from "@/components/chat/MuteToggle";
+import NegotiatingToggle, { NegotiatingBadge, NegotiatingProvider } from "@/components/chat/NegotiatingToggle";
 import ThreadList from "@/components/chat/ThreadList";
 import { loadMessages, otherReadAt } from "@/components/chat/data";
 import type { ChatListing, ChatPerson, MyListing } from "@/components/chat/types";
@@ -61,7 +62,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
 
   const { data: t, error } = await supabase
     .from("threads")
-    .select("id, seller_id, buyer_id, seller_last_read_at, buyer_last_read_at, seller_muted, buyer_muted")
+    .select("id, seller_id, buyer_id, seller_last_read_at, buyer_last_read_at, seller_muted, buyer_muted, negotiating")
     .eq("id", tid)
     .maybeSingle();
   if (error) throw new Error(`会話を読めませんでした: ${error.code ?? ""}`);
@@ -167,129 +168,135 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
     <div className="pg-chat">
       <ChatHeaderBar viewer={viewer} />
       <div className="chat-layout is-room">
-        <ThreadList initial={threads} activeId={tid} emptyText={empty.text} emptyLink={empty.link} />
+        <NegotiatingProvider initial={!!t.negotiating}>
+          <ThreadList initial={threads} activeId={tid} emptyText={empty.text} emptyLink={empty.link} />
 
-        <main className="chat-main">
-          <div className="chat-header">
-            <Link href="/messages" className="ch-back" aria-label="会話の一覧へ戻る">
-              ‹
-            </Link>
-            {avatar("ch-avatar", "ch-online")}
-            <div className="ch-info">
-              <h2 className="ch-name">{name}</h2>
-              <div className={`ch-status${online ? "" : " off"}`}>{statusText}</div>
-            </div>
-            <div className="ch-actions">
-              {otherRole === "seller" && profile && (
-                <Link href={`/sellers/${otherId}`} className="ch-btn" title="プロフィールを見る" aria-label="プロフィールを見る">
-                  👤
-                </Link>
-              )}
-              <MuteToggle threadId={tid} initial={muted} />
-              <span title="この相手を通報する">
-                <ReportButton type="user" targetId={otherId} label="🚩" className="ch-btn" loggedIn />
-              </span>
-              <span title={blocked ? "ブロックを外す" : "ブロックする"}>
-                <BlockButton
-                  id={otherId}
-                  initial={blocked}
-                  loggedIn
-                  labels={["🚫", "🚫"]}
-                  className="ch-btn"
-                  ariaLabel="この相手をブロック"
-                  confirmOn="この相手をブロックしますか？メッセージの送受信ができなくなります。"
-                />
-              </span>
-            </div>
-          </div>
-
-          {orders.length > 0 && (
-            <details className="chat-fold">
-              <summary>この相手との注文（{orders.length}件）</summary>
-              <OrderLinks orders={orders} />
-            </details>
-          )}
-
-          <ChatRoom
-            threadId={tid}
-            me={me}
-            other={other}
-            isSeller={isSeller}
-            initial={page}
-            initialOtherReadAt={otherReadAt(t, viewer.id)}
-            myListings={myListings}
-            closed={closed}
-            consented={!!consentRes.data}
-          />
-        </main>
-
-        <aside className="right-sidebar" aria-label="相手と取引の情報">
-          <div className="rs-section">
-            <div className="rs-title">{otherRole === "seller" ? "出品者" : "購入者"}</div>
-            <div className="sp-mini">
-              {avatar("sp-avatar", null)}
-              <div className="sp-name">{name}</div>
-              {otherRole === "seller" && profile && (
-                <>
-                  {(profile.age || profile.occupation) && (
-                    <div className="sp-sub">{[profile.age ? `${profile.age}歳` : null, profile.occupation].filter(Boolean).join(" ・ ")}</div>
-                  )}
-                  {profile.kyc_status === "approved" && <div className="kyc-badge">✓ 本人確認済み</div>}
-                  <div className="sp-stats">
-                    <div>
-                      <div className="sp-stat-n">{ratingAvg(profile.rating_sum, profile.rating_count)}</div>
-                      <div className="sp-stat-l">評価</div>
-                    </div>
-                    <div>
-                      <div className="sp-stat-n">{num(profile.sales_count)}</div>
-                      <div className="sp-stat-l">販売数</div>
-                    </div>
-                    <div>
-                      <div className="sp-stat-n">{num(profile.follower_count)}</div>
-                      <div className="sp-stat-l">フォロワー</div>
-                    </div>
-                  </div>
-                  <Link href={`/sellers/${otherId}`} className="sp-btn">
-                    プロフィールを見る
+          <main className="chat-main">
+            <div className="chat-header">
+              <Link href="/messages" className="ch-back" aria-label="会話の一覧へ戻る">
+                ‹
+              </Link>
+              {avatar("ch-avatar", "ch-online")}
+              <div className="ch-info">
+                <h2 className="ch-name">{name}</h2>
+                <div className={`ch-status${online ? "" : " off"}`}>
+                  <NegotiatingBadge />
+                  {statusText}
+                </div>
+              </div>
+              <div className="ch-actions">
+                {otherRole === "seller" && profile && (
+                  <Link href={`/sellers/${otherId}`} className="ch-btn" title="プロフィールを見る" aria-label="プロフィールを見る">
+                    👤
                   </Link>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="rs-section">
-            <div className="rs-title">注文情報</div>
-            {orders.length > 0 ? <OrderLinks orders={orders} /> : <p className="chat-rs-empty">この相手との注文はまだありません。</p>}
-          </div>
-
-          {sharedItems.length > 0 && (
-            <div className="rs-section">
-              <div className="rs-title">会話に出た商品</div>
-              {sharedItems.map((l) => (
-                <Link key={l.id} href={`/items/${l.id}`} className="shared-item">
-                  <div className="si-thumb">{l.imageUrl ? <img src={l.imageUrl} alt="" className="si-img" /> : "🛍"}</div>
-                  <div className="ob-info">
-                    <div className="si-name chat-ellipsis">{l.title}</div>
-                    <div className="si-price">{yen(l.price)}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {sharedImages.length > 0 && (
-            <div className="rs-section">
-              <div className="rs-title">共有された画像</div>
-              <div className="chat-imgs-grid">
-                {sharedImages.map((img, k) => (
-                  <a key={img.path} href={img.url} target="_blank" rel="noopener noreferrer" className="rs-img-thumb" aria-label={`共有された画像 ${k + 1} を開く`}>
-                    <img src={img.url} alt="" />
-                  </a>
-                ))}
+                )}
+                {isSeller && <NegotiatingToggle threadId={tid} />}
+                <MuteToggle threadId={tid} initial={muted} />
+                <span title="この相手を通報する">
+                  <ReportButton type="user" targetId={otherId} label="🚩" className="ch-btn" loggedIn />
+                </span>
+                <span title={blocked ? "ブロックを外す" : "ブロックする"}>
+                  <BlockButton
+                    id={otherId}
+                    initial={blocked}
+                    loggedIn
+                    labels={["🚫", "🚫"]}
+                    className="ch-btn"
+                    ariaLabel="この相手をブロック"
+                    confirmOn="この相手をブロックしますか？メッセージの送受信ができなくなります。"
+                  />
+                </span>
               </div>
             </div>
-          )}
-        </aside>
+
+            {orders.length > 0 && (
+              <details className="chat-fold">
+                <summary>この相手との注文（{orders.length}件）</summary>
+                <OrderLinks orders={orders} />
+              </details>
+            )}
+
+            <ChatRoom
+              threadId={tid}
+              me={me}
+              other={other}
+              isSeller={isSeller}
+              initial={page}
+              initialOtherReadAt={otherReadAt(t, viewer.id)}
+              myListings={myListings}
+              closed={closed}
+              consented={!!consentRes.data}
+            />
+          </main>
+
+          <aside className="right-sidebar" aria-label="相手と取引の情報">
+            <div className="rs-section">
+              <div className="rs-title">{otherRole === "seller" ? "出品者" : "購入者"}</div>
+              <div className="sp-mini">
+                {avatar("sp-avatar", null)}
+                <div className="sp-name">{name}</div>
+                {otherRole === "seller" && profile && (
+                  <>
+                    {(profile.age || profile.occupation) && (
+                      <div className="sp-sub">{[profile.age ? `${profile.age}歳` : null, profile.occupation].filter(Boolean).join(" ・ ")}</div>
+                    )}
+                    {profile.kyc_status === "approved" && <div className="kyc-badge">✓ 本人確認済み</div>}
+                    <div className="sp-stats">
+                      <div>
+                        <div className="sp-stat-n">{ratingAvg(profile.rating_sum, profile.rating_count)}</div>
+                        <div className="sp-stat-l">評価</div>
+                      </div>
+                      <div>
+                        <div className="sp-stat-n">{num(profile.sales_count)}</div>
+                        <div className="sp-stat-l">販売数</div>
+                      </div>
+                      <div>
+                        <div className="sp-stat-n">{num(profile.follower_count)}</div>
+                        <div className="sp-stat-l">フォロワー</div>
+                      </div>
+                    </div>
+                    <Link href={`/sellers/${otherId}`} className="sp-btn">
+                      プロフィールを見る
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="rs-section">
+              <div className="rs-title">注文情報</div>
+              {orders.length > 0 ? <OrderLinks orders={orders} /> : <p className="chat-rs-empty">この相手との注文はまだありません。</p>}
+            </div>
+
+            {sharedItems.length > 0 && (
+              <div className="rs-section">
+                <div className="rs-title">会話に出た商品</div>
+                {sharedItems.map((l) => (
+                  <Link key={l.id} href={`/items/${l.id}`} className="shared-item">
+                    <div className="si-thumb">{l.imageUrl ? <img src={l.imageUrl} alt="" className="si-img" /> : "🛍"}</div>
+                    <div className="ob-info">
+                      <div className="si-name chat-ellipsis">{l.title}</div>
+                      <div className="si-price">{yen(l.price)}</div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {sharedImages.length > 0 && (
+              <div className="rs-section">
+                <div className="rs-title">共有された画像</div>
+                <div className="chat-imgs-grid">
+                  {sharedImages.map((img, k) => (
+                    <a key={img.path} href={img.url} target="_blank" rel="noopener noreferrer" className="rs-img-thumb" aria-label={`共有された画像 ${k + 1} を開く`}>
+                      <img src={img.url} alt="" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        </NegotiatingProvider>
       </div>
     </div>
   );

@@ -39,6 +39,8 @@ export type ThreadRow = {
   preview: string;
   unread: number;
   muted: boolean;
+  /** 売手が付けた「交渉中」の札（2人に見える） */
+  negotiating: boolean;
 };
 
 /** 自分の公開中の出品（「自分の商品を紹介」で選ぶ物） */

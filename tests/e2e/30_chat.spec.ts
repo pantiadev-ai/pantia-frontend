@@ -264,6 +264,55 @@ test.describe("送る・受け取る", () => {
       .poll(async () => (await sql<{ h: boolean }>(`select hearted as h from public.messages where id = ${lit(mid)}`))[0]!.h)
       .toBe(false);
   });
+
+  // ㉑㉒ 交渉中の札（2026-11-18 に先方から依頼）。付け外しは売手だけ、札は2人に見える
+  test("売手が「交渉中にする」を押すと、見出しと一覧に札が出て、開いている購入者の画面にも読み込み直さずに出る。購入者にボタンは無く、外すと消える", async ({ page, context, browser }) => {
+    const seller = await freshSeller("ch-neg");
+    const buyer = await freshBuyer("ch-neg");
+    const tid = await seedThread(seller, buyer);
+    await seedMessage(tid, buyer, `値下げできますか？ ${rnd()}`);
+    const negotiating = async () => (await sql<{ n: boolean }>(`select negotiating as n from public.threads where id = ${lit(tid)}`))[0]!.n;
+    await loginAs(context, seller);
+    const buyerCtx = await browser.newContext();
+    try {
+      await loginAs(buyerCtx, buyer);
+      const bp = await buyerCtx.newPage();
+      await bp.goto(`${BASE_URL}/messages/${tid}`);
+      await expect(bp.locator(".chat-header")).toBeVisible();
+      // 購入者の画面に付け外しのボタンは無く、札もまだ無い
+      await expect(bp.getByRole("button", { name: /^交渉中/ })).toHaveCount(0);
+      await expect(bp.locator(".chat-nego-badge")).toHaveCount(0);
+
+      await page.goto(`/messages/${tid}`);
+      await expect(page.locator(".chat-nego-badge")).toHaveCount(0);
+      // Realtime のつながりを待つ（ここだけ時間で待つ）
+      await bp.waitForTimeout(3000);
+
+      await page.getByRole("button", { name: "交渉中にする" }).click();
+      await expect(page.getByRole("button", { name: "交渉中を外す" })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator(".chat-header .chat-nego-badge")).toHaveText("交渉中");
+      await expect(page.locator(`a.thread-item[href="/messages/${tid}"] .chat-nego-badge`)).toHaveText("交渉中");
+      await expect.poll(negotiating).toBe(true);
+      // 購入者の画面にも、読み込み直さずに出る（見出しと一覧）
+      await expect(bp.locator(".chat-header .chat-nego-badge")).toHaveText("交渉中", { timeout: 10_000 });
+      await expect(bp.locator(`a.thread-item[href="/messages/${tid}"] .chat-nego-badge`)).toHaveText("交渉中", { timeout: 10_000 });
+      await expect(bp.getByRole("button", { name: /^交渉中/ })).toHaveCount(0);
+
+      // 読み込み直しても付いたまま
+      await page.reload();
+      await expect(page.locator(".chat-header .chat-nego-badge")).toHaveText("交渉中");
+      await expect(page.getByRole("button", { name: "交渉中を外す" })).toHaveAttribute("aria-pressed", "true");
+      await bp.waitForTimeout(3000);
+
+      await page.getByRole("button", { name: "交渉中を外す" }).click();
+      await expect(page.getByRole("button", { name: "交渉中にする" })).toHaveAttribute("aria-pressed", "false");
+      await expect(page.locator(".chat-nego-badge")).toHaveCount(0);
+      await expect.poll(negotiating).toBe(false);
+      await expect(bp.locator(".chat-nego-badge")).toHaveCount(0, { timeout: 10_000 });
+    } finally {
+      await buyerCtx.close();
+    }
+  });
 });
 
 test.describe("入力の誤り・保留", () => {

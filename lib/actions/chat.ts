@@ -158,6 +158,28 @@ export async function setMuted(threadId: string, muted: boolean): Promise<Action
   });
 }
 
+// id は他の操作と同じ isUuid（threadIdOf）の形で見る
+const NegotiatingSchema = z.object({ threadId: z.string().refine((s) => isUuid(s)), on: z.boolean() });
+
+/** 売手が「交渉中」の札を付ける・外す（2人に見える）。付いたかどうかを返す */
+export async function setNegotiating(threadId: string, on: boolean): Promise<ActionResult<{ on: boolean }>> {
+  return runAction(async () => {
+    const v = await actionViewer();
+    const parsed = NegotiatingSchema.safeParse({ threadId, on });
+    if (!parsed.success) throw new ActionError("入力の内容を確かめてください。");
+    const tid = parsed.data.threadId.toLowerCase();
+    const limit = await takeRateLimit([{ rule: RULES.reactUser, kind: "user", id: v.id }], { failClosed: true });
+    if (!limit.ok) throw new ActionError(limit.message);
+    const supabase = await createClient();
+    await assertParty(supabase, tid);
+    const { data, error } = await supabase.rpc("set_thread_negotiating", { p_thread: tid, p_on: parsed.data.on });
+    // forbidden は「この会話の売手ではない」（購入者が押したときなど）
+    if (error && dbCode(error) === "forbidden") throw new ActionError("この会話では変えられません。");
+    throwDb(error);
+    return { ok: true, data: { on: data === true } };
+  });
+}
+
 /** 相手のメッセージにハートを付ける・外す。付いたかどうかを返す */
 export async function toggleHeart(messageId: string): Promise<ActionResult<{ hearted: boolean }>> {
   return runAction(async () => {

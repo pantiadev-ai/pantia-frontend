@@ -1,6 +1,6 @@
 /* チャットの表示用の小さな関数。サーバーでもブラウザでも使う（server-only の物は import しない） */
-import { displayName, maskName } from "@/lib/format";
-import { avatarImage } from "@/lib/storage";
+import { displayName, maskName } from "../../lib/format.ts";
+import { avatarImage } from "../../lib/storage.ts";
 import type { MessageKind, ThreadRow } from "./types";
 
 const TZ = "Asia/Tokyo";
@@ -40,6 +40,8 @@ export function toThreadRow(r: {
   preview: string | null;
   unread: number | null;
   muted: boolean | null;
+  /** 0015 より前の DB（配備の途中）には無い列 */
+  negotiating?: boolean | null;
 }): ThreadRow {
   const role = r.other_role === "seller" || r.other_role === "buyer" ? r.other_role : null;
   return {
@@ -54,6 +56,7 @@ export function toThreadRow(r: {
     preview: r.preview ?? "",
     unread: Math.max(0, Number(r.unread) || 0),
     muted: !!r.muted,
+    negotiating: !!r.negotiating,
   };
 }
 

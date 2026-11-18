@@ -86,6 +86,23 @@
   opacity: 0.7;
   flex-shrink: 0;
 }
+/* 「交渉中」の札（一覧の名前の横・見出しの名前の下）。文字は 4.5:1 以上の濃さ */
+.pg-chat .chat-nego-badge {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.pg-chat .ch-status .chat-nego-badge {
+  margin-right: 6px;
+  vertical-align: 1px;
+}
 .pg-chat .chat-empty {
   padding: 40px 20px;
   text-align: center;

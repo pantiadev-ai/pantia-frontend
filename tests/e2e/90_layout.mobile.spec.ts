@@ -171,6 +171,23 @@ test.describe("スマホのメニュー", () => {
     }
   });
 
+  // ㉑㉒ 売手の会話の頭には「交渉中」のボタンが1つ増える。札も名前の下に出る
+  test("売手の会話の画面は、交渉中のボタンと札が増えても、頭の項目が枠の外に切れず、横にはみ出さない", async ({ page, context }) => {
+    const seller = await freshUser("mob-neg", { role: "seller", kyc: "approved" });
+    const buyer = await freshUser("mob-neg", { role: "buyer", kyc: "approved", messageConsent: true });
+    const tid = await seedThread(seller, buyer);
+    await loginAs(context, seller);
+    await page.goto(`/messages/${tid}`);
+    const head = page.locator(".chat-header");
+    await expect(page.getByRole("button", { name: "交渉中にする" })).toBeVisible();
+    await page.getByRole("button", { name: "交渉中にする" }).click();
+    await expect(head.locator(".chat-nego-badge")).toHaveText("交渉中");
+    expect(await clippedItems(head), "会話の頭で枠の外に切れた項目").toEqual([]);
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `会話の画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+    expect((await head.boundingBox())!.height, "会話の頭の高さ").toBeLessThanOrEqual(72);
+  });
+
   // 320px（初代 iPhone SE など）では、どの種類のヘッダーも右端から「☰ メニュー」が 3〜26px はみ出していた（2026-11-16 の点検）。
   // 360px 以上は収まっていた。360px より狭いときだけ ☰ だけにする（ボタンの名前は「メニュー」のまま）
   test("320px の画面でも、ログインの有無にかかわらず、どの種類のヘッダーも項目が枠の外に出ず、メニューを開ける", async ({ page, context }) => {
