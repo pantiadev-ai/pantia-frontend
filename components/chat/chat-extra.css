@@ -161,7 +161,9 @@
 .pg-chat .ch-status.off {
   color: var(--text-muted);
 }
-.pg-chat .ch-name {
+/* 「交渉中」の札と長い日付（2026/11/01にログイン）が並ぶと、375px で2行になり頭が 72px を超えた。1行に収めて、あふれた分は … にする */
+.pg-chat .ch-name,
+.pg-chat .ch-status {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -174,10 +176,23 @@
   text-decoration: none;
   padding: 0 6px 2px 0;
 }
-.pg-chat .chat-inline-error {
+/* 頭のボタン（交渉中・通知・ブロック）の失敗の一言。ボタンの並びに入れると名前の欄を潰すので（375px で幅 8px まで縮んだ）、
+   頭の下に重ねて出す。.chat-header を基準にするので、広さによって余白が変わっても頭の線のすぐ下に来る */
+.pg-chat .chat-header {
+  position: relative;
+}
+.pg-chat .ch-actions .pt-msg.error {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 12px;
+  z-index: 5;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 24px));
   margin: 0;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  font-size: 12px;
+  white-space: normal;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* ── メッセージ ── */
