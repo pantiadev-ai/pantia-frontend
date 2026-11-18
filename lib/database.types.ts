@@ -487,6 +487,45 @@ export type Database = {
           },
         ]
       }
+      listing_manual_sold: {
+        Row: {
+          listing_id: string
+          marked_at: string
+          marked_by: string
+          prev_status: string
+          reason: string
+        }
+        Insert: {
+          listing_id: string
+          marked_at?: string
+          marked_by: string
+          prev_status: string
+          reason?: string
+        }
+        Update: {
+          listing_id?: string
+          marked_at?: string
+          marked_by?: string
+          prev_status?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_manual_sold_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_manual_sold_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           anonymous_ok: boolean
@@ -1875,6 +1914,10 @@ export type Database = {
         Args: { p_admin: string; p_note: string; p_order: string }
         Returns: undefined
       }
+      admin_mark_sold: {
+        Args: { p_admin: string; p_listing: string; p_reason: string }
+        Returns: undefined
+      }
       admin_moderate: {
         Args: {
           p_action: string
@@ -1935,6 +1978,10 @@ export type Database = {
           p_user: string
         }
         Returns: undefined
+      }
+      admin_unmark_sold: {
+        Args: { p_admin: string; p_listing: string }
+        Returns: string
       }
       admin_update_profile: {
         Args: {

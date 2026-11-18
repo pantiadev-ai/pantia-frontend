@@ -15,6 +15,7 @@ import { refundOrder } from "@/lib/adapters/payment";
 import { actionAdmin, ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
 import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banned-words";
+import { dbCode } from "@/lib/db-errors";
 import { ImageError, processImage, type ImageKind } from "@/lib/images";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
@@ -368,6 +369,37 @@ export async function setListingStatus(listingId: string, status: string, reason
     refresh();
     const label = base.status === "hidden" ? "非表示にしました。" : base.status === "published" ? "公開に戻しました。" : "非公開に戻しました。";
     return { ok: true, message: label };
+  });
+}
+
+/** 運営の判断で売り切れにする（公開・非公開の出品だけ）。外からはふつうの売り切れに見え、売上には数えない */
+export async function markListingSold(listingId: string, reason: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, listingId);
+    const why = parse(optional(200, "理由"), reason);
+    const { error } = await createServiceClient().rpc("admin_mark_sold", { p_admin: v.id, p_listing: id, p_reason: why });
+    if (error && dbCode(error) === "reserved") {
+      throw new ActionError("この商品には入金待ちの注文があります。入金かキャンセルで注文が終わってから行ってください。");
+    }
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: "売り切れにしました。" };
+  });
+}
+
+/** 運営が付けた売り切れを戻す。元の状態に戻す（売手がいま公開できなければ非公開） */
+export async function unmarkListingSold(listingId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, listingId);
+    const { data, error } = await createServiceClient().rpc("admin_unmark_sold", { p_admin: v.id, p_listing: id });
+    if (error && dbCode(error) === "bad_state") {
+      throw new ActionError("戻せるのは、運営が売り切れにした商品だけです（入金済みの注文がある商品は戻せません）。画面を読み込み直してください。");
+    }
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: data === "private" ? "非公開に戻しました。" : "公開に戻しました。" };
   });
 }
 

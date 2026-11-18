@@ -121,6 +121,10 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("📦", "green", "商品", `${by}「${str(d.title)}」を公開に戻しました`);
     case "listing.private":
       return v("📦", "blue", "商品", `${by}「${str(d.title)}」を非公開に戻しました`);
+    case "listing.manual_sold":
+      return v("🏷", "yellow", "商品", `${by}「${str(d.title)}」を売り切れにしました（手動）${why}`);
+    case "listing.manual_unsold":
+      return v("🏷", "green", "商品", `${by}「${str(d.title)}」の売り切れを戻しました（${str(d.to) === "private" ? "非公開" : "公開"}）`);
     case "order.paid":
       return v("💳", "yellow", "購入", `${by}${yen(int(d.total))}の支払いを済ませました（${orderLabel}）`);
     case "order.complete":

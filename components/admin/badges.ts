@@ -9,6 +9,9 @@ const unknown = (v: string | null | undefined): BadgeInfo => ({ cls: "badge-mute
 /** 運営が代理で登録した人（proxy_registrations にいる）。一覧で本人の登録と見分ける */
 export const proxyBadge: BadgeInfo = { cls: "badge-proxy", label: "代理登録" };
 
+/** 運営が手で付けた売り切れ（listing_manual_sold に印がある） */
+export const manualSoldBadge: BadgeInfo = { cls: "badge-proxy", label: "手動" };
+
 export function roleBadge(role: string | null | undefined): BadgeInfo {
   if (role === "seller") return { cls: "badge-new", label: "出品者" };
   if (role === "buyer") return { cls: "badge-ship", label: "購入者" };

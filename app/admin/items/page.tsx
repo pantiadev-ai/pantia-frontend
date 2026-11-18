@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ActionButton from "@/components/admin/ActionButton";
 import AdminShell from "@/components/admin/AdminShell";
-import { listingBadge } from "@/components/admin/badges";
+import { listingBadge, manualSoldBadge } from "@/components/admin/badges";
 import { Badge, Empty, FilterBar, Pager } from "@/components/admin/parts";
 import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
 import { dateJst, num, yen } from "@/lib/format";
@@ -59,7 +59,9 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
   if (items.error) console.error("[admin] listings", items.error.message);
   const rows = items.data ?? [];
 
-  const [names, flagged] = await Promise.all([
+  // 運営が手で付けた売り切れ（印の表は service_role だけが読める）
+  const soldIds = rows.filter((r) => r.status === "sold").map((r) => r.id);
+  const [names, flagged, manual] = await Promise.all([
     nicknamesOf(service, [...rows.map((r) => r.seller_id), seller]),
     rows.length > 0
       ? service
@@ -72,8 +74,13 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
             rows.map((r) => r.id),
           )
       : Promise.resolve({ data: [] as { target_id: string | null }[], error: null }),
+    soldIds.length > 0
+      ? service.from("listing_manual_sold").select("listing_id").in("listing_id", soldIds)
+      : Promise.resolve({ data: [] as { listing_id: string }[], error: null }),
   ]);
+  if (manual.error) console.error("[admin] manual sold", manual.error.message);
   const flaggedSet = new Set((flagged.data ?? []).map((r) => r.target_id));
+  const manualSet = new Set((manual.data ?? []).map((r) => r.listing_id));
   const filter = { q, status, category, seller };
 
   return (
@@ -144,6 +151,7 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
                 {rows.map((it) => {
                   const img = listingImage(it.image_paths?.[0]);
                   const reported = flaggedSet.has(it.id);
+                  const manualSold = manualSet.has(it.id);
                   const sellerName = names.get(it.seller_id) ?? "退会したユーザー";
                   return (
                     <tr key={it.id}>
@@ -161,7 +169,8 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
                       <td className="adm-muted">{dateJst(it.created_at)}</td>
                       <td>{num(it.view_count)}</td>
                       <td>
-                        <Badge b={listingBadge(it.status)} /> {reported && <span className="badge badge-warn">通報あり</span>}
+                        <Badge b={listingBadge(it.status)} /> {manualSold && <Badge b={manualSoldBadge} />}{" "}
+                        {reported && <span className="badge badge-warn">通報あり</span>}
                       </td>
                       <td>
                         <div className="adm-actions">
@@ -174,6 +183,30 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
                             <Link href={`/admin/reports?type=listing&q=${it.id}`} className="action-btn warn">
                               通報
                             </Link>
+                          )}
+                          {(it.status === "published" || it.status === "private") && (
+                            <ActionButton
+                              op="listing.sold"
+                              id={it.id}
+                              label="売り切れにする"
+                              title="この商品を売り切れにしますか？"
+                              body={`「${it.title}」を売り切れにします。外からはふつうの売り切れと同じに見え、売上には数えません。出品者には通知が届きます。あとで戻せます。`}
+                              reason="optional"
+                              reasonLabel="理由（出品者に届きます）"
+                              confirmLabel="売り切れにする"
+                            />
+                          )}
+                          {manualSold && (
+                            <ActionButton
+                              op="listing.unsold"
+                              id={it.id}
+                              label="売り切れを戻す"
+                              className="approve"
+                              title="売り切れを戻しますか？"
+                              body={`「${it.title}」を売り切れにする前の状態（公開か非公開）に戻します。出品者がいま公開できない状態なら、非公開に戻します。`}
+                              reason="none"
+                              confirmLabel="戻す"
+                            />
                           )}
                           {it.status !== "hidden" && it.status !== "deleted" && (
                             <ActionButton
