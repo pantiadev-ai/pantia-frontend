@@ -8,6 +8,7 @@ import {
   confirmTransfer,
   decideRoleChange,
   kycAllowResubmit,
+  markCharacter,
   markListingSold,
   markTransferRefunded,
   moderate,
@@ -16,6 +17,7 @@ import {
   retryRefund,
   setListingStatus,
   setUserStatus,
+  unmarkCharacter,
   unmarkListingSold,
   updateReport,
   warnUser,
@@ -30,6 +32,8 @@ export type AdminOp =
   | "user.suspend"
   | "user.unsuspend"
   | "user.withdraw"
+  | "character.mark"
+  | "character.unmark"
   | "role.approve"
   | "role.reject"
   | "listing.hide"
@@ -61,6 +65,10 @@ function call(op: AdminOp, id: string, sub: string, reason: string): Promise<Act
       return setUserStatus(id, "active", reason);
     case "user.withdraw":
       return withdrawUser(id, reason);
+    case "character.mark":
+      return markCharacter(id, reason);
+    case "character.unmark":
+      return unmarkCharacter(id);
     case "role.approve":
       return decideRoleChange(id, true, reason);
     case "role.reject":

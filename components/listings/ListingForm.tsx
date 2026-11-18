@@ -2,12 +2,15 @@
 /* 出品のフォーム（見本 item_form.html）。新規と編集の両方で使う。
    保存は saveListing（下書き・出品する・今の状態のまま）。公開には本人確認が要る（ここでは押せなくし、action と DB でも止める）。
    受け取り額の見込みは lib/price-estimate（DB の注文と同じ式）。有料オプションは1行ずつ出し、選ばれ方の幅で出す。
-   「プレビュー確認」で、フォームを隠して購入者から見た形（ListingPreview）に切り替える。 */
-import { useEffect, useRef, useState } from "react";
+   「プレビュー確認」で、フォームを隠して購入者から見た形（ListingPreview）に切り替える。
+   キャラの出品（管理画面）では save・upload・doneHref を差し替える。そのときは新しく作るだけで、
+   1回作ったら同じ画面からは作れない（重ねて作らない）。編集はキャラでログインして行う。 */
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ImageUploader, { type UploadedImage } from "@/components/ImageUploader";
 import { useAction, FormMessage } from "@/components/useAction";
+import type { ActionResult } from "@/lib/action-result";
 import { saveListing, type ListingInput, type ListingIntent } from "@/lib/actions/listings";
 import ListingPreview from "@/components/listings/ListingPreview";
 import { CATEGORIES, COLORS, MATERIALS, SHIP_ESTIMATES, SIZES } from "@/lib/labels";
@@ -39,6 +42,12 @@ type Props = {
   sellerName: string;
   /** 新しい出品を下書きで保存して、編集の画面へ移ってきたとき（?saved=draft）。「✓」を出す */
   justSaved?: "draft" | null;
+  /** 新しく作る保存の処理（キャラの出品）。既定は saveListing */
+  save?: (input: ListingInput, intent: "draft" | "publish") => Promise<ActionResult<{ id: string; status: ListingFormStatus }>>;
+  /** 写真の上げ口（ImageUploader へ渡す） */
+  upload?: ComponentProps<typeof ImageUploader>["upload"];
+  /** 作ったあとに移る先。渡すと、作れるのは1回だけ（完了の窓を閉じたとき・下書きのあとにここへ移る） */
+  doneHref?: (id: string) => string;
 };
 
 type BoolKey = {
@@ -73,8 +82,13 @@ export default function ListingForm({
   extendFeePerDay,
   sellerName,
   justSaved = null,
+  save: saveOverride,
+  upload,
+  doneHref,
 }: Props) {
   const router = useRouter();
+  /** キャラの出品（新しく作るだけ・1回だけ） */
+  const oneShot = doneHref !== undefined;
   const { pending, error, message, run, setError } = useAction();
   const [id, setId] = useState<string | null>(listingId);
   const [status, setStatus] = useState<ListingFormStatus | null>(initialStatus);
@@ -154,8 +168,12 @@ export default function ListingForm({
   function closeDone() {
     setDone(null);
     setView("edit");
-    if (listingId === null && id) router.replace(`/listings/${id}/edit`, { scroll: false });
+    if (doneHref && id) router.push(doneHref(id));
+    else if (listingId === null && id) router.replace(`/listings/${id}/edit`, { scroll: false });
   }
+
+  // キャラの出品は、1回作ったら保存のボタンを止める（移る前にもう一度押されても、重ねて作らない）
+  const locked = oneShot && id !== null;
 
   const price = parsePrice(priceText);
   const feePct = Math.round(feeRate * 1000) / 10;
@@ -208,7 +226,7 @@ export default function ListingForm({
   }
 
   function save(intent: ListingIntent) {
-    if (pending) return;
+    if (pending || locked) return;
     if (price !== null && !priceOk(price)) {
       setError("販売価格は¥500〜¥100,000の間で、100円単位で入れてください。");
       return;
@@ -245,7 +263,7 @@ export default function ListingForm({
       image_paths: images.map((i) => i.path),
     };
     run(
-      () => saveListing(id, input, intent),
+      () => (saveOverride && intent !== "keep" ? saveOverride(input, intent) : saveListing(id, input, intent)),
       (data) => {
         if (!data) return;
         const wasNew = id === null;
@@ -254,7 +272,8 @@ export default function ListingForm({
         if (intent === "publish") setDone("published");
         if (intent === "draft") {
           // 新しい下書きは編集の画面へ移る（「✓」は移った先で ?saved=draft から出す）
-          if (wasNew) router.replace(`/listings/${data.id}/edit?saved=draft`, { scroll: false });
+          if (doneHref) router.push(doneHref(data.id));
+          else if (wasNew) router.replace(`/listings/${data.id}/edit?saved=draft`, { scroll: false });
           else setDraftSaved(true);
         }
       },
@@ -305,7 +324,11 @@ export default function ListingForm({
   ];
 
   // 保存のボタンと文は、フォームの横と確認の画面の両方で使う
-  const saveButtons = (
+  const saveButtons = locked ? (
+    <button type="button" className="btn-publish" disabled>
+      ✓ 保存しました
+    </button>
+  ) : (
     <>
       {status === "published" ? (
         <button type="button" className="btn-publish" onClick={() => save("keep")} disabled={pending}>
@@ -336,13 +359,16 @@ export default function ListingForm({
   const notes = (
     <>
       <FormMessage error={error} message={draftSaved ? null : message} />
-      {!canPublish && (
-        <div className="lf-kyc-note">
-          出品（公開）するには本人確認が必要です。下書きは今すぐ保存できます。
-          <br />
-          <Link href="/kyc">本人確認へ →</Link>
-        </div>
-      )}
+      {!canPublish &&
+        (oneShot ? (
+          <div className="lf-kyc-note">このキャラは今は公開できません（本人確認が済んでいない・停止中など）。下書きは保存できます。</div>
+        ) : (
+          <div className="lf-kyc-note">
+            出品（公開）するには本人確認が必要です。下書きは今すぐ保存できます。
+            <br />
+            <Link href="/kyc">本人確認へ →</Link>
+          </div>
+        ))}
     </>
   );
   const previewMissing = missing();
@@ -381,7 +407,8 @@ export default function ListingForm({
               value={images}
               onChange={setImages}
               label="写真を追加"
-              disabled={pending}
+              disabled={pending || locked}
+              upload={upload}
             />
             <div className="img-note">
               ⚠️ 顔・個人情報が映り込まないようご注意ください。写真のEXIF情報（位置情報）は自動で削除されます。最大5枚まで。
@@ -884,7 +911,13 @@ export default function ListingForm({
             </button>
             {view === "edit" && notes}
             <div className="action-note">
-              {status === "published" ? (
+              {oneShot ? (
+                <>
+                  出品後は商品一覧ページに即時反映されます。
+                  <br />
+                  編集・非公開・削除は、キャラでログインして行います。
+                </>
+              ) : status === "published" ? (
                 <>
                   公開中の商品です。保存すると、すぐに商品ページへ反映されます。
                   <br />
@@ -985,7 +1018,7 @@ export default function ListingForm({
             </Link>
             <div>
               <button type="button" className="lf-modal-close" onClick={closeDone}>
-                閉じて編集を続ける
+                {oneShot ? "閉じる" : "閉じて編集を続ける"}
               </button>
             </div>
           </div>

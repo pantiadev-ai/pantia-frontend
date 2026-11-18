@@ -6,12 +6,13 @@ import { notFound } from "next/navigation";
 import ActionButton from "@/components/admin/ActionButton";
 import AdminProfileForm from "@/components/admin/AdminProfileForm";
 import AdminShell from "@/components/admin/AdminShell";
-import { kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
+import { characterBadge, kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import LedgerAdjustForm from "@/components/admin/LedgerAdjustForm";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import type { UploadedImage } from "@/components/ImageUploader";
 import type { ProfileInitial } from "@/components/mypage/ProfileForm";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
+import { canMarkCharacter } from "@/lib/character";
 import { dateJst, dateTimeJst, excerpt, isOnline, num, orderNo, ratingAvg, relTime, san, yen } from "@/lib/format";
 import { labelOf, LEDGER_KINDS, REPORT_REASONS } from "@/lib/labels";
 import { isUuid } from "@/lib/search";
@@ -51,7 +52,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   if (!p) notFound();
 
   const head = { count: "exact" as const, head: true };
-  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy] = await Promise.all([
+  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow] = await Promise.all([
     service.auth.admin.getUserById(id),
     service.from("orders").select("id", head).eq("seller_id", id),
     service.from("orders").select("id", head).eq("buyer_id", id),
@@ -76,8 +77,12 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
       .limit(10),
     // 運営が代理で登録した人か（lib/actions/proxy.ts）
     service.from("proxy_registrations").select("user_id, handed_over_at").eq("user_id", id).maybeSingle(),
+    // 運営で入れたキャラか（印の付け外しはこの画面。lib/actions/admin.ts の markCharacter）
+    service.from("character_accounts").select("user_id, marked_at").eq("user_id", id).maybeSingle(),
+    // 管理者にはキャラの印を付けない（DB の admin_mark_character も断る）
+    service.from("admin_users").select("user_id").eq("user_id", id).maybeSingle(),
   ]);
-  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy })) {
+  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow })) {
     if (r.error) console.error(`[admin] user ${name}`, r.error.message);
   }
   const user = auth.data?.user ?? null;
@@ -87,6 +92,12 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   ]);
   const self = me.id === id;
   const name = p.nickname || "（名前なし）";
+  const isCharacter = character.data !== null;
+  // 印を読めなかったときは「キャラにする」を出さない（重ねて押させない）
+  const markable =
+    !character.error &&
+    !adminRow.error &&
+    canMarkCharacter({ role: p.role, status: p.status, isAdmin: adminRow.data !== null, isSelf: self, marked: isCharacter });
   const photo = avatarImage(p.avatar_path);
   // プロフィールの編集の初めの値（本人の編集画面 app/mypage/profile と同じ組み立て）
   const profileInitial: ProfileInitial = {
@@ -122,9 +133,25 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
           </Link>
         </div>
       )}
+      {character.data && (
+        <div className="alert-banner warn">
+          🎭 運営で入れたキャラです（{dateJst(character.data.marked_at)}に印を付けました）。取引と出品の編集は、このキャラでログインして行います。{" "}
+          <Link href={`/admin/characters/${p.id}/new`} className="adm-link">
+            キャラの名前で出品する
+          </Link>
+        </div>
+      )}
 
       <div className="dual-grid">
-        <Card icon="👤" title={name} right={<Badge b={userStatusBadge(p.status)} />}>
+        <Card
+          icon="👤"
+          title={name}
+          right={
+            <>
+              {isCharacter && <Badge b={characterBadge} />} <Badge b={userStatusBadge(p.status)} />
+            </>
+          }
+        >
           <Dl
             rows={[
               [
@@ -227,6 +254,30 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
                 reasonMax={500}
                 confirmLabel="警告を送る"
               />
+              {markable && (
+                <ActionButton
+                  op="character.mark"
+                  id={p.id}
+                  label="キャラにする"
+                  className="approve"
+                  title={`${san(name)}をキャラにする`}
+                  body={"運営で入れた売手として印を付けます。本人確認は省いて「確認済み」になり、アクティビティログに残ります。\nキャラの取引と出品の編集は、このキャラでログインして行います。"}
+                  reason="optional"
+                  reasonLabel="メモ"
+                  reasonMax={200}
+                  confirmLabel="キャラにする"
+                />
+              )}
+              {isCharacter && (
+                <ActionButton
+                  op="character.unmark"
+                  id={p.id}
+                  label="キャラを外す"
+                  title={`${san(name)}のキャラを外す`}
+                  body="本人確認と出品はそのまま残ります。"
+                  confirmLabel="外す"
+                />
+              )}
               {p.status === "active" && (
                 <ActionButton
                   op="user.suspend"

@@ -12,6 +12,9 @@ export const proxyBadge: BadgeInfo = { cls: "badge-proxy", label: "代理登録"
 /** 運営が手で付けた売り切れ（listing_manual_sold に印がある） */
 export const manualSoldBadge: BadgeInfo = { cls: "badge-proxy", label: "手動" };
 
+/** 運営で入れた売手（character_accounts に印がある） */
+export const characterBadge: BadgeInfo = { cls: "badge-proxy", label: "キャラ" };
+
 export function roleBadge(role: string | null | undefined): BadgeInfo {
   if (role === "seller") return { cls: "badge-new", label: "出品者" };
   if (role === "buyer") return { cls: "badge-ship", label: "購入者" };

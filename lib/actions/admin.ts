@@ -17,6 +17,7 @@ import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/
 import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banned-words";
 import { dbCode } from "@/lib/db-errors";
 import { ImageError, processImage, type ImageKind } from "@/lib/images";
+import { INCOMPLETE, ListingSchema, isComplete, listingRow, listingRowError, type ParsedListing } from "@/lib/listing-input";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
 import { publicImageUrl } from "@/lib/storage";
@@ -342,6 +343,109 @@ export async function decideRoleChange(requestId: string, approve: boolean, reas
     adminThrowDb(error);
     refresh();
     return { ok: true, message: base.approve ? "ロールの変更を承認しました。" : "ロールの変更を却下しました。" };
+  });
+}
+
+/* ───────────── キャラ（運営で入れた売手） ─────────────
+   運営のメールで登録した売手に「キャラ」の印を付け、管理画面からキャラの名前で出品する。
+   取引と出品の編集は、運営がキャラでログインして、ふつうの売手の道で行う。
+   印を付けると本人確認は「済み」になる（DB の admin_mark_character が記録 kyc.character_skip を残す）。 */
+
+const NOT_MARKABLE =
+  "キャラにできるのは、利用中の売手（管理者・自分を除く）で、まだキャラでない人だけです。画面を読み込み直してください。";
+const NOT_CHARACTER = "キャラの印が付いていません。画面を読み込み直してください。";
+
+/** 売手のアカウントに「キャラ」の印を付ける（メモは任意） */
+export async function markCharacter(userId: string, note: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, userId);
+    const memo = parse(optional(200, "メモ"), note);
+    const { error } = await createServiceClient().rpc("admin_mark_character", { p_admin: v.id, p_user: id, p_note: memo });
+    const code = error ? dbCode(error) : null;
+    if (code === "bad_state" || code === "bad_request") throw new ActionError(NOT_MARKABLE);
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: "キャラにしました。" };
+  });
+}
+
+/** 「キャラ」の印を外す（本人確認と出品はそのまま） */
+export async function unmarkCharacter(userId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, userId);
+    const { error } = await createServiceClient().rpc("admin_unmark_character", { p_admin: v.id, p_user: id });
+    if (error && dbCode(error) === "bad_state") throw new ActionError(NOT_CHARACTER);
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: "キャラを外しました。" };
+  });
+}
+
+async function assertCharacter(id: string) {
+  const { data, error } = await createServiceClient()
+    .from("character_accounts")
+    .select("user_id")
+    .eq("user_id", id)
+    .maybeSingle();
+  adminThrowDb(error);
+  if (!data) throw new ActionError(NOT_CHARACTER);
+}
+
+/** キャラの出品の写真を、キャラのフォルダ（listing-images の <キャラの id>/）へ上げる */
+export async function adminUploadCharacterImage(form: FormData): Promise<ActionResult<{ path: string; url: string }>> {
+  return runAction(async () => {
+    await begin();
+    const id = parse(Id, String(form.get("userId") ?? ""));
+    await assertCharacter(id);
+    let data: Buffer;
+    try {
+      ({ data } = await processImage(form.get("file"), "listing"));
+    } catch (e) {
+      if (e instanceof ImageError) throw new ActionError(e.message);
+      throw e;
+    }
+    const path = await putImage("listing-images", id, data);
+    return { ok: true, data: { path, url: publicImageUrl("listing-images", path) ?? "" } };
+  });
+}
+
+/** キャラの名前で新しく出品する（下書きか公開）。編集はキャラでログインして行う */
+export async function saveCharacterListing(
+  characterId: string,
+  input: ParsedListing,
+  intent: "draft" | "publish",
+): Promise<ActionResult<{ id: string; status: "draft" | "published" }>> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, characterId);
+    const how = parse(z.enum(["draft", "publish"], "操作が違います。"), intent);
+    const parsed = ListingSchema.safeParse(input);
+    if (!parsed.success) throw new ActionError("入力の内容を確かめてください。");
+    const d = parsed.data;
+    const inputError = listingRowError(d, id);
+    if (inputError) throw new ActionError(inputError);
+    if (how === "publish" && !isComplete(d)) throw new ActionError(INCOMPLETE);
+
+    const { data, error } = await createServiceClient().rpc("admin_create_character_listing", {
+      p_admin: v.id,
+      p_seller: id,
+      p_row: listingRow(d),
+      p_publish: how === "publish",
+    });
+    if (error && dbCode(error) === "bad_state") {
+      throw new ActionError("キャラの印が無いか、キャラが今は公開できない状態です（停止中など）。画面を読み込み直してください。");
+    }
+    adminThrowDb(error, "保存できませんでした。入力の内容を確かめてください。");
+    if (typeof data !== "string" || !isUuid(data)) throw new ActionError("保存できませんでした。");
+
+    const status = how === "publish" ? "published" : "draft";
+    revalidatePath("/items");
+    revalidatePath(`/items/${data}`);
+    revalidatePath("/mypage/items");
+    refresh();
+    return { ok: true, data: { id: data, status }, message: status === "published" ? "出品しました。" : "下書きに保存しました。" };
   });
 }
 

@@ -210,6 +210,42 @@ export type Database = {
           },
         ]
       }
+      character_accounts: {
+        Row: {
+          marked_at: string
+          marked_by: string
+          note: string
+          user_id: string
+        }
+        Insert: {
+          marked_at?: string
+          marked_by: string
+          note?: string
+          user_id: string
+        }
+        Update: {
+          marked_at?: string
+          marked_by?: string
+          note?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_accounts_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cron_runs: {
         Row: {
           detail: Json
@@ -1877,6 +1913,10 @@ export type Database = {
         Args: { p_admin: string; p_amount: number; p_group: string }
         Returns: Json
       }
+      admin_create_character_listing: {
+        Args: { p_admin: string; p_publish: boolean; p_row: Json; p_seller: string }
+        Returns: string
+      }
       admin_dashboard: {
         Args: { p_admin: string; p_months?: number }
         Returns: Json
@@ -1908,6 +1948,10 @@ export type Database = {
           p_order?: string
           p_user: string
         }
+        Returns: undefined
+      }
+      admin_mark_character: {
+        Args: { p_admin: string; p_note: string; p_user: string }
         Returns: undefined
       }
       admin_mark_refunded_manual: {
@@ -1977,6 +2021,10 @@ export type Database = {
           p_status: string
           p_user: string
         }
+        Returns: undefined
+      }
+      admin_unmark_character: {
+        Args: { p_admin: string; p_user: string }
         Returns: undefined
       }
       admin_unmark_sold: {

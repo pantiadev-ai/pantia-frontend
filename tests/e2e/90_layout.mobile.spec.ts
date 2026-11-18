@@ -3,7 +3,7 @@
    貼り付く欄が中身に重ならないこと・入力欄で iPhone が拡大しないこと（2026-11-03 に運営から指摘） */
 import type { Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
+import { admin, freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
 import { clippedItems, coverGaps, overflowOf, setListingStatus, tok } from "./_a";
 import { seedThread } from "./_c";
@@ -84,6 +84,17 @@ test.describe("横にはみ出さない（ログイン中）", () => {
         expect(await clippedItems(nav), `${user.role} ${path}`).toEqual([]);
       }
     }
+  });
+
+  test("管理画面のキャラの一覧と、キャラの名前で出品する画面は、スマホでも横にはみ出さない", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const chara = await freshUser("mob-chr", { role: "seller" });
+    const { error } = await admin().rpc("admin_mark_character", { p_admin: adm.id, p_user: chara.id, p_note: "E2E のスマホの試験" });
+    // 前の回で印が付いたまま（bad_state）なら、そのまま使う
+    if (error && !error.message.includes("bad_state")) throw new Error(`キャラの印を付けられませんでした: ${error.message}`);
+    await expectNoOverflow(page, "/admin/characters");
+    await expectNoOverflow(page, `/admin/characters/${chara.id}/new`);
+    await expect(page.getByText("このキャラの名前で出品します")).toBeVisible();
   });
 });
 
