@@ -24,7 +24,7 @@ export type ChatMessage = {
 
 export type ChatPage = { messages: ChatMessage[]; hasMore: boolean };
 
-export type ChatLatest = { messages: ChatMessage[]; otherReadAt: string | null };
+export type ChatLatest = { messages: ChatMessage[]; otherReadAt: string | null; negotiating: boolean };
 
 /** 会話の一覧の1行（名前は伏せ済み・画像は URL にした後の形） */
 export type ThreadRow = {

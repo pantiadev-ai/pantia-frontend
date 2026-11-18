@@ -156,12 +156,16 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     return fromOther;
   }
 
+  const nego = useNegotiating();
+
   /** 新しい方の50件を読み直す。相手から新しい物が来ていれば true */
   async function refreshLatest(): Promise<boolean> {
     try {
       const r = await loadLatest(threadId);
       if (!r.ok || !r.data) return false;
       setOtherReadAt(r.data.otherReadAt);
+      // Realtime が切れていた間に売手が付け外しした札も、つなぎ直し・読み直しで最新にする
+      nego?.setOn(r.data.negotiating);
       return addIncoming(r.data.messages, true);
     } catch {
       return false;
@@ -207,7 +211,6 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     return fromOther;
   });
 
-  const nego = useNegotiating();
   const onThread = useEffectEvent((raw: unknown) => {
     if (!raw || typeof raw !== "object") return;
     const r = raw as Record<string, unknown>;
