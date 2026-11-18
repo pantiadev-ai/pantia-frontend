@@ -125,20 +125,25 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
 
       {p.status === "suspended" && <div className="alert-banner danger">⛔ この利用者は利用停止中です。</div>}
       {p.status === "withdrawn" && <div className="alert-banner warn">この利用者は退会済みです。</div>}
+      {/* .alert-banner は横並び（flex）なので、文とリンクを1つの <span> に入れる。分けると 375px でリンクが細く潰れて縦に折れる */}
       {proxy.data && (
         <div className="alert-banner warn">
-          🤝 運営が代理で登録した人です（{proxy.data.handed_over_at ? `本人に渡し済み・${dateJst(proxy.data.handed_over_at)}` : "まだ本人に渡していません"}）。{" "}
-          <Link href={`/admin/proxy/${p.id}`} className="adm-link">
-            代理登録の詳細
-          </Link>
+          <span>
+            🤝 運営が代理で登録した人です（{proxy.data.handed_over_at ? `本人に渡し済み・${dateJst(proxy.data.handed_over_at)}` : "まだ本人に渡していません"}）。{" "}
+            <Link href={`/admin/proxy/${p.id}`} className="adm-link">
+              代理登録の詳細
+            </Link>
+          </span>
         </div>
       )}
       {character.data && (
         <div className="alert-banner warn">
-          🎭 運営で入れたキャラです（{dateJst(character.data.marked_at)}に印を付けました）。取引と出品の編集は、このキャラでログインして行います。{" "}
-          <Link href={`/admin/characters/${p.id}/new`} className="adm-link">
-            キャラの名前で出品する
-          </Link>
+          <span>
+            🎭 運営で入れたキャラです（{dateJst(character.data.marked_at)}に印を付けました）。取引と出品の編集は、このキャラでログインして行います。{" "}
+            <Link href={`/admin/characters/${p.id}/new`} className="adm-link">
+              キャラの名前で出品する
+            </Link>
+          </span>
         </div>
       )}
 
