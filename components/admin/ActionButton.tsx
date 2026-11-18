@@ -8,6 +8,7 @@ import {
   confirmTransfer,
   decideRoleChange,
   kycAllowResubmit,
+  markListingSold,
   markTransferRefunded,
   moderate,
   payPayout,
@@ -15,6 +16,7 @@ import {
   retryRefund,
   setListingStatus,
   setUserStatus,
+  unmarkListingSold,
   updateReport,
   warnUser,
   withdrawUser,
@@ -33,6 +35,8 @@ export type AdminOp =
   | "listing.hide"
   | "listing.publish"
   | "listing.private"
+  | "listing.sold"
+  | "listing.unsold"
   | "order.cancel"
   | "order.refund"
   | "order.refund_manual"
@@ -67,6 +71,10 @@ function call(op: AdminOp, id: string, sub: string, reason: string): Promise<Act
       return setListingStatus(id, "published", reason);
     case "listing.private":
       return setListingStatus(id, "private", reason);
+    case "listing.sold":
+      return markListingSold(id, reason);
+    case "listing.unsold":
+      return unmarkListingSold(id);
     case "order.cancel":
       return cancelOrder(id, reason);
     case "order.refund":

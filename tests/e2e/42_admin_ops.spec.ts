@@ -167,6 +167,71 @@ test.describe("商品の非公開", () => {
   });
 });
 
+test.describe("手動の売り切れ", () => {
+  test("運営が売り切れにすると、外からはふつうの売り切れに見え、戻すと公開に戻る", async ({ page, context, browser }) => {
+    const r = rid();
+    const title = `D手動売切${r}`;
+    const seller = await freshUser("d-sold", { role: "seller", nickname: `D売手${r}` });
+    const listingId = await seedListing(seller, { title });
+    const adm = await asAdmin(context);
+    const guest = await browser.newContext();
+    try {
+      await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+      await act(page, rowOf(page, title), {
+        button: "売り切れにする",
+        title: "この商品を売り切れにしますか？",
+        reason: `E2E在庫なし${r}`,
+        confirm: "売り切れにする",
+        done: "売り切れにしました。",
+      });
+      expect(await one<string>(`select status from public.listings where id = ${lit(listingId)}`)).toBe("sold");
+      expect(await one<number>(`select sales_count from public.listings where id = ${lit(listingId)}`), "本当の売上ではない").toBe(0);
+      expect((await notificationsOf(seller.id)).map((n) => n.title)).toContain("運営が売り切れにしました");
+
+      // 一覧では「売り切れ」と「手動」の札が並ぶ
+      const row = rowOf(page, title);
+      await expect(row.getByText("売り切れ", { exact: true })).toBeVisible();
+      await expect(row.getByText("手動", { exact: true })).toBeVisible();
+
+      // 外からは、ふつうの売り切れと同じ
+      const gp = await guest.newPage();
+      await gp.goto(`/items/${listingId}`);
+      await expect(gp.getByText("この商品は売り切れました。")).toBeVisible();
+
+      // 戻す
+      await act(page, rowOf(page, title), {
+        button: "売り切れを戻す",
+        title: "売り切れを戻しますか？",
+        confirm: "戻す",
+        done: "公開に戻しました。",
+      });
+      expect(await one<string>(`select status from public.listings where id = ${lit(listingId)}`)).toBe("published");
+      await expect(rowOf(page, title).getByText("手動", { exact: true })).toHaveCount(0);
+
+      // どちらも操作の記録に残る
+      await page.goto(`/admin/logs?q=${listingId}`);
+      await expect(page.getByText(`${adm.nickname}さんが「${title}」を売り切れにしました（手動）（理由: E2E在庫なし${r}）`)).toBeVisible();
+      await expect(page.getByText(`${adm.nickname}さんが「${title}」の売り切れを戻しました（公開）`)).toBeVisible();
+    } finally {
+      await guest.close();
+    }
+  });
+
+  test("本当に売れた商品（印の無い売り切れ）には「売り切れを戻す」が出ない", async ({ page, context }) => {
+    const r = rid();
+    const title = `D本当に売切${r}`;
+    const seller = await freshUser("d-sold2", { role: "seller", nickname: `D売手2${r}` });
+    await seedListing(seller, { title, status: "sold" });
+    await asAdmin(context);
+    await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+    const row = rowOf(page, title);
+    await expect(row.getByText("売り切れ", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button", { name: "売り切れを戻す" })).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "売り切れにする" })).toHaveCount(0);
+    await expect(row.getByText("手動", { exact: true })).toHaveCount(0);
+  });
+});
+
 test.describe("通報", () => {
   test("同じつぶやきへの通報は古い順に並び、対応中→非表示→解決・却下ができ、記録に残る", async ({ page, context }) => {
     const r = rid();
