@@ -18,7 +18,9 @@ with
     -- 0012 メッセージの同意
     ('message_consents'),
     -- 0016 手動の売り切れ
-    ('listing_manual_sold')
+    ('listing_manual_sold'),
+    -- 0017 キャラ
+    ('character_accounts')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -46,7 +48,9 @@ with
     -- 0015 交渉中
     ('set_thread_negotiating'),
     -- 0016 手動の売り切れ
-    ('admin_mark_sold'), ('admin_unmark_sold'), ('listings_manual_sold_cleanup')
+    ('admin_mark_sold'), ('admin_unmark_sold'), ('listings_manual_sold_cleanup'),
+    -- 0017 キャラ
+    ('admin_create_character_listing'), ('admin_mark_character'), ('admin_unmark_character')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -202,5 +206,14 @@ select 24, '手動の売り切れの印（listing_manual_sold）は関数から�
          or has_table_privilege('authenticated', 'public.listing_manual_sold', 'SELECT') then 'NG'
        when not exists (select 1 from pg_trigger where tgname = 'listings_manual_sold_cleanup'
                           and tgrelid = 'public.listings'::regclass) then 'NG'
+       else 'OK' end, ''
+union all
+select 25, 'キャラの印（character_accounts）は関数からしか書けず、利用者から読めない',
+  case when to_regclass('public.character_accounts') is null then 'NG'
+       when has_table_privilege('service_role', 'public.character_accounts', 'INSERT')
+         or has_table_privilege('service_role', 'public.character_accounts', 'UPDATE')
+         or has_table_privilege('service_role', 'public.character_accounts', 'DELETE')
+         or has_table_privilege('anon', 'public.character_accounts', 'SELECT')
+         or has_table_privilege('authenticated', 'public.character_accounts', 'SELECT') then 'NG'
        else 'OK' end, ''
 order by no;
