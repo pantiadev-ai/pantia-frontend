@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { isOnline } from "@/lib/format";
 import { createClient, realtimeReady } from "@/lib/supabase/browser";
+import { useNegotiating } from "./NegotiatingToggle";
 import type { ThreadRow } from "./types";
 import { initialOf, listTime, toThreadRow } from "./view";
 
@@ -21,6 +22,9 @@ export default function ThreadList({ initial, activeId, emptyText, emptyLink }: 
   const [rows, setRows] = useState(initial);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "unread">("all");
+  // 会話の画面では、開いている会話の「交渉中」は見出しと同じ値（押した直後・相手が変えた直後も合う）
+  const nego = useNegotiating();
+  const negoOn = nego ? nego.on : null;
 
   useEffect(() => {
     const supabase = createClient();
@@ -62,7 +66,10 @@ export default function ThreadList({ initial, activeId, emptyText, emptyLink }: 
   }, []);
 
   // 開いている会話は、その画面で既読にするので未読0として出す
-  const view = useMemo(() => rows.map((r) => (r.threadId === activeId ? { ...r, unread: 0 } : r)), [rows, activeId]);
+  const view = useMemo(
+    () => rows.map((r) => (r.threadId === activeId ? { ...r, unread: 0, negotiating: negoOn ?? r.negotiating } : r)),
+    [rows, activeId, negoOn],
+  );
   const unreadThreads = view.filter((r) => r.unread > 0).length;
   const q = query.trim().toLowerCase();
   const shown = view.filter((r) => (tab === "all" || r.unread > 0) && (!q || r.name.toLowerCase().includes(q) || r.preview.toLowerCase().includes(q)));
@@ -129,6 +136,7 @@ export default function ThreadList({ initial, activeId, emptyText, emptyLink }: 
                         🔕
                       </span>
                     )}
+                    {r.negotiating && <span className="chat-nego-badge">交渉中</span>}
                   </div>
                   <div className={`ti-preview${r.unread > 0 ? " unread-text" : ""}`}>{r.preview || "（まだメッセージはありません）"}</div>
                 </div>

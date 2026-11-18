@@ -24,7 +24,7 @@ export type ChatMessage = {
 
 export type ChatPage = { messages: ChatMessage[]; hasMore: boolean };
 
-export type ChatLatest = { messages: ChatMessage[]; otherReadAt: string | null };
+export type ChatLatest = { messages: ChatMessage[]; otherReadAt: string | null; negotiating: boolean };
 
 /** 会話の一覧の1行（名前は伏せ済み・画像は URL にした後の形） */
 export type ThreadRow = {
@@ -39,6 +39,8 @@ export type ThreadRow = {
   preview: string;
   unread: number;
   muted: boolean;
+  /** 売手が付けた「交渉中」の札（2人に見える） */
+  negotiating: boolean;
 };
 
 /** 自分の公開中の出品（「自分の商品を紹介」で選ぶ物） */

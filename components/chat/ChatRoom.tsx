@@ -10,6 +10,7 @@ import { chatImageUrls, loadLatest, loadOlder, markRead, sendMessage, toggleHear
 import { yen } from "@/lib/format";
 import { listingImage } from "@/lib/storage";
 import { createClient, realtimeReady } from "@/lib/supabase/browser";
+import { useNegotiating } from "./NegotiatingToggle";
 import type { ChatMessage, ChatPage, ChatPerson, MessageKind, MyListing } from "./types";
 import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, KINDS, UUID_RE, clock, dayKey, dayLabel, initialOf, normIso, sortKey } from "./view";
 
@@ -155,12 +156,16 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     return fromOther;
   }
 
+  const nego = useNegotiating();
+
   /** 新しい方の50件を読み直す。相手から新しい物が来ていれば true */
   async function refreshLatest(): Promise<boolean> {
     try {
       const r = await loadLatest(threadId);
       if (!r.ok || !r.data) return false;
       setOtherReadAt(r.data.otherReadAt);
+      // Realtime が切れていた間に売手が付け外しした札も、つなぎ直し・読み直しで最新にする
+      nego?.setOn(r.data.negotiating);
       return addIncoming(r.data.messages, true);
     } catch {
       return false;
@@ -211,6 +216,8 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
     const r = raw as Record<string, unknown>;
     const at = normIso(isSeller ? r.buyer_last_read_at : r.seller_last_read_at);
     if (at) setOtherReadAt(at);
+    // 売手が「交渉中」を付け外ししたら、見出しと一覧の札を読み込み直さずに変える
+    if (typeof r.negotiating === "boolean") nego?.setOn(r.negotiating);
   });
 
   const resync = useEffectEvent(() => refreshLatest());

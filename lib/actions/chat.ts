@@ -10,9 +10,9 @@ import { RULES, takeRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/search";
 import { signedUrls } from "@/lib/storage-server";
 import { createClient } from "@/lib/supabase/server";
-import { loadMessages, otherReadAt } from "@/components/chat/data";
+import { loadMessages } from "@/components/chat/data";
 import type { ChatLatest, ChatPage } from "@/components/chat/types";
-import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, normIso } from "@/components/chat/view";
+import { BODY_MAX, CHAT_PATH_RE, CONSENT_REQUIRED, normIso, threadStateOf } from "@/components/chat/view";
 
 const CANT_SEND = "この相手にはメッセージを送れません。";
 const NOT_FOUND = "この会話は見つかりませんでした。";
@@ -45,7 +45,7 @@ function threadIdOf(v: unknown): string {
 async function assertParty(supabase: Awaited<ReturnType<typeof createClient>>, threadId: string) {
   const { data, error } = await supabase
     .from("threads")
-    .select("id, seller_id, seller_last_read_at, buyer_last_read_at")
+    .select("id, seller_id, seller_last_read_at, buyer_last_read_at, negotiating")
     .eq("id", threadId)
     .maybeSingle();
   throwDb(error);
@@ -158,6 +158,28 @@ export async function setMuted(threadId: string, muted: boolean): Promise<Action
   });
 }
 
+// id は他の操作と同じ isUuid（threadIdOf）の形で見る
+const NegotiatingSchema = z.object({ threadId: z.string().refine((s) => isUuid(s)), on: z.boolean() });
+
+/** 売手が「交渉中」の札を付ける・外す（2人に見える）。付いたかどうかを返す */
+export async function setNegotiating(threadId: string, on: boolean): Promise<ActionResult<{ on: boolean }>> {
+  return runAction(async () => {
+    const v = await actionViewer();
+    const parsed = NegotiatingSchema.safeParse({ threadId, on });
+    if (!parsed.success) throw new ActionError("入力の内容を確かめてください。");
+    const tid = parsed.data.threadId.toLowerCase();
+    const limit = await takeRateLimit([{ rule: RULES.reactUser, kind: "user", id: v.id }], { failClosed: true });
+    if (!limit.ok) throw new ActionError(limit.message);
+    const supabase = await createClient();
+    await assertParty(supabase, tid);
+    const { data, error } = await supabase.rpc("set_thread_negotiating", { p_thread: tid, p_on: parsed.data.on });
+    // forbidden は「この会話の売手ではない」（購入者が押したときなど）
+    if (error && dbCode(error) === "forbidden") throw new ActionError("この会話では変えられません。");
+    throwDb(error);
+    return { ok: true, data: { on: data === true } };
+  });
+}
+
 /** 相手のメッセージにハートを付ける・外す。付いたかどうかを返す */
 export async function toggleHeart(messageId: string): Promise<ActionResult<{ hearted: boolean }>> {
   return runAction(async () => {
@@ -187,7 +209,7 @@ export async function loadOlder(threadId: string, beforeIso: string, beforeId: s
   });
 }
 
-/** 新しい方の50件と、相手の既読時刻（Realtime の取りこぼしを拾う・つながらないときの読み直し・送った後） */
+/** 新しい方の50件と、相手の既読時刻・交渉中（Realtime の取りこぼしを拾う・つながらないときの読み直し・送った後） */
 export async function loadLatest(threadId: string): Promise<ActionResult<ChatLatest>> {
   return runAction(async () => {
     const v = await actionViewer();
@@ -195,7 +217,7 @@ export async function loadLatest(threadId: string): Promise<ActionResult<ChatLat
     const supabase = await createClient();
     const t = await assertParty(supabase, tid);
     const page = await loadMessages(supabase, tid);
-    return { ok: true, data: { messages: page.messages, otherReadAt: otherReadAt(t, v.id) } };
+    return { ok: true, data: { messages: page.messages, ...threadStateOf(t, v.id) } };
   });
 }
 

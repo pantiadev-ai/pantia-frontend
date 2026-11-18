@@ -40,7 +40,9 @@ with
     -- 0011 銀行振込・有料オプション
     ('admin_confirm_transfer'), ('admin_mark_refunded_manual'), ('listing_reserved'), ('paid_options_ok'),
     -- 0012 禁止ワード・メッセージの同意・運営が会話を見る
-    ('admin_view_thread'), ('agree_message_terms'), ('banned_word_in'), ('banned_word_key'), ('banned_words_ok'), ('withdraw_message_terms')
+    ('admin_view_thread'), ('agree_message_terms'), ('banned_word_in'), ('banned_word_key'), ('banned_words_ok'), ('withdraw_message_terms'),
+    -- 0015 交渉中
+    ('set_thread_negotiating')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')

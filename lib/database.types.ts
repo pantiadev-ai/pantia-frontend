@@ -1742,6 +1742,7 @@ export type Database = {
           id: string
           last_message_at: string
           last_message_preview: string
+          negotiating: boolean
           seller_id: string
           seller_last_read_at: string | null
           seller_muted: boolean
@@ -1754,6 +1755,7 @@ export type Database = {
           id?: string
           last_message_at?: string
           last_message_preview?: string
+          negotiating?: boolean
           seller_id: string
           seller_last_read_at?: string | null
           seller_muted?: boolean
@@ -1766,6 +1768,7 @@ export type Database = {
           id?: string
           last_message_at?: string
           last_message_preview?: string
+          negotiating?: boolean
           seller_id?: string
           seller_last_read_at?: string | null
           seller_muted?: boolean
@@ -2158,6 +2161,7 @@ export type Database = {
         Returns: {
           last_message_at: string
           muted: boolean
+          negotiating: boolean
           other_avatar: string
           other_id: string
           other_last_seen: string
@@ -2261,6 +2265,10 @@ export type Database = {
       set_thread_muted: {
         Args: { p_muted: boolean; p_thread: string }
         Returns: undefined
+      }
+      set_thread_negotiating: {
+        Args: { p_on: boolean; p_thread: string }
+        Returns: boolean
       }
       ship_order: {
         Args: { p_carrier: string; p_order: string; p_tracking: string }
