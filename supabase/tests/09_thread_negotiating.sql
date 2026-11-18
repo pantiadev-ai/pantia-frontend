@@ -10,6 +10,8 @@ begin
   b2 := pg_temp.mkuser('じろう', 'buyer');
   th := pg_temp.val(b1, 'authenticated', format('select public.open_thread(%L)', s1))::uuid;
   perform pg_temp.ok('N00 購入者が売手に送る', b1, 'authenticated', format('select public.send_message(%L, %L)', th, 'こんにちは'));
+  -- 試験は1つの取引の中で動くので now() が変わらない。最後の時刻を1日戻しておかないと、関数が now() に書き換えても N08 で見分けられない
+  update public.threads set last_message_at = now() - interval '1 day' where id = th;
   at0 := (select last_message_at::text from public.threads where id = th);
   un0 := pg_temp.val(s1, 'authenticated', format('select unread::text from public.my_threads() where thread_id = %L', th));
 
