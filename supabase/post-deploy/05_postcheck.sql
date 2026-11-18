@@ -16,7 +16,9 @@ with
     -- 0011 銀行振込
     ('bank_transfers'),
     -- 0012 メッセージの同意
-    ('message_consents')
+    ('message_consents'),
+    -- 0016 手動の売り切れ
+    ('listing_manual_sold')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -42,7 +44,9 @@ with
     -- 0012 禁止ワード・メッセージの同意・運営が会話を見る
     ('admin_view_thread'), ('agree_message_terms'), ('banned_word_in'), ('banned_word_key'), ('banned_words_ok'), ('withdraw_message_terms'),
     -- 0015 交渉中
-    ('set_thread_negotiating')
+    ('set_thread_negotiating'),
+    -- 0016 手動の売り切れ
+    ('admin_mark_sold'), ('admin_unmark_sold'), ('listings_manual_sold_cleanup')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -188,4 +192,15 @@ union all
 select 23, '代理登録した人で、本人確認が未提出のまま残っている人（0013 で確認済みにした。利用中のみ）', '記録',
   (select count(*)::text from public.proxy_registrations r join public.profiles p on p.id = r.user_id
    where p.status = 'active' and p.kyc_status = 'unsubmitted') || ' 人'
+union all
+select 24, '手動の売り切れの印（listing_manual_sold）は関数からしか書けず、利用者から読めない',
+  case when to_regclass('public.listing_manual_sold') is null then 'NG'
+       when has_table_privilege('service_role', 'public.listing_manual_sold', 'INSERT')
+         or has_table_privilege('service_role', 'public.listing_manual_sold', 'UPDATE')
+         or has_table_privilege('service_role', 'public.listing_manual_sold', 'DELETE')
+         or has_table_privilege('anon', 'public.listing_manual_sold', 'SELECT')
+         or has_table_privilege('authenticated', 'public.listing_manual_sold', 'SELECT') then 'NG'
+       when not exists (select 1 from pg_trigger where tgname = 'listings_manual_sold_cleanup'
+                          and tgrelid = 'public.listings'::regclass) then 'NG'
+       else 'OK' end, ''
 order by no;
