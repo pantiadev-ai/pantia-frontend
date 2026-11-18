@@ -199,6 +199,24 @@ test.describe("スマホのメニュー", () => {
     expect((await head.boundingBox())!.height, "会話の頭の高さ").toBeLessThanOrEqual(72);
   });
 
+  // 購入者の側は、状態の文が「2026/11/01にログイン」のように長くなる。札と並ぶと2行になり、頭が 78px になっていた（2026-11-18 の点検）
+  test("購入者の会話の画面は、交渉中の札と長い日付が並んでも、状態の文が1行で、頭が 72px を超えない", async ({ page, context }) => {
+    const seller = await freshUser("mob-neg-b", { role: "seller", kyc: "approved" });
+    const buyer = await freshUser("mob-neg-b", { role: "buyer", kyc: "approved", messageConsent: true });
+    const tid = await seedThread(seller, buyer);
+    await sql(`update public.threads set negotiating = true where id = ${lit(tid)}`);
+    await sql(`update public.profiles set last_seen_at = now() - interval '30 days' where id = ${lit(seller.id)}`);
+    await loginAs(context, buyer);
+    await page.goto(`/messages/${tid}`);
+    const head = page.locator(".chat-header");
+    await expect(head.locator(".chat-nego-badge")).toHaveText("交渉中");
+    await expect(head.locator(".ch-status")).toContainText("にログイン");
+    expect((await head.locator(".ch-status").boundingBox())!.height, "状態の文の高さ（1行）").toBeLessThanOrEqual(20);
+    expect((await head.boundingBox())!.height, "会話の頭の高さ").toBeLessThanOrEqual(72);
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `会話の画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+  });
+
   // 320px（初代 iPhone SE など）では、どの種類のヘッダーも右端から「☰ メニュー」が 3〜26px はみ出していた（2026-11-16 の点検）。
   // 360px 以上は収まっていた。360px より狭いときだけ ☰ だけにする（ボタンの名前は「メニュー」のまま）
   test("320px の画面でも、ログインの有無にかかわらず、どの種類のヘッダーも項目が枠の外に出ず、メニューを開ける", async ({ page, context }) => {
