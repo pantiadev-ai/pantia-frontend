@@ -10,6 +10,11 @@
 --   ・入金済みの注文がある物（本当に売れた物）は戻せない
 --   ・status が sold から別の物に変わったら、印は trigger で消す（運営の非表示・出品者の削除・戻す、のどれでも）
 --   ・admin_set_listing_status（0006）は変えない。sold を受けない決まりのまま
+--   ・付けるときは、遅れて入金されうる注文（入金待ち・期限切れで未入金の取り消し）の行を、出品より先にロックする。
+--     mark_group_paid（0011）は出品をロックせずに状態を読むので、押さえないと「売り切れの確定前に読んだ遅れた入金」が
+--     注文を生き返らせ、手動の売り切れに入金済みの注文が付く。順番は mark_group_paid と同じ「注文が先、出品があと」
+--   ・在庫が複数の物は入金済みの注文があっても付けられる。その注文を売手・運営が取り消しても（seller_cancel_order・
+--     admin_cancel_order）、印があれば sold のままにする。2つの関数はその1点だけ変えて作り直す（ほかは 0004・0006 のまま）
 -- =============================================================================
 
 create table public.listing_manual_sold (
@@ -38,6 +43,12 @@ begin
   if char_length(v_reason) > 200 then
     raise exception 'pantia:bad_request' using errcode = '22023';
   end if;
+  -- 遅れた入金と同時に走っても注文が生き返らないよう、生き返りうる注文の行を先に押さえる（条件は mark_group_paid と同じ）
+  perform 1 from public.orders o
+  where o.listing_id = p_listing
+    and (o.status = 'pending'
+         or (o.status = 'cancelled' and o.paid_at is null and not o.needs_refund and o.refunded_at is null))
+  for update;
   select * into v_l from public.listings where id = p_listing for update;
   if not found or v_l.status not in ('published', 'private') then
     raise exception 'pantia:bad_state';
@@ -113,3 +124,86 @@ revoke all on function public.listings_manual_sold_cleanup() from public, anon, 
 create trigger listings_manual_sold_cleanup after update of status on public.listings
   for each row when (old.status = 'sold' and new.status is distinct from 'sold')
   execute function public.listings_manual_sold_cleanup();
+
+-- 出品者: 発送前に取り消す（0004 のまま。手動の売り切れの印がある物は sold のままにする所だけ変えた）
+create or replace function public.seller_cancel_order(p_order uuid, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_o public.orders;
+begin
+  if char_length(btrim(coalesce(p_reason, ''))) not between 1 and 200 then
+    raise exception 'pantia:bad_reason' using errcode = '22023';
+  end if;
+  update public.orders
+  set status = 'cancelled', cancelled_at = now(), cancel_reason = btrim(p_reason), needs_refund = true
+  where id = p_order and seller_id = (select auth.uid()) and status in ('paid', 'preparing')
+  returning * into v_o;
+  if not found then
+    raise exception 'pantia:bad_state';
+  end if;
+  update public.listings set sales_count = greatest(sales_count - 1, 0),
+         status = case when status = 'sold'
+                        and not exists (select 1 from public.listing_manual_sold m where m.listing_id = v_o.listing_id)
+                       then 'private' else status end
+  where id = v_o.listing_id;
+  update public.profiles set purchase_count = greatest(purchase_count - 1, 0) where id = v_o.buyer_id;
+  perform public.notify(v_o.buyer_id, 'order', '注文がキャンセルされました',
+    '注文 #' || v_o.order_no || ' は出品者の都合でキャンセルされました。代金は全額返金します。', '/orders/' || v_o.id::text);
+  perform public.post_system_message(v_o.seller_id, v_o.buyer_id, 'system',
+    '注文 #' || v_o.order_no || ' は出品者の都合でキャンセルされました（全額返金）', v_o.id, v_o.listing_id);
+  perform public.audit(v_o.seller_id, 'order.seller_cancel', 'order', v_o.id::text,
+    jsonb_build_object('order_no', v_o.order_no, 'reason', left(btrim(p_reason), 200)));
+end;
+$$;
+revoke all on function public.seller_cancel_order(uuid, text) from public, anon;
+grant execute on function public.seller_cancel_order(uuid, text) to authenticated;
+
+-- 管理画面: 注文の取り消し（0006 のまま。手動の売り切れの印がある物は sold のままにする所だけ変えた）
+create or replace function public.admin_cancel_order(p_admin uuid, p_order uuid, p_reason text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_o    public.orders;
+  v_paid boolean;
+begin
+  perform public.assert_admin(p_admin);
+  if char_length(btrim(coalesce(p_reason, ''))) not between 1 and 200 then
+    raise exception 'pantia:bad_reason' using errcode = '22023';
+  end if;
+  select * into v_o from public.orders where id = p_order for update;
+  if not found or v_o.status not in ('pending', 'paid', 'preparing', 'shipped') then
+    raise exception 'pantia:bad_state';
+  end if;
+  v_paid := v_o.status <> 'pending';
+  update public.orders
+  set status = 'cancelled', cancelled_at = now(), cancel_reason = btrim(p_reason), needs_refund = v_paid
+  where id = p_order;
+  if v_paid then
+    update public.listings set sales_count = greatest(sales_count - 1, 0),
+           status = case when status = 'sold'
+                          and not exists (select 1 from public.listing_manual_sold m where m.listing_id = v_o.listing_id)
+                         then 'private' else status end
+    where id = v_o.listing_id;
+    update public.profiles set purchase_count = greatest(purchase_count - 1, 0) where id = v_o.buyer_id;
+    perform public.notify(v_o.seller_id, 'order', '注文が運営によりキャンセルされました', '注文 #' || v_o.order_no || '　' || btrim(p_reason),
+      '/orders/' || v_o.id::text);
+    perform public.post_system_message(v_o.seller_id, v_o.buyer_id, 'system',
+      '注文 #' || v_o.order_no || ' は運営によりキャンセルされました（全額返金）', v_o.id, v_o.listing_id);
+  end if;
+  perform public.notify(v_o.buyer_id, 'order', '注文がキャンセルされました',
+    '注文 #' || v_o.order_no || case when v_paid then '。代金は全額返金します。' else '' end, '/orders/' || v_o.id::text);
+  perform public.audit(p_admin, 'order.cancel', 'order', p_order::text,
+    jsonb_build_object('order_no', v_o.order_no, 'reason', left(btrim(p_reason), 200), 'refund', v_paid));
+  return jsonb_build_object('order_no', v_o.order_no, 'needs_refund', v_paid, 'payment_method', v_o.payment_method,
+                            'payment_ref', v_o.payment_ref, 'total', v_o.total);
+end;
+$$;
+revoke all on function public.admin_cancel_order(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_cancel_order(uuid, uuid, text) to service_role;

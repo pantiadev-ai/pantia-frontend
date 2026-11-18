@@ -23,8 +23,8 @@ end $f$;
 do $t$
 declare
   adm uuid; s1 uuid; s2 uuid; b1 uuid; b2 uuid;
-  lp uuid; lq uuid; ld uuid; lh uuid; lx uuid; lr uuid; lsold uuid; ls2 uuid; lhide uuid;
-  o1 uuid;
+  lp uuid; lq uuid; ld uuid; lh uuid; lx uuid; lr uuid; lsold uuid; ls2 uuid; lhide uuid; lm uuid; lrace uuid;
+  o1 uuid; om1 uuid; om2 uuid; orace uuid; grace uuid; trace integer; r text;
 begin
   adm := pg_temp.mkuser('運営', 'buyer');
   insert into public.admin_users (user_id) values (adm);
@@ -104,9 +104,42 @@ begin
   perform pg_temp.eq('S10 印のある物を非表示にすると、印の行が消える', null, 'postgres', format('select count(*)::text from public.listing_manual_sold where listing_id = %L', lhide), '0');
   perform pg_temp.ng('S10c 非表示にした物は戻せない', null, 'service_role', format('select public.admin_unmark_sold(%L, %L)', adm, lhide), 'bad_state');
 
+  -- 在庫が複数の物：入金済みの注文を取り消しても、手動の売り切れは外れない -----------
+  lm := pg_temp.listing(s1, 'published', 'stock_mode = ''multiple''');
+  om1 := pg_temp.buy(b1, lm);
+  om2 := pg_temp.buy(b2, lm);
+  perform pg_temp.eq('S14a 在庫が複数の物は2つ売れても公開のまま', null, 'postgres', format('select status || %L || sales_count from public.listings where id = %L', '/', lm), 'published/2');
+  perform pg_temp.ok('S14b 入金済みの注文がある在庫複数の物を売り切れにする', null, 'service_role', format('select public.admin_mark_sold(%L, %L, %L)', adm, lm, '店頭で売り切れ'));
+  perform pg_temp.ok('S14c 売手が入金済みの注文を取り消す', s1, 'authenticated', format('select public.seller_cancel_order(%L, %L)', om1, '在庫の数え違い'));
+  perform pg_temp.eq('S14 売手が取り消しても sold のまま・印も残る', null, 'postgres',
+    format('select l.status || %L || (select count(*) from public.listing_manual_sold m where m.listing_id = l.id) || %L || l.sales_count from public.listings l where l.id = %L', '/', '/', lm), 'sold/1/1');
+  perform pg_temp.ok('S14d 運営が入金済みの注文を取り消す', null, 'service_role', format('select public.admin_cancel_order(%L, %L, %L)', adm, om2, '重複の注文'));
+  perform pg_temp.eq('S14e 運営が取り消しても sold のまま・印も残る', null, 'postgres',
+    format('select l.status || %L || (select count(*) from public.listing_manual_sold m where m.listing_id = l.id) || %L || l.sales_count from public.listings l where l.id = %L', '/', '/', lm), 'sold/1/0');
+  perform pg_temp.eq('S14f 運営が戻すと元の公開に戻る', null, 'service_role', format('select public.admin_unmark_sold(%L, %L)', adm, lm), 'published');
+
+  -- 期限切れの注文に遅れた入金：売り切れにするとき、その注文の行を先に押さえる ----------
+  lrace := pg_temp.listing(s1);
+  r := pg_temp.co(b1, pg_temp.items(lrace));
+  grace := (r::jsonb ->> 'group_id')::uuid;
+  trace := (r::jsonb ->> 'total')::integer;
+  select id into orace from public.orders where group_id = grace;
+  update public.orders set expires_at = now() - interval '1 minute' where group_id = grace;
+  perform public.cancel_expired_orders();
+  perform pg_temp.eq('S13a 期限切れで取り消された注文がある', null, 'postgres', format('select status || %L || cancel_reason from public.orders where id = %L', '/', orace), 'cancelled/expired');
+  -- 1つの接続では他の取引を待たせられないので、行の xmax が呼び出しの前後で変わったか（＝その呼び出しが行をロックしたか）で見る。
+  -- 本物の同時の競合（売り切れの確定前に遅れた入金が来る）は、検証用の DB で2つの接続を使って確かめた（PR の本文に記録）
+  select xmax::text into r from public.orders where id = orace;
+  perform pg_temp.ok('S13b 期限切れの注文がある物も売り切れにできる', null, 'service_role', format('select public.admin_mark_sold(%L, %L, %L)', adm, lrace, ''));
+  perform pg_temp.eq('S13 売り切れにするとき、遅れて入金されうる注文の行も押さえる（同時の入金で生き返らせない）', null, 'postgres',
+    format('select (xmax::text <> %L)::text from public.orders where id = %L', r, orace), 'true');
+  perform pg_temp.eq('S13c そのあとの遅れた入金は返金扱い', null, 'service_role', format('select public.mark_group_paid(%L, %L, %s)', grace, 'late', trace), 'refund_needed');
+  perform pg_temp.eq('S13d 売上に数えず、印は残る', null, 'postgres',
+    format('select l.status || %L || l.sales_count || %L || (select count(*) from public.listing_manual_sold m where m.listing_id = l.id) from public.listings l where l.id = %L', '/', '/', lrace), 'sold/0/1');
+
   -- 監査 -----------------------------------------------------------------------
-  perform pg_temp.eq('S11 付けた記録が管理者の名義で残る', null, 'postgres', format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L', 'listing.manual_sold', adm), '4');
-  perform pg_temp.eq('S11b 戻した記録が管理者の名義で残る', null, 'postgres', format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L', 'listing.manual_unsold', adm), '3');
+  perform pg_temp.eq('S11 付けた記録が管理者の名義で残る', null, 'postgres', format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L', 'listing.manual_sold', adm), '6');
+  perform pg_temp.eq('S11b 戻した記録が管理者の名義で残る', null, 'postgres', format('select count(*)::text from public.audit_logs where action = %L and actor_id = %L', 'listing.manual_unsold', adm), '4');
 
   -- 表を直接は書けない ---------------------------------------------------------
   perform pg_temp.ng('S12 service_role から印の表へ直接 insert できない', null, 'service_role',
