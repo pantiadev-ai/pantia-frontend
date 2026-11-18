@@ -352,7 +352,7 @@ export async function decideRoleChange(requestId: string, approve: boolean, reas
    印を付けると本人確認は「済み」になる（DB の admin_mark_character が記録 kyc.character_skip を残す）。 */
 
 const NOT_MARKABLE =
-  "キャラにできるのは、利用中の売手（管理者・自分を除く）で、まだキャラでない人だけです。画面を読み込み直してください。";
+  "キャラにできるのは、利用中の売手（管理者・自分・代理登録の人・本人確認の審査中か却下の人を除く）で、まだキャラでない人だけです。画面を読み込み直してください。";
 const NOT_CHARACTER = "キャラの印が付いていません。画面を読み込み直してください。";
 
 /** 売手のアカウントに「キャラ」の印を付ける（メモは任意） */

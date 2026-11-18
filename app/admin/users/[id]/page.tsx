@@ -93,11 +93,20 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   const self = me.id === id;
   const name = p.nickname || "（名前なし）";
   const isCharacter = character.data !== null;
-  // 印を読めなかったときは「キャラにする」を出さない（重ねて押させない）
+  // 印・代理登録・管理者の表を読めなかったときは「キャラにする」を出さない（重ねて押させない・本物の売手に出さない）
   const markable =
     !character.error &&
     !adminRow.error &&
-    canMarkCharacter({ role: p.role, status: p.status, isAdmin: adminRow.data !== null, isSelf: self, marked: isCharacter });
+    !proxy.error &&
+    canMarkCharacter({
+      role: p.role,
+      status: p.status,
+      kycStatus: p.kyc_status,
+      isProxy: proxy.data !== null,
+      isAdmin: adminRow.data !== null,
+      isSelf: self,
+      marked: isCharacter,
+    });
   const photo = avatarImage(p.avatar_path);
   // プロフィールの編集の初めの値（本人の編集画面 app/mypage/profile と同じ組み立て）
   const profileInitial: ProfileInitial = {

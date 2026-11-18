@@ -18,7 +18,7 @@ $f$;
 
 do $t$
 declare
-  adm uuid; ch uuid; ch2 uuid; s1 uuid; b1 uuid; sus uuid; fan uuid;
+  adm uuid; ch uuid; ch2 uuid; s1 uuid; b1 uuid; sus uuid; fan uuid; pend uuid; rej uuid; prx uuid;
   r text; lc uuid; ld uuid; lx uuid;
 begin
   adm := pg_temp.mkuser('運営', 'buyer');
@@ -30,6 +30,11 @@ begin
   sus := pg_temp.mkuser('停止中', 'seller');
   update public.profiles set status = 'suspended' where id = sus;
   fan := pg_temp.mkuser('ファン', 'buyer');
+  -- 本物の売手（書類を出した人・代理登録の人）。印を付けると書類なしで「確認済み」になってしまう
+  pend := pg_temp.mkuser('審査中', 'seller', 'pending');
+  rej := pg_temp.mkuser('却下', 'seller', 'rejected');
+  prx := pg_temp.mkuser('代理の人', 'seller', 'unsubmitted');
+  insert into public.proxy_registrations (user_id, registered_by) values (prx, adm);
   insert into public.follows (follower_id, seller_id) values (fan, ch);
 
   -- 呼べる人 -------------------------------------------------------------------
@@ -50,6 +55,11 @@ begin
   perform pg_temp.ng('C03c 管理者自身には付けられない', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, adm, ''), 'bad_request');
   perform pg_temp.ng('C03d メモは200文字まで', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, ch, repeat('あ', 201)), 'bad_request');
   perform pg_temp.ng('C03e 無い人には付けられない', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, gen_random_uuid(), ''), 'bad_state');
+  perform pg_temp.ng('C03g 本人確認の審査中の売手には付けられない', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, pend, ''), 'bad_state');
+  perform pg_temp.ng('C03h 本人確認で断られた売手には付けられない', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, rej, ''), 'bad_state');
+  perform pg_temp.ng('C03i 代理登録の売手には付けられない', null, 'service_role', format('select public.admin_mark_character(%L, %L, %L)', adm, prx, ''), 'bad_state');
+  perform pg_temp.eq('C03j 断ったあと、3人の本人確認の状態はそのまま', null, 'postgres',
+    format('select string_agg(kyc_status, %L order by kyc_status) from public.profiles where id in (%L, %L, %L)', '/', pend, rej, prx), 'pending/rejected/unsubmitted');
   perform pg_temp.eq('C03f 断ったあと印の行は無い', null, 'postgres', 'select count(*)::text from public.character_accounts', '0');
 
   -- 印を付ける -----------------------------------------------------------------

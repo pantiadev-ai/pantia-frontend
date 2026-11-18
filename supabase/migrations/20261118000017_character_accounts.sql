@@ -3,6 +3,7 @@
 -- -----------------------------------------------------------------------------
 -- 決まり
 --   ・キャラは、運営のメールでふつうに登録した「売手」のアカウント。管理者が印を付ける
+--   ・印を付けられるのは、本人確認が未提出か済みの売手だけ。審査中・却下の人と代理登録の人（本物の売手）には付けない
 --   ・印（メモ・付けた人）は character_accounts に置く。読めるのは service_role（管理画面）だけで、書けるのは関数だけ
 --   ・印を付けたら本人確認を済みにする（キャラは運営そのもので、書類を出す相手がいない）。省いた記録 kyc.character_skip を残す
 --   ・管理者は、印のあるキャラの名前で出品を作れる（下書きか公開）。編集・非公開・削除は、キャラでログインしてふつうの売手の道で行う
@@ -41,6 +42,11 @@ begin
   end if;
   select * into v_p from public.profiles where id = p_user for update;
   if not found or v_p.role <> 'seller' or v_p.status <> 'active' then
+    raise exception 'pantia:bad_state';
+  end if;
+  -- 本物の売手は断る。本人確認を出した人（審査中・却下）と、代理登録の人（0010）。印を付けると書類なしで「確認済み」になる
+  if v_p.kyc_status not in ('unsubmitted', 'approved')
+     or exists (select 1 from public.proxy_registrations x where x.user_id = p_user) then
     raise exception 'pantia:bad_state';
   end if;
   if exists (select 1 from public.character_accounts c where c.user_id = p_user) then
