@@ -60,6 +60,24 @@ export function toThreadRow(r: {
   };
 }
 
+/** 開いている会話の今の状態（loadLatest が返す）。相手の既読時刻と交渉中。
+    Realtime が切れている間の変化も、つなぎ直し・読み直しのときにこれで拾う */
+export function threadStateOf(
+  t: {
+    seller_id: string;
+    seller_last_read_at: string | null;
+    buyer_last_read_at: string | null;
+    /** 0015 より前の DB（配備の途中）には無い列 */
+    negotiating?: boolean | null;
+  },
+  viewerId: string,
+): { otherReadAt: string | null; negotiating: boolean } {
+  return {
+    otherReadAt: t.seller_id === viewerId ? t.buyer_last_read_at : t.seller_last_read_at,
+    negotiating: !!t.negotiating,
+  };
+}
+
 /** 時刻の文字を「2026-10-15T05:12:33.123456+00:00」の形にそろえる。読めなければ null */
 export function normIso(v: unknown): string | null {
   if (typeof v !== "string") return null;

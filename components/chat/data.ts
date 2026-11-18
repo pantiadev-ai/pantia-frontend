@@ -5,7 +5,7 @@ import type { createClient } from "@/lib/supabase/server";
 import { listingImage } from "@/lib/storage";
 import { signedUrls } from "@/lib/storage-server";
 import type { ChatListing, ChatMessage, ChatPage, MessageKind } from "./types";
-import { CHAT_PATH_RE, KINDS, normIso } from "./view";
+import { CHAT_PATH_RE, KINDS, normIso, threadStateOf } from "./view";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -85,5 +85,5 @@ export function otherReadAt(
   t: { seller_id: string; seller_last_read_at: string | null; buyer_last_read_at: string | null },
   viewerId: string,
 ): string | null {
-  return t.seller_id === viewerId ? t.buyer_last_read_at : t.seller_last_read_at;
+  return threadStateOf(t, viewerId).otherReadAt;
 }
