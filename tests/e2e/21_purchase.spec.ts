@@ -152,7 +152,11 @@ test.describe("購入の手続き", () => {
 
     await page.getByRole("checkbox", { name: /を確かめました/ }).check();
     await submit.click();
-    await expect(formAlert(page)).toHaveText("お届け先を確かめてください。");
+    // 誤りの文は、画面の上から最初に違う欄を名指しする
+    await expect(formAlert(page)).toHaveText("お名前を入れてください（30字まで）。");
+    // 帯の余白が .pg-app の p の指定で消えていない（app/globals.css の .pt-msg のまま）
+    await expect(formAlert(page)).toHaveCSS("padding-top", "10px");
+    await expect(formAlert(page)).toHaveCSS("padding-left", "14px");
 
     // 郵便番号の形が違う
     await page.getByLabel("お名前").fill(ADDRESS.name);
@@ -161,7 +165,7 @@ test.describe("購入の手続き", () => {
     await page.getByLabel("市区町村・番地").fill(ADDRESS.address1);
     await page.getByLabel("電話番号").fill(ADDRESS.phone);
     await submit.click();
-    await expect(formAlert(page)).toHaveText("お届け先を確かめてください。");
+    await expect(formAlert(page)).toHaveText("郵便番号は7桁の数字で入れてください。");
 
     const [r] = await sql<{ n: number }>(`select count(*)::int as n from public.orders where buyer_id = ${lit(buyer.id)}`);
     expect(r.n).toBe(0);
