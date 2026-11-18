@@ -1,4 +1,11 @@
 {
   "_読み方": "依存の門（scripts/security-gate.mjs）が通す例外。package・advisory・reason・expires（最長3か月）が必須。期限が過ぎると門が落ちる。型は 28 §K2",
-  "exceptions": []
+  "exceptions": [
+    {
+      "package": "picomatch",
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "reason": "直った版が未公開（4.0.7 以下が全部対象、2026-11-18 時点）。入り口は開発用の eslint-config-next（fast-glob・tinyglobby）だけで、本番には入らない。型は自分のリポの lint 設定の物だけで、外からの文字は通らない。直った版が出たら overrides で上げてこの行を消す",
+      "expires": "2027-02-17"
+    }
+  ]
 }
