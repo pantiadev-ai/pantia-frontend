@@ -35,6 +35,7 @@ import SellerMessageDisabled from "@/components/catalogue/SellerMessageDisabled"
 import PurchasePanel, { type PurchaseMode } from "@/components/catalogue/PurchasePanel";
 import { categoryIcon, initialOf } from "@/components/catalogue/card-helpers";
 import { payMethods } from "@/components/static/facts";
+import { payNamesText } from "@/lib/pay-text";
 import { itemsHref, parseItemsQuery } from "@/components/catalogue/items-query";
 
 /** 同じ出品者の他の商品の数 */
@@ -106,8 +107,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
     !own && item.status === "published" && item.stockMode !== "multiple" ? listingReserved(item.id) : Promise.resolve(false),
     payMethods(),
   ]);
-  // 「クレジットカード・銀行振込」の形（決済会社の名前は省き、同じ名前は1つに）
-  const payText = [...new Set(methods.map((m) => m.name.replace(/（Stripe）$/, "")))].join("・");
+  const payText = payNamesText(methods.map((m) => m.name));
 
   // 誰が見ているかで、購入欄の出し方を決める
   let mode: PurchaseMode;

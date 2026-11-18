@@ -22,6 +22,8 @@ import { avatarImage } from "@/lib/storage";
 import { CATEGORIES } from "@/lib/labels";
 import { displayName, excerpt, isOnline, num, relTime, san, yen } from "@/lib/format";
 import HomeItemCard from "@/components/catalogue/HomeItemCard";
+import { payMethods } from "@/components/static/facts";
+import { payNamesText } from "@/lib/pay-text";
 import { initialOf, isRecent, metaLine } from "@/components/catalogue/card-helpers";
 
 const NEW_ITEMS = 8;
@@ -144,7 +146,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const cat = CATEGORIES.some((c) => c.value === catRaw) ? catRaw : null;
 
   const viewer = await getViewer();
-  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked] = await Promise.all([
+  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked, methods] = await Promise.all([
     countPublicSellers(),
     searchListings({ sort: "new", limit: NEW_ITEMS }),
     cat ? searchListings({ categories: [cat], sort: "new", limit: NEW_ITEMS }) : Promise.resolve(null),
@@ -153,7 +155,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     rankingSellers(RANKS + 2),
     rankingListings(RANKS + 2),
     myBlockedIds(viewer?.id),
+    payMethods(),
   ]);
+  // 「安全な決済処理」に出す支払い方法（設定で消した方法は出さない）
+  const payText = payNamesText(methods.map((m) => m.name));
 
   // 自分がブロックした人は、どの区画にも出さない（仮。RLS で除かれない物もあるので画面でも除く）
   const newRes = catRes ?? base;
@@ -421,7 +426,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <div className="trust-card">
               <div className="trust-icon">💳</div>
               <h4>安全な決済処理</h4>
-              <p>クレジットカード・PayPay・銀行振込に対応。</p>
+              <p>{payText ? `${payText}に対応。` : "お支払い方法は購入の画面でご案内します。"}</p>
             </div>
             <div className="trust-card">
               <div className="trust-icon">🚨</div>
