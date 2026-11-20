@@ -5,7 +5,7 @@ import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
 import { AUDIT_KINDS, describeAudit } from "@/components/admin/audit";
 import { Card, Empty, FilterBar, Pager, Tabs, hrefOf } from "@/components/admin/parts";
-import { mailMockInProduction, maskEmail, nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
+import { mailSetupWarning, maskEmail, nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
 import { dateTimeJst, excerpt } from "@/lib/format";
 import { escapeLike, isUuid } from "@/lib/search";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -46,10 +46,11 @@ export default async function AdminLogsPage({ searchParams }: PageProps<"/admin/
       service,
       rows.map((m) => m.user_id),
     );
+    const mailAlert = mailSetupWarning();
 
     return (
       <AdminShell active="logs" title="アクティビティログ">
-        {mailMockInProduction() && <div className="alert-banner danger">⚠️ 本番なのにメールが mock（送らずに控えだけ）になっています。環境変数 MAIL_MODE を live にしてください。</div>}
+        {mailAlert && <div className="alert-banner danger">⚠️ {mailAlert}</div>}
         <div className="table-card">
           <FilterBar
             action="/admin/logs"
