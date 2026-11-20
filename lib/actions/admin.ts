@@ -18,6 +18,7 @@ import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banne
 import { dbCode } from "@/lib/db-errors";
 import { ImageError, processImage, type ImageKind } from "@/lib/images";
 import { INCOMPLETE, ListingSchema, isComplete, listingRow, listingRowError, type ParsedListing } from "@/lib/listing-input";
+import { mailTemplateInput } from "@/lib/mail-templates";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
 import { publicImageUrl } from "@/lib/storage";
@@ -936,5 +937,27 @@ export async function updateSettings(raw: SettingsInput): Promise<ActionResult> 
     // お知らせ・メンテナンスの帯はすべてのページに出るので、全体も作り直す
     revalidatePath("/", "layout");
     return { ok: true, message: "設定を保存しました。" };
+  });
+}
+
+/* ───────────── メールの文面 ───────────── */
+
+const MAIL_TEMPLATE_BAD = "件名は100字まで、本文は2000字まで。改行は件名に入れられません。";
+
+/** お知らせのメールの件名と書き出しを書き換える（表 mail_templates）。両方とも空なら既定の文面に戻す */
+export async function saveMailTemplate(input: { key: string; subject: string; body: string }): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const t = parse(mailTemplateInput, input);
+    const { error } = await createServiceClient().rpc("admin_set_mail_template", {
+      p_admin: v.id,
+      p_key: t.key,
+      p_subject: t.subject,
+      p_body: t.body,
+    });
+    if (error && dbCode(error) === "bad_request") throw new ActionError(MAIL_TEMPLATE_BAD);
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: t.subject === "" && t.body === "" ? "既定の文面に戻しました。" : "文面を保存しました。" };
   });
 }
