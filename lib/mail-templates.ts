@@ -19,7 +19,7 @@ type Def = {
 };
 
 const DEFS = [
-  { key: "order.transfer_guide", kind: "order", title: "お振込のご案内（", prefix: true, to: "購入者", when: "銀行振込で注文したとき（振込先・振込名義・金額・期限を載せる）" },
+  { key: "order.transfer_guide", kind: "order", title: "お振込のご案内（", prefix: true, to: "購入者", when: "銀行振込で注文したとき（期限は題の行に入り、書き出しを変えても残る。本文に振込先・振込名義・金額を載せる）" },
   { key: "order.transfer_confirmed", kind: "order", title: "お振込を確認しました", to: "購入者", when: "運営が振込の入金を確かめたとき" },
   { key: "order.paid", kind: "order", title: "お支払いが完了しました", to: "購入者", when: "振込以外の支払いが済んだとき" },
   { key: "order.paid_seller", kind: "order", title: "入金が確認できました。発送してください", to: "売手", when: "振込の注文の入金を運営が確かめたとき" },

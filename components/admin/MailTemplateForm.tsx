@@ -33,7 +33,7 @@ function sampleOf(def: MailTemplateDef): { title: string; body: string; link: st
   const title = def.prefix ? `${def.title}11/30 12:00 まで）` : def.title;
   switch (def.key) {
     case "order.transfer_guide":
-      return { title, body: "（ここに振込先・振込名義・金額・期限が入ります）", link: "/checkout/transfer?group=…" };
+      return { title, body: "（ここに振込先・振込名義・金額が入ります）", link: "/checkout/transfer?group=…" };
     case "kyc.approved":
       return { title, body: "すべての機能をご利用いただけます。", link: "/mypage" };
     case "kyc.resubmit":

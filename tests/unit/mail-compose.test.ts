@@ -98,3 +98,38 @@ test("件名が空白だけになったら既定の件名", () => {
   const m = composeMail(PAID, SITE, { subject: " \r\n ", body: null });
   assert.equal(m.subject, "【パンティア】お支払いが完了しました");
 });
+
+/* ---- 振込のご案内の期限（期限の時刻は題の行にしか無い） ---- */
+
+const GUIDE = {
+  kind: "order",
+  title: "お振込のご案内（11/30 12:00 まで）",
+  body: "振込名義：P12345＋お名前\n金額：3,825円",
+  link: "/checkout/transfer?group=g1",
+} as const;
+
+test("振込のご案内の書き出しを書き換えても、期限の時刻が本文に残る", () => {
+  const m = composeMail(GUIDE, SITE, { subject: null, body: "ご注文ありがとうございます。" });
+  assert.ok(m.text.startsWith("ご注文ありがとうございます。\n\nお振込のご案内（11/30 12:00 まで）\n\n振込名義：P12345"));
+});
+
+test("書き出しに {お知らせの題} を入れたときは、題を二重に出さない", () => {
+  const m = composeMail(GUIDE, SITE, { subject: null, body: "{お知らせの題}\nよろしくお願いします。" });
+  assert.equal(m.text.split("11/30 12:00 まで").length - 1, 1);
+});
+
+/* ---- 差し込んだあとの長さ（mail_outbox は件名200字・本文10000字まで） ---- */
+
+const LONG_TITLE = "あ".repeat(100);
+
+test("{お知らせの題} を何度も入れた件名でも、差し込んだあとで200字以内", () => {
+  const m = composeMail({ ...PAID, title: LONG_TITLE }, SITE, { subject: "{お知らせの題}".repeat(12), body: null });
+  assert.ok(Array.from(m.subject).length <= 200, String(Array.from(m.subject).length));
+});
+
+test("書き出しは差し込んだあとでも2000字以内・本文は10000字以内", () => {
+  const m = composeMail({ ...PAID, title: LONG_TITLE }, SITE, { subject: null, body: "{お知らせの題}".repeat(250) });
+  const opening = m.text.split("\n\n")[0];
+  assert.ok(Array.from(opening).length <= 2000, String(Array.from(opening).length));
+  assert.ok(Array.from(m.text).length <= 10000, String(Array.from(m.text).length));
+});
