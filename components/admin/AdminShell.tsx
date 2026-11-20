@@ -26,8 +26,12 @@ export type AdminPanel =
   | "logs"
   | "search";
 
+/** 名前の右の数の印。label は読み上げ用（「未処理 3件」のように読む） */
+type NavBadge = { count: number; tone: "yellow" | "blue" | ""; label: string };
 /** sub は名前の下に出す小さな説明（何を見る所か） */
-type NavItem = { key: AdminPanel; href: string; icon: string; label: string; sub?: string; count?: number; tone?: "yellow" | "blue" | "" };
+type NavItem = { key: AdminPanel; href: string; icon: string; label: string; sub?: string; badges?: NavBadge[] };
+
+const todo = (count: number, tone: NavBadge["tone"]): NavBadge[] => [{ count, tone, label: "未処理" }];
 
 function NavLink({ item, active }: { item: NavItem; active: AdminPanel }) {
   const on = item.key === active;
@@ -43,40 +47,52 @@ function NavLink({ item, active }: { item: NavItem; active: AdminPanel }) {
       ) : (
         item.label
       )}
-      {item.count != null && item.count > 0 && (
-        <span className={`nav-badge${item.tone ? ` ${item.tone}` : ""}`} aria-label={`未処理 ${item.count}件`}>
-          {item.count > 99 ? "99+" : item.count}
-        </span>
-      )}
+      {item.badges
+        ?.filter((b) => b.count > 0)
+        .map((b) => (
+          <span key={b.label} className={`nav-badge${b.tone ? ` ${b.tone}` : ""}`} aria-label={`${b.label} ${b.count}件`}>
+            {b.count > 99 ? "99+" : b.count}
+          </span>
+        ))}
     </Link>
   );
 }
 
 export default async function AdminShell({ active, title, children }: { active: AdminPanel; title: string; children: ReactNode }) {
   const me = await requireAdminPage();
-  const c = await navCounts(createServiceClient());
-  const pending = c.kyc + c.reports + c.held + c.roles + c.refunds + c.payouts;
+  const c = await navCounts(createServiceClient(), me.id);
+  const pending = c.kyc + c.reports + c.held + c.roles + c.refunds + c.payouts + c.newOrders;
 
   const sections: { label: string; items: NavItem[] }[] = [
     {
       label: "メイン",
       items: [
         { key: "dashboard", href: "/admin", icon: "📊", label: "ダッシュボード" },
-        { key: "users", href: "/admin/users", icon: "👥", label: "ユーザー管理", count: c.roles, tone: "blue" },
+        { key: "users", href: "/admin/users", icon: "👥", label: "ユーザー管理", badges: todo(c.roles, "blue") },
         { key: "proxy", href: "/admin/proxy", icon: "🤝", label: "代理登録" },
         { key: "characters", href: "/admin/characters", icon: "🎭", label: "キャラ" },
         { key: "items", href: "/admin/items", icon: "📦", label: "商品管理" },
-        { key: "orders", href: "/admin/orders", icon: "🛍", label: "注文管理", count: c.refunds, tone: "" },
-        { key: "sales", href: "/admin/sales", icon: "💰", label: "売上・振込管理", count: c.payouts, tone: "yellow" },
+        {
+          key: "orders",
+          href: "/admin/orders",
+          icon: "🛍",
+          label: "注文管理",
+          // 新しい注文（青）と返金待ち（赤）を並べる。読み上げはそれぞれの名前で
+          badges: [
+            { count: c.newOrders, tone: "blue", label: "新しい注文" },
+            { count: c.refunds, tone: "", label: "返金待ち" },
+          ],
+        },
+        { key: "sales", href: "/admin/sales", icon: "💰", label: "売上・振込管理", badges: todo(c.payouts, "yellow") },
       ],
     },
     {
       label: "審査・安全",
       items: [
-        { key: "kyc", href: "/admin/kyc", icon: "🪪", label: "KYC審査", count: c.kyc, tone: "yellow" },
-        { key: "reports", href: "/admin/reports", icon: "🚩", label: "通報対応", count: c.reports, tone: "" },
+        { key: "kyc", href: "/admin/kyc", icon: "🪪", label: "KYC審査", badges: todo(c.kyc, "yellow") },
+        { key: "reports", href: "/admin/reports", icon: "🚩", label: "通報対応", badges: todo(c.reports, "") },
         // 「メッセージを確認する所が見つからない」と言われた（2026-11-10）。何を見る所かを名前の下に書く
-        { key: "moderation", href: "/admin/moderation", icon: "🛡", label: "モデレーション", sub: "投稿・メッセージ", count: c.held, tone: "" },
+        { key: "moderation", href: "/admin/moderation", icon: "🛡", label: "モデレーション", sub: "投稿・メッセージ", badges: todo(c.held, "") },
       ],
     },
     {

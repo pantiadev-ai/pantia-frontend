@@ -6,8 +6,9 @@ import type { ReactNode } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import { describeAudit } from "@/components/admin/audit";
 import { list, n, nOrNull, obj, s } from "@/components/admin/json";
+import NewOrders from "@/components/admin/NewOrders";
 import { BarChart, Card, Diff, Empty, hrefOf, Kpi, Tabs, Donut, type Bar, type Slice } from "@/components/admin/parts";
-import { mailMockInProduction, nicknamesOf, param, pick, requireAdminPage } from "@/lib/admin";
+import { mailMockInProduction, newOrders, nicknamesOf, param, pick, requireAdminPage } from "@/lib/admin";
 import { yen, num, relTime } from "@/lib/format";
 import { categoryLabel } from "@/lib/labels";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -28,13 +29,14 @@ export default async function AdminDashboardPage({ searchParams }: PageProps<"/a
   const months = pick(param(sp, "months", 2), ["3", "6", "12"] as const, "6");
 
   const service = createServiceClient();
-  const [dash, logs] = await Promise.all([
+  const [dash, logs, fresh] = await Promise.all([
     service.rpc("admin_dashboard", { p_admin: me.id, p_months: Number(months) }),
     service
       .from("audit_logs")
       .select("id, action, actor_id, target_type, target_id, detail, created_at")
       .order("created_at", { ascending: false })
       .limit(6),
+    newOrders(service, me.id, 10),
   ]);
   if (dash.error) console.error("[admin] dashboard", dash.error.message);
   if (logs.error) console.error("[admin] audit_logs", logs.error.message);
@@ -134,6 +136,9 @@ export default async function AdminDashboardPage({ searchParams }: PageProps<"/a
           }
         />
       </div>
+
+      {/* 運営が動く注文を数字のすぐ下に（「購入された通知を管理画面に」2026-11-20） */}
+      <NewOrders data={fresh} />
 
       <div className="dual-grid">
         <Card

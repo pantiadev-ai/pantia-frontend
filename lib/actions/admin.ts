@@ -15,6 +15,7 @@ import { refundOrder } from "@/lib/adapters/payment";
 import { actionAdmin, ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
 import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError } from "@/lib/banned-words";
+import { parseBankView, type BankView } from "@/lib/character-bank";
 import { dbCode } from "@/lib/db-errors";
 import { ImageError, processImage, type ImageKind } from "@/lib/images";
 import { INCOMPLETE, ListingSchema, isComplete, listingRow, listingRowError, type ParsedListing } from "@/lib/listing-input";
@@ -381,6 +382,19 @@ export async function unmarkCharacter(userId: string): Promise<ActionResult> {
     adminThrowDb(error);
     refresh();
     return { ok: true, message: "キャラを外しました。" };
+  });
+}
+
+/** キャラの振込先の口座を全桁で見る（運営がキャラとして受け取る口座だけ）。見るたびに bank_account.view が記録に残る。
+    一般の売手の口座は DB が bad_state で断る（画面では下4桁のまま） */
+export async function viewCharacterBank(userId: string): Promise<ActionResult<BankView | null>> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, userId);
+    const { data, error } = await createServiceClient().rpc("admin_character_bank", { p_admin: v.id, p_user: id });
+    if (error && dbCode(error) === "bad_state") throw new ActionError("キャラの口座だけ見られます。");
+    adminThrowDb(error);
+    return { ok: true, data: parseBankView(data) };
   });
 }
 
