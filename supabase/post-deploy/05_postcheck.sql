@@ -20,7 +20,9 @@ with
     -- 0016 手動の売り切れ
     ('listing_manual_sold'),
     -- 0017 キャラ
-    ('character_accounts')
+    ('character_accounts'),
+    -- 0018 メールの文面
+    ('mail_templates')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -50,7 +52,9 @@ with
     -- 0016 手動の売り切れ
     ('admin_mark_sold'), ('admin_unmark_sold'), ('listings_manual_sold_cleanup'),
     -- 0017 キャラ
-    ('admin_create_character_listing'), ('admin_mark_character'), ('admin_unmark_character')
+    ('admin_create_character_listing'), ('admin_mark_character'), ('admin_unmark_character'),
+    -- 0018 メールの文面・キャラの口座・新しい注文
+    ('admin_character_bank'), ('admin_new_orders'), ('admin_set_mail_template')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -215,5 +219,15 @@ select 25, 'キャラの印（character_accounts）は関数からしか書け�
          or has_table_privilege('service_role', 'public.character_accounts', 'DELETE')
          or has_table_privilege('anon', 'public.character_accounts', 'SELECT')
          or has_table_privilege('authenticated', 'public.character_accounts', 'SELECT') then 'NG'
+       else 'OK' end, ''
+union all
+select 26, 'メールの文面（mail_templates）は関数からしか書けず、利用者から読めない',
+  case when to_regclass('public.mail_templates') is null then 'NG'
+       when has_table_privilege('service_role', 'public.mail_templates', 'INSERT')
+         or has_table_privilege('service_role', 'public.mail_templates', 'UPDATE')
+         or has_table_privilege('service_role', 'public.mail_templates', 'DELETE')
+         or not has_table_privilege('service_role', 'public.mail_templates', 'SELECT')
+         or has_table_privilege('anon', 'public.mail_templates', 'SELECT')
+         or has_table_privilege('authenticated', 'public.mail_templates', 'SELECT') then 'NG'
        else 'OK' end, ''
 order by no;
