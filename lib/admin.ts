@@ -13,6 +13,7 @@ import { cache } from "react";
 import { actionAdmin, ActionError, requireAdmin, type Viewer } from "@/lib/auth";
 import { dbCode, throwDb, type DbError } from "@/lib/db-errors";
 import { serverEnv } from "@/lib/env";
+import { mailWarning } from "@/lib/mail-config";
 import { takeRateLimit } from "@/lib/rate-limit";
 import type { LimitRule } from "@/lib/rate-limit-rules";
 import { parseNewOrders, type NewOrders } from "@/lib/new-orders";
@@ -180,14 +181,9 @@ export async function navCounts(service: Service, adminId: string): Promise<NavC
   };
 }
 
-/** 本番なのにメールが mock（送らずに控えだけ）か。管理画面の上に警告を出す */
-export function mailMockInProduction(): boolean {
-  try {
-    return serverEnv.isProduction && serverEnv.mailMode === "mock";
-  } catch {
-    // MAIL_MODE の値がおかしいときも警告を出す側に倒す
-    return serverEnv.isProduction;
-  }
+/** 管理画面の上に出すメールの設定の警告（値がおかしい・本番なのに mock）。無ければ null。文は lib/mail-config.ts */
+export function mailSetupWarning(): string | null {
+  return mailWarning(process.env, serverEnv.isProduction);
 }
 
 /** 環境変数で決まる設定（管理画面では見るだけ）。鍵の値は出さず「設定あり／なし」だけ */

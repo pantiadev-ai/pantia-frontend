@@ -8,7 +8,7 @@ import { describeAudit } from "@/components/admin/audit";
 import { list, n, nOrNull, obj, s } from "@/components/admin/json";
 import NewOrders from "@/components/admin/NewOrders";
 import { BarChart, Card, Diff, Empty, hrefOf, Kpi, Tabs, Donut, type Bar, type Slice } from "@/components/admin/parts";
-import { mailMockInProduction, newOrders, nicknamesOf, param, pick, requireAdminPage } from "@/lib/admin";
+import { mailSetupWarning, newOrders, nicknamesOf, param, pick, requireAdminPage } from "@/lib/admin";
 import { yen, num, relTime } from "@/lib/format";
 import { categoryLabel } from "@/lib/labels";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -62,17 +62,8 @@ export default async function AdminDashboardPage({ searchParams }: PageProps<"/a
   const rating = nOrNull(d.rating_avg);
 
   const alerts: { tone: "warn" | "danger"; text: ReactNode; href: string }[] = [];
-  if (mailMockInProduction()) {
-    alerts.push({
-      tone: "danger",
-      text: (
-        <>
-          ⚠️ <strong>本番なのにメールが mock</strong>（送らずに控えだけ）になっています。環境変数 MAIL_MODE を live にしてください。
-        </>
-      ),
-      href: "/admin/settings",
-    });
-  }
+  const mailAlert = mailSetupWarning();
+  if (mailAlert) alerts.push({ tone: "danger", text: <>⚠️ {mailAlert}</>, href: "/admin/settings" });
   if (n(d.refunds_open) > 0) {
     alerts.push({ tone: "danger", text: <>💸 <strong>返金待ちが{num(n(d.refunds_open))}件</strong>あります。返金をやり直してください。</>, href: "/admin/orders" });
   }

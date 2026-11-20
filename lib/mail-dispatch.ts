@@ -3,12 +3,14 @@
    ・送るかどうか（管理画面のメール設定・本人の「購入が入ったときのメール」）は DB の側で決める。
    ・件名と本文は lib/mail-compose.ts（注文のメールには商品名を載せない）。
      管理画面で書き換えた件名・書き出し（mail_templates）は、送る行があるときに1回の実行で1回だけ読む。読めなければ既定の文面で送る。
-   ・失敗しても呼び手は止めない。送れなかった分は mail_outbox に残る（送り直さない。画面のお知らせは残っている）。 */
+   ・失敗しても呼び手は止めない。送れなかった分は mail_outbox に残る（送り直さない。画面のお知らせは残っている）。
+   ・環境変数の設定がおかしい（lib/mail-config.ts）あいだは、拾わずに待たせる。 */
 import "server-only";
 import { after } from "next/server";
 import { sendMail } from "@/lib/adapters/mail";
 import { publicEnv } from "@/lib/env";
 import { composeMail } from "@/lib/mail-compose";
+import { mailConfig } from "@/lib/mail-config";
 import { loadOverrides, templateFor, type MailOverride } from "@/lib/mail-templates";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -18,6 +20,12 @@ const MAX_ROUNDS = 4;
 
 /** 送るべき分を拾って送る。何件送れたかを返す */
 export async function flushMail(): Promise<{ sent: number; failed: number }> {
+  // 設定がおかしいあいだは拾わない（拾うと mailed_at が付き、送れないまま失われる）。直れば3日以内の分は次に送られる
+  const config = mailConfig(process.env);
+  if (config.state === "broken") {
+    console.error("[mail] メールの設定がおかしいので、お知らせを拾わずに待たせます", config.reason);
+    return { sent: 0, failed: 0 };
+  }
   const db = createServiceClient();
   const siteUrl = publicEnv.siteUrl;
   let sent = 0;
