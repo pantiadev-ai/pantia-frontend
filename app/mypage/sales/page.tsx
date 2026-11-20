@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { dateJst, maskName, num, yen } from "@/lib/format";
 import { LEDGER_KINDS } from "@/lib/labels";
+import { pendingSales, pendingSalesNote } from "@/lib/pending-sales";
 import { getSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import MypageShell from "@/components/mypage/MypageShell";
@@ -42,15 +43,20 @@ export default async function SalesPage({ searchParams }: PageProps<"/mypage/sal
   else if (tab === "all") ordersQuery = ordersQuery.neq("status", "pending");
   else ordersQuery = ordersQuery.eq("status", tab);
 
-  const [stats, balance, settings, ordersRes, ledgerRes] = await Promise.all([
+  const [stats, balance, settings, ordersRes, ledgerRes, shippedRes] = await Promise.all([
     getSellerStats("month"),
     getMyBalance(),
     getSettings(),
     ordersQuery.order("created_at", { ascending: false }).limit(ORDER_LIMIT),
     supabase.rpc("my_ledger", { p_limit: LEDGER_LIMIT }),
+    // 受け取り待ち：発送済みで、まだ取引が完了していない（売上は完了したときに申請できる額に入る）
+    supabase.from("orders").select("seller_net, shipped_at").eq("seller_id", viewer.id).eq("status", "shipped"),
   ]);
   if (ordersRes.error) console.error("[mypage] sales orders", ordersRes.error.message);
   if (ledgerRes.error) console.error("[mypage] ledger", ledgerRes.error.message);
+  if (shippedRes.error) console.error("[mypage] shipped orders", shippedRes.error.message);
+  // 読めなかったときは ¥0 と出さず、行ごと出さない
+  const pending = shippedRes.error ? null : pendingSales(shippedRes.data ?? [], settings.autoCompleteDays, new Date());
   const orders = ordersRes.data ?? [];
   const ledger = ledgerRes.data ?? [];
   const buyers = await publicNames(orders.map((o) => o.buyer_id));
@@ -84,6 +90,15 @@ export default async function SalesPage({ searchParams }: PageProps<"/mypage/sal
         </div>
         <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>現在の振込可能残高</div>
         <div className="balance-big">{yen(balance)}</div>
+        {pending && (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 12px", lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 700 }}>
+              受け取り待ち（発送済み）{yen(pending.amount)}
+              {pending.count > 0 && `（${num(pending.count)}件）`}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 500 }}>※ {pendingSalesNote(settings.autoCompleteDays, pending.earliest)}</div>
+          </div>
+        )}
         <Link href="/payout" className="btn-payout">
           🏦 振込申請へ
         </Link>
