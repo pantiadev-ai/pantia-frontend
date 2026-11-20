@@ -7,6 +7,7 @@ import ActionButton from "@/components/admin/ActionButton";
 import AdminProfileForm from "@/components/admin/AdminProfileForm";
 import AdminShell from "@/components/admin/AdminShell";
 import { characterBadge, kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
+import CharacterBank from "@/components/admin/CharacterBank";
 import LedgerAdjustForm from "@/components/admin/LedgerAdjustForm";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import type { UploadedImage } from "@/components/ImageUploader";
@@ -247,6 +248,13 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
           </div>
         </Card>
       </div>
+
+      {/* キャラの売上は運営の口座に入るので、運営が全桁を見られる（一般の売手は出さない。DB でも断る） */}
+      {isCharacter && (
+        <Card icon="🏦" tone="green" title="振込先の口座">
+          <CharacterBank userId={p.id} />
+        </Card>
+      )}
 
       <Card icon="🛠" tone="red" title="この利用者への操作">
         {self ? (

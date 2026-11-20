@@ -1,6 +1,7 @@
 "use client";
 /* サイト設定の編集。保存の前に「何を変えるか」を確認の窓で見せる。
    サイト名・送信元・メールの送り方は環境変数で決まるので、ここでは見せるだけ（変えられない）。 */
+import Link from "next/link";
 import { useState, useTransition, type ReactNode } from "react";
 import { updateSettings, type SettingsInput } from "@/lib/actions/admin";
 import { BANNED_WORD_MAX, BANNED_WORDS_MAX, bannedWordsError, parseBannedWords } from "@/lib/banned-words";
@@ -292,6 +293,9 @@ export default function SettingsForm({
             {toggle("mailOrder")}
             {toggle("mailKyc")}
             {toggle("mailPayout")}
+            <Link href="/admin/settings/mail" className="adm-link">
+              メールの文面を編集する →
+            </Link>
           </div>
         </div>
       </div>

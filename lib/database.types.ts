@@ -723,6 +723,38 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_templates: {
+        Row: {
+          body: string | null
+          key: string
+          subject: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string | null
+          key: string
+          subject?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string | null
+          key?: string
+          subject?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_templates_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_consents: {
         Row: {
           agreed_at: string
@@ -1909,6 +1941,10 @@ export type Database = {
         Args: { p_admin: string; p_order: string; p_reason: string }
         Returns: Json
       }
+      admin_character_bank: {
+        Args: { p_admin: string; p_user: string }
+        Returns: Json
+      }
       admin_confirm_transfer: {
         Args: { p_admin: string; p_amount: number; p_group: string }
         Returns: Json
@@ -1971,6 +2007,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_new_orders: {
+        Args: { p_admin: string; p_limit: number }
+        Returns: Json
+      }
       admin_payout_pay: {
         Args: { p_admin: string; p_payout: string }
         Returns: Json
@@ -2011,6 +2051,15 @@ export type Database = {
           p_listing: string
           p_reason: string
           p_status: string
+        }
+        Returns: undefined
+      }
+      admin_set_mail_template: {
+        Args: {
+          p_admin: string
+          p_body: string
+          p_key: string
+          p_subject: string
         }
         Returns: undefined
       }

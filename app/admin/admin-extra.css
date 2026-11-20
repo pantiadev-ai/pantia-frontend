@@ -51,6 +51,10 @@
   background: var(--blue2);
   box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
 }
+/* 印が2つ並ぶ行（注文管理：新しい注文と返金待ち）。右に寄せるのは1つ目だけ */
+.pg-admin .nav-badge + .nav-badge {
+  margin-left: 4px;
+}
 /* 左の案内の名前の下の小さな説明（何を見る所か）。「メッセージを確認する所が見つからない」と言われた（2026-11-10） */
 .pg-admin .nav-label {
   display: flex;
@@ -707,4 +711,22 @@
   .pg-admin .kpi-num {
     font-size: 24px;
   }
+}
+
+/* メールの文面（/admin/settings/mail） */
+.pg-admin .adm-mail-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+.pg-admin .adm-mail-preview {
+  background: var(--surface2-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }

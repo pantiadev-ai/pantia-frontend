@@ -15,6 +15,7 @@ import { dbCode, throwDb, type DbError } from "@/lib/db-errors";
 import { serverEnv } from "@/lib/env";
 import { takeRateLimit } from "@/lib/rate-limit";
 import type { LimitRule } from "@/lib/rate-limit-rules";
+import { parseNewOrders, type NewOrders } from "@/lib/new-orders";
 import { SITE_NAME } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import type { createServiceClient } from "@/lib/supabase/service";
@@ -131,12 +132,32 @@ export async function nicknamesOf(service: Service, ids: (string | null | undefi
   return map;
 }
 
-/** 左のメニューの数（未処理の件数） */
-export type NavCounts = { kyc: number; reports: number; held: number; roles: number; refunds: number; payouts: number };
+/** 新しい注文（振込の入金待ち・入金済み・発送準備中）。
+    count はメニューの印（振込の入金待ち＋キャラの入金済み・発送準備中。運営が動く注文）、
+    items はダッシュボードの一覧（全部の売手）。読めないときは 0 件・空 */
+export async function newOrders(service: Service, adminId: string, limit = 10): Promise<NewOrders> {
+  const { data, error } = await service.rpc("admin_new_orders", { p_admin: adminId, p_limit: limit });
+  if (error) {
+    console.error("[admin] new orders", error.message);
+    return { count: 0, items: [] };
+  }
+  return parseNewOrders(data);
+}
 
-export async function navCounts(service: Service): Promise<NavCounts> {
+/** 左のメニューの数（未処理の件数） */
+export type NavCounts = {
+  kyc: number;
+  reports: number;
+  held: number;
+  roles: number;
+  refunds: number;
+  payouts: number;
+  newOrders: number;
+};
+
+export async function navCounts(service: Service, adminId: string): Promise<NavCounts> {
   const head = { count: "exact" as const, head: true };
-  const [kyc, reports, posts, comments, messages, roles, refunds, payouts] = await Promise.all([
+  const [kyc, reports, posts, comments, messages, roles, refunds, payouts, fresh] = await Promise.all([
     service.from("kyc_applications").select("id", head).in("status", ["pending", "reviewing"]),
     service.from("reports").select("id", head).in("status", ["open", "reviewing"]),
     service.from("posts").select("id", head).eq("status", "held"),
@@ -145,6 +166,8 @@ export async function navCounts(service: Service): Promise<NavCounts> {
     service.from("role_change_requests").select("id", head).eq("status", "pending"),
     service.from("orders").select("id", head).eq("needs_refund", true).is("refunded_at", null),
     service.from("payouts").select("id", head).eq("status", "requested"),
+    // 印に要るのは件数だけなので、一覧は1行に絞る
+    newOrders(service, adminId, 1),
   ]);
   return {
     kyc: kyc.count ?? 0,
@@ -153,6 +176,7 @@ export async function navCounts(service: Service): Promise<NavCounts> {
     roles: roles.count ?? 0,
     refunds: refunds.count ?? 0,
     payouts: payouts.count ?? 0,
+    newOrders: fresh.count,
   };
 }
 

@@ -2,12 +2,14 @@
    ・呼ぶ所: server action の成功のあと（runAction）、決済・本人確認の webhook、cron。どれも応答を返したあと（after）に走る。
    ・送るかどうか（管理画面のメール設定・本人の「購入が入ったときのメール」）は DB の側で決める。
    ・件名と本文は lib/mail-compose.ts（注文のメールには商品名を載せない）。
+     管理画面で書き換えた件名・書き出し（mail_templates）は、送る行があるときに1回の実行で1回だけ読む。読めなければ既定の文面で送る。
    ・失敗しても呼び手は止めない。送れなかった分は mail_outbox に残る（送り直さない。画面のお知らせは残っている）。 */
 import "server-only";
 import { after } from "next/server";
 import { sendMail } from "@/lib/adapters/mail";
 import { publicEnv } from "@/lib/env";
 import { composeMail } from "@/lib/mail-compose";
+import { loadOverrides, templateFor, type MailOverride } from "@/lib/mail-templates";
 import { createServiceClient } from "@/lib/supabase/service";
 
 const BATCH = 50;
@@ -20,6 +22,8 @@ export async function flushMail(): Promise<{ sent: number; failed: number }> {
   const siteUrl = publicEnv.siteUrl;
   let sent = 0;
   let failed = 0;
+  // 送る行が無いときは読まない（操作のたびに呼ばれるため）
+  let overrides: Map<string, MailOverride> | null = null;
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const { data, error } = await db.rpc("claim_mail_batch", { p_limit: BATCH });
     if (error) {
@@ -27,8 +31,10 @@ export async function flushMail(): Promise<{ sent: number; failed: number }> {
       break;
     }
     const rows = data ?? [];
+    if (rows.length > 0 && !overrides) overrides = await loadOverrides(db);
     for (const row of rows) {
-      const { subject, text } = composeMail(row, siteUrl);
+      const key = templateFor(row.kind, row.title)?.key;
+      const { subject, text } = composeMail(row, siteUrl, key ? (overrides?.get(key) ?? null) : null);
       try {
         const r = await sendMail({ to: row.email, subject, text, userId: row.user_id, kind: `notice.${row.kind}` });
         if (r.sent) sent++;

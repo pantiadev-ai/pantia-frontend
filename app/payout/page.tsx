@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireViewer } from "@/lib/auth";
 import { dateJst, last4, num, yen } from "@/lib/format";
 import { PAYOUT_STATUS } from "@/lib/labels";
+import { pendingSales, pendingSalesNote } from "@/lib/pending-sales";
 import { getSettings } from "@/lib/settings";
 import { createClient } from "@/lib/supabase/server";
 import MypageShell from "@/components/mypage/MypageShell";
@@ -30,7 +31,7 @@ export default async function PayoutPage() {
   const kycOk = viewer.kycStatus === "approved";
 
   const supabase = await createClient();
-  const [balance, settings, bankRes, payoutsRes] = await Promise.all([
+  const [balance, settings, bankRes, payoutsRes, shippedRes] = await Promise.all([
     getMyBalance(),
     getSettings(),
     supabase
@@ -46,9 +47,13 @@ export default async function PayoutPage() {
       .eq("user_id", viewer.id)
       .order("requested_at", { ascending: false })
       .limit(HISTORY_LIMIT),
+    // 受け取り待ち：発送済みで、まだ取引が完了していない（売上は完了したときに申請できる額に入る）
+    supabase.from("orders").select("seller_net, shipped_at").eq("seller_id", viewer.id).eq("status", "shipped"),
   ]);
   if (bankRes.error) console.error("[payout] bank", bankRes.error.message);
   if (payoutsRes.error) console.error("[payout] history", payoutsRes.error.message);
+  if (shippedRes.error) console.error("[payout] shipped orders", shippedRes.error.message);
+  const pending = shippedRes.error ? null : pendingSales(shippedRes.data ?? [], settings.autoCompleteDays, new Date());
 
   const b = bankRes.data;
   const bank: BankView | null = b
@@ -104,6 +109,14 @@ export default async function PayoutPage() {
         </div>
         <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>現在の振込可能残高</div>
         <div className="balance-big">{yen(balance)}</div>
+        {pending && pending.amount > 0 && (
+          <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 12px", lineHeight: 1.6 }}>
+            <strong>
+              受け取り待ち（発送済み）{yen(pending.amount)}（{num(pending.count)}件）
+            </strong>
+            ：{pendingSalesNote(settings.autoCompleteDays, pending.earliest)}
+          </div>
+        )}
         <PayoutRequestForm
           balance={balance}
           minPayout={settings.minPayout}
