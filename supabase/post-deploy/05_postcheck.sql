@@ -54,7 +54,9 @@ with
     -- 0017 キャラ
     ('admin_create_character_listing'), ('admin_mark_character'), ('admin_unmark_character'),
     -- 0018 メールの文面・キャラの口座・新しい注文
-    ('admin_character_bank'), ('admin_new_orders'), ('admin_set_mail_template')
+    ('admin_character_bank'), ('admin_new_orders'), ('admin_set_mail_template'),
+    -- 0019 出品日の変更
+    ('admin_set_listing_published_at')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
