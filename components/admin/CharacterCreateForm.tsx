@@ -152,7 +152,7 @@ export default function CharacterCreateForm({ closed }: { closed: boolean }) {
       {confirming && (
         <Modal title="キャラを作りますか？" onClose={() => setConfirming(false)} busy={pending}>
           <p>
-            キャラ「<strong>{nickname.trim()}</strong>」を作ります。ログインに使うメールアドレスは <strong>{email.trim()}</strong> です。
+            キャラ「<strong>{nickname.trim()}</strong>」を作ります。ログインに使うメールアドレスは <strong style={{ overflowWrap: "anywhere" }}>{email.trim()}</strong> です。
           </p>
           <ul className="adm-hint" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.8 }}>
             <li>メールは運営が受け取れるアドレスにしてください（パスワードを忘れたときの再設定に使います）。</li>

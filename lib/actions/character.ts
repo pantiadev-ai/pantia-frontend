@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
+import { discardUnmarked } from "@/lib/character";
 import { dbCode } from "@/lib/db-errors";
 import { publicEnv } from "@/lib/env";
 import { isUuid } from "@/lib/search";
@@ -99,9 +100,9 @@ export async function createCharacter(input: unknown): Promise<ActionResult<Crea
     const id = data.user.id;
     const { error: markError } = await service.rpc("admin_create_character", { p_admin: me.id, p_user: id, p_note: v.note });
     if (markError) {
-      // 印の無い売手を残さない（作ったばかりで、まだ何も持っていない）
-      const removed = await service.auth.admin.deleteUser(id);
-      if (removed.error) console.error("[character] 作ったアカウントを消せませんでした", removed.error.code ?? removed.error.status);
+      // 印の無い売手を残さない（作ったばかりで、まだ何も持っていない）。消せなければ、運営が片づけられる文を出す
+      const left = await discardUnmarked(() => service.auth.admin.deleteUser(id), { id, nickname: v.nickname });
+      if (left) throw new ActionError(left);
       adminThrowDb(markError);
     }
     refresh();

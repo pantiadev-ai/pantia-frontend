@@ -261,11 +261,11 @@ test.describe("出品日", () => {
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("heading", { name: "出品日を変える" })).toBeVisible();
       await expect(dialog.getByText("商品ページの出品日と、新着の並びが変わります。フォロワーへの通知は出し直しません。")).toBeVisible();
-      await dialog.getByLabel("出品日（日本時間）").fill(`${day}T10:15`);
+      await dialog.getByLabel("出品日（日本時間）").fill(`${day}T00:30`);
       await dialog.getByRole("button", { name: "変える", exact: true }).click();
       await expect(dialog).toBeHidden();
       await expect(page.locator(".adm-toasts").getByText("出品日を変えました。")).toBeVisible();
-      expect(await one<boolean>(`select published_at = ${lit(`${day} 10:15:00+09`)}::timestamptz from public.listings where id = ${lit(listingId)}`)).toBe(true);
+      expect(await one<boolean>(`select published_at = ${lit(`${day} 00:30:00+09`)}::timestamptz from public.listings where id = ${lit(listingId)}`)).toBe(true);
       expect(await one<string>(`select status from public.listings where id = ${lit(listingId)}`), "状態はそのまま").toBe("published");
 
       // 一覧: 日付が変わり、出品日の新しい順（下書きは最後）に並ぶ
@@ -281,7 +281,7 @@ test.describe("出品日", () => {
       // 記録
       await page.goto(`/admin/logs?q=${listingId}`);
       await expect(
-        page.getByText(new RegExp(`^${adm.nickname}さんが「${title}」の出品日を変えました（\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2} → ${shown} 10:15）$`)),
+        page.getByText(new RegExp(`^${adm.nickname}さんが「${title}」の出品日を変えました（\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2} → ${shown} 00:30）$`)),
       ).toBeVisible();
     } finally {
       await guest.close();

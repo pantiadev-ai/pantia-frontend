@@ -42,3 +42,25 @@ export function characterBlockReason(c: CharacterCandidate): string | null {
   if (c.status !== "active") return "利用を止めている人はキャラにできません。";
   return "本人確認を出した売手はキャラにできません。";
 }
+
+type RemoveResult = { error: { code?: string | undefined; status?: number | undefined } | null };
+
+/** キャラの印を付けられなかったとき、作ったばかりのアカウントを消す（lib/actions/character.ts）。
+   消せたら null（もとの失敗の文を出す）。消せなかったら、印の無い売手が残るので、運営が探して片づけられる文を返す。
+   ユーザー管理の一覧はメールを出さず、ID か名前でしか探せないので、その2つを文に入れる */
+export async function discardUnmarked(remove: () => Promise<RemoveResult>, who: { id: string; nickname: string }): Promise<string | null> {
+  let failure: unknown = null;
+  try {
+    const { error } = await remove();
+    if (!error) return null;
+    failure = error.code ?? error.status ?? "unknown";
+  } catch (e) {
+    failure = e instanceof Error ? e.name : "unknown";
+  }
+  console.error("[character] 作ったアカウントを消せませんでした", failure);
+  return (
+    `キャラの印を付けられませんでした。作ったアカウント（ID: ${who.id}）も消せずに残っています。` +
+    `ユーザー管理でこの ID か名前「${who.nickname}」を探し、「キャラにする」で印を付けるか、「利用を止める」で止めてください` +
+    `（印を付けたときのパスワードは、ログイン画面の「パスワードを忘れた方」から決められます）。`
+  );
+}

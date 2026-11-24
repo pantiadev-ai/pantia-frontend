@@ -660,6 +660,25 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
   });
 
+  // 確認の窓はメールを <strong> で出す。長いメールは語の切れ目が無く、窓の中で横に流れて読めなかった（2026-11-24 のレビュー）
+  test("キャラを作る確認の窓は、長いメールアドレスでも窓の中で折り返し、横に流れない", async ({ page, context }) => {
+    await asAdmin(context);
+    await page.goto("/admin/characters");
+    // ハイフンがあるとそこで折り返せてしまうので、英数字だけの長いメールにする
+    const email = `e2echaraconfirmverylongaddress${tok()}foriphonemini@example.test`;
+    await page.getByLabel(/^メールアドレス/).fill(email);
+    await page.getByLabel(/^キャラの名前/).fill("E2E長いメール");
+    await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "キャラを作りますか？" });
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    const mail = (await dialog.getByText(email, { exact: true }).boundingBox())!;
+    expect(mail.x + mail.width, "メールの右が窓の右を越えている").toBeLessThanOrEqual(box.x + box.width + 1);
+    const inner = await dialog.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(inner.scroll, "窓の中が横に流れている").toBeLessThanOrEqual(inner.client + 1);
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  });
+
   // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
   test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
     const seller = await freshUser("mob-chip", { role: "seller" });

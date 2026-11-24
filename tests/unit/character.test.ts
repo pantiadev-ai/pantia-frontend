@@ -1,7 +1,7 @@
 /* キャラ（運営で入れた売手）の印を付けられる相手か（lib/character.ts）。DB の admin_mark_character と同じ条件 */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canMarkCharacter, characterBlockReason } from "../../lib/character.ts";
+import { canMarkCharacter, characterBlockReason, discardUnmarked } from "../../lib/character.ts";
 
 const base = { role: "seller", status: "active", kycStatus: "unsubmitted", isProxy: false, isAdmin: false, isSelf: false, marked: false };
 
@@ -64,4 +64,28 @@ test("購入者・止めた人・本人確認を出した売手は、それぞ�
   assert.equal(characterBlockReason({ ...base, status: "withdrawn" }), "利用を止めている人はキャラにできません。");
   assert.equal(characterBlockReason({ ...base, kycStatus: "pending" }), "本人確認を出した売手はキャラにできません。");
   assert.equal(characterBlockReason({ ...base, kycStatus: "rejected" }), "本人確認を出した売手はキャラにできません。");
+});
+
+/* 印を付けられなかったときの後始末（lib/actions/character.ts）。消せなければ、運営が探して片づけられる文を返す */
+const who = { id: "11111111-2222-4333-8444-555555555555", nickname: "みゆ" };
+
+test("作ったアカウントを消せたら、何も返さない（もとの失敗の文を出す）", async () => {
+  assert.equal(await discardUnmarked(async () => ({ error: null }), who), null);
+});
+
+test("消せなかったら、ID と名前と取り戻し方を返す", async () => {
+  const left = await discardUnmarked(async () => ({ error: { code: "unexpected_failure", status: 500 } }), who);
+  assert.ok(left);
+  assert.match(left, /11111111-2222-4333-8444-555555555555/);
+  assert.match(left, /「みゆ」/);
+  assert.match(left, /「キャラにする」/);
+  assert.match(left, /「利用を止める」/);
+});
+
+test("消すときに例外が出ても投げ返さず、同じ文を返す", async () => {
+  const left = await discardUnmarked(async () => {
+    throw new Error("network");
+  }, who);
+  assert.ok(left);
+  assert.match(left, /11111111-2222-4333-8444-555555555555/);
 });
