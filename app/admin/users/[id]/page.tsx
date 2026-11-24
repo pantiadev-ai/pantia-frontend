@@ -13,7 +13,7 @@ import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import type { UploadedImage } from "@/components/ImageUploader";
 import type { ProfileInitial } from "@/components/mypage/ProfileForm";
 import { nicknamesOf, requireAdminPage } from "@/lib/admin";
-import { canMarkCharacter } from "@/lib/character";
+import { canMarkCharacter, characterBlockReason, type CharacterCandidate } from "@/lib/character";
 import { dateJst, dateTimeJst, excerpt, isOnline, num, orderNo, ratingAvg, relTime, san, yen } from "@/lib/format";
 import { labelOf, LEDGER_KINDS, REPORT_REASONS } from "@/lib/labels";
 import { isUuid } from "@/lib/search";
@@ -95,19 +95,19 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   const name = p.nickname || "（名前なし）";
   const isCharacter = character.data !== null;
   // 印・代理登録・管理者の表を読めなかったときは「キャラにする」を出さない（重ねて押させない・本物の売手に出さない）
-  const markable =
-    !character.error &&
-    !adminRow.error &&
-    !proxy.error &&
-    canMarkCharacter({
-      role: p.role,
-      status: p.status,
-      kycStatus: p.kyc_status,
-      isProxy: proxy.data !== null,
-      isAdmin: adminRow.data !== null,
-      isSelf: self,
-      marked: isCharacter,
-    });
+  const characterUnread = Boolean(character.error || adminRow.error || proxy.error);
+  const candidate: CharacterCandidate = {
+    role: p.role,
+    status: p.status,
+    kycStatus: p.kyc_status,
+    isProxy: proxy.data !== null,
+    isAdmin: adminRow.data !== null,
+    isSelf: self,
+    marked: isCharacter,
+  };
+  const markable = !characterUnread && canMarkCharacter(candidate);
+  // 「キャラにする」が出ないときは、その理由を操作の欄に出す（出ない理由がわからないと、運営が迷う）
+  const characterNote = isCharacter || markable ? null : characterUnread ? "キャラの状態を読めませんでした。" : characterBlockReason(candidate);
   const photo = avatarImage(p.avatar_path);
   // プロフィールの編集の初めの値（本人の編集画面 app/mypage/profile と同じ組み立て）
   const profileInitial: ProfileInitial = {
@@ -345,6 +345,11 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
                 </>
               )}
             </div>
+            {characterNote && (
+              <p className="adm-muted" style={{ marginTop: 10, fontSize: 12 }}>
+                {characterNote}
+              </p>
+            )}
             <p className="adm-hint" style={{ marginTop: 10 }}>
               強制退会は、先に利用を停止してからできます。
             </p>

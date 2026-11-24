@@ -623,6 +623,43 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
   });
 
+  test("キャラの一覧の「キャラを新しく作る」の欄と、パスワードのリンクの窓は、スマホで横にはみ出さず、ボタンが44px以上ある", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const name = `E2E窓${tok()}`.slice(0, 20);
+    const email = `e2e-chara-mob-${Date.now().toString(36)}${tok()}@example.test`.toLowerCase();
+    const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true, user_metadata: { nickname: name, role: "seller" } });
+    if (error || !data.user) throw new Error(`キャラを作れませんでした: ${error?.message}`);
+    const made = await admin().rpc("admin_create_character", { p_admin: adm.id, p_user: data.user.id, p_note: "" });
+    if (made.error) throw new Error(`キャラの印を付けられませんでした: ${made.error.message}`);
+
+    await expectNoOverflow(page, `/admin/characters?q=${encodeURIComponent(name)}`);
+    const width = page.viewportSize()!.width;
+    // 作成の欄は画面の中に収まる
+    for (const label of [/^メールアドレス/, /^キャラの名前/, /^年齢/, /^運営のメモ/]) {
+      const b = (await page.getByLabel(label).boundingBox())!;
+      expect(b.x, `${label} の左`).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.width, `${label} の右`).toBeLessThanOrEqual(width + 1);
+    }
+    const save = await page.getByRole("button", { name: "キャラを作る", exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+    expect(save, "「キャラを作る」の高さ").toBeGreaterThanOrEqual(44);
+
+    await page.getByRole("row").filter({ hasText: name }).getByRole("button", { name: "パスワードのリンク", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "作る", exact: true }).click();
+    await expect(dialog.getByRole("heading", { name: "リンクを作りました" })).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "窓の右").toBeLessThanOrEqual(width + 1);
+    const link = (await dialog.getByLabel(/^パスワードを決めるリンク/).boundingBox())!;
+    expect(link.x + link.width, "リンクの欄の右").toBeLessThanOrEqual(box.x + box.width + 1);
+    for (const n of ["リンクをコピー", "閉じる"]) {
+      const h = await dialog.getByRole("button", { name: n, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${n}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+  });
+
   // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
   test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
     const seller = await freshUser("mob-chip", { role: "seller" });

@@ -30,3 +30,15 @@ export function canMarkCharacter(c: CharacterCandidate): boolean {
     !c.marked
   );
 }
+
+/** 「キャラにする」を出さない理由（運営の画面に出す文）。出せる相手と、もう印がある相手は null。
+   どれにも当たらないのに出せないときは、いちばん近い理由を返す（canMarkCharacter と同じ順に見る） */
+export function characterBlockReason(c: CharacterCandidate): string | null {
+  if (c.marked || canMarkCharacter(c)) return null;
+  if (c.isSelf) return "自分自身はキャラにできません。";
+  if (c.isAdmin) return "管理者はキャラにできません。";
+  if (c.isProxy) return "代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。";
+  if (c.role !== "seller") return "購入者はキャラにできません（キャラにできるのは売手だけです）。";
+  if (c.status !== "active") return "利用を止めている人はキャラにできません。";
+  return "本人確認を出した売手はキャラにできません。";
+}

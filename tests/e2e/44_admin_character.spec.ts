@@ -4,12 +4,41 @@
    印を付けると本人確認は「済み」になる（記録 kyc.character_skip）。印を外しても、本人確認と出品はそのまま。
    375px の幅で横にはみ出さないかは 90_layout.mobile.spec.ts（スマホの試験はファイル名で分けている）。 */
 import type { Page } from "@playwright/test";
-import { freshUser, lit, loginAs, sql } from "./_db";
+import { admin, BASE_URL, cast, type Cast, freshUser, lit, loginAs, sql } from "./_db";
+import { uniqueIp } from "./_a";
 import { pngImage } from "./_b";
 import { act, asAdmin, auditOf, rid, rowOf } from "./_d";
 import { expect, test } from "./_fixtures";
 
 const fileInput = (page: Page) => page.locator('input[type="file"]');
+
+const LINK = /^http:\/\/localhost:3100\/auth\/start\?token_hash=[A-Za-z0-9_-]{16,}$/;
+
+/** 作成のフォームを埋める */
+async function fillCreate(page: Page, v: { email: string; nickname: string; age?: string; note?: string }) {
+  await page.getByLabel(/^メールアドレス/).fill(v.email);
+  await page.getByLabel(/^キャラの名前/).fill(v.nickname);
+  if (v.age !== undefined) await page.getByLabel(/^年齢/).fill(v.age);
+  if (v.note !== undefined) await page.getByLabel(/^運営のメモ/).fill(v.note);
+}
+
+async function createdOf(userId: string) {
+  const [r] = await sql<{ created_via: string; link_issue_count: number; password_set_at: string | null; marked_by: string; note: string }>(
+    `select created_via, link_issue_count, password_set_at, marked_by, note from public.character_accounts where user_id = ${lit(userId)}`,
+  );
+  return r;
+}
+
+/** 代理登録した人を直に作る（画面の登録と同じ道: createUser → admin_proxy_register） */
+async function seedProxy(adm: Cast): Promise<Cast> {
+  const nickname = `F代理${rid()}`;
+  const email = `e2e-proxy-${Date.now().toString(36)}${rid()}@example.test`;
+  const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true, user_metadata: { nickname, role: "seller", age: "25" } });
+  if (error || !data.user) throw new Error(`代理登録の人を作れませんでした: ${error?.message}`);
+  const marked = await admin().rpc("admin_proxy_register", { p_admin: adm.id, p_user: data.user.id, p_note: "E2E の下ごしらえ" });
+  if (marked.error) throw new Error(`代理登録の印を付けられませんでした: ${marked.error.message}`);
+  return { key: email, id: data.user.id, email, nickname, role: "seller" };
+}
 
 async function profileOf(userId: string) {
   const [r] = await sql<{ kyc_status: string }>(`select kyc_status from public.profiles where id = ${lit(userId)}`);
@@ -126,9 +155,167 @@ test.describe("キャラ", () => {
 
       await page.goto(`/admin/users/${buyer.id}`);
       await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(0);
+      // 出ないときは、出ない理由を画面に出す
+      await expect(page.getByText("購入者はキャラにできません（キャラにできるのは売手だけです）。")).toBeVisible();
       await page.goto(`/admin/users/${seller.id}`);
       await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(1);
       await expect(page.getByRole("button", { name: "キャラを外す", exact: true })).toHaveCount(0);
+      await expect(page.getByText(/キャラにできません/)).toHaveCount(0);
     });
+  });
+
+  test("代理登録の人には「キャラにする」を出さず、「キャラを新しく作る」へ案内する", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const proxied = await seedProxy(adm);
+    await page.goto(`/admin/users/${proxied.id}`);
+    // カードの題は見出しの要素ではなく（Card は div）、前に飾りの絵文字が付くので、題の要素を中身の一部で待つ
+    await expect(page.locator(".card-title", { hasText: "この利用者への操作" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(0);
+    await expect(
+      page.getByText("代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。"),
+    ).toBeVisible();
+  });
+});
+
+test.describe("キャラを新しく作る", () => {
+  test("名前とメールで作ると、リンクが1回だけ出て、一覧に確認済みで出る。別の窓でパスワードを決めるとログインでき、リンクのボタンが消える", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    const r = rid();
+    const name = `F新キャラ${r}`;
+    const email = `e2e-chara-${Date.now().toString(36)}${r}@example.test`;
+    const adm = await asAdmin(context);
+
+    await page.goto("/admin/characters");
+    await fillCreate(page, { email, nickname: name, age: "23", note: `E2E メモ${r}` });
+    await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
+    const confirm = page.getByRole("dialog", { name: "キャラを作りますか？" });
+    await expect(confirm).toContainText(name);
+    await expect(confirm).toContainText(email);
+    await expect(confirm).toContainText("メールは運営が受け取れるアドレスにしてください（パスワードを忘れたときの再設定に使います）。");
+    await confirm.getByRole("button", { name: "作る", exact: true }).click();
+
+    // リンクの窓: リンクと注意の2つ
+    const made = page.getByRole("dialog", { name: "キャラを作りました" });
+    await expect(made).toBeVisible();
+    await expect(page.locator(".adm-toasts").getByText(/^キャラを作りました。/)).toBeVisible();
+    const url = await made.getByLabel(/^パスワードを決めるリンク/).inputValue();
+    expect(url).toMatch(LINK);
+    await expect(made).toContainText("管理画面と同じ窓で開くと、管理者のログインが切れます。シークレットウィンドウか別のブラウザで開いてください。");
+    await expect(made).toContainText("期限は約1時間。新しく作ると前のリンクは使えなくなります。");
+    await made.getByRole("button", { name: "閉じる", exact: true }).click();
+    await expect(made).toHaveCount(0);
+    // 閉じたら、リンクはもう画面のどこにも出ない
+    await expect(page.getByLabel(/^パスワードを決めるリンク/)).toHaveCount(0);
+
+    // 作られた人: 売手・確認済み・メールは確認済み・まだログインしていない。代理登録の台帳には入らない
+    const [p] = await sql<{ id: string; role: string; kyc_status: string; status: string; nickname: string; confirmed: boolean; signed_in: boolean }>(`
+      select p.id, p.role, p.kyc_status, p.status, p.nickname, u.email_confirmed_at is not null as confirmed, u.last_sign_in_at is not null as signed_in
+      from public.profiles p join auth.users u on u.id = p.id where u.email = ${lit(email)}`);
+    expect(p).toMatchObject({ role: "seller", kyc_status: "approved", status: "active", nickname: name, confirmed: true, signed_in: false });
+    const id = p.id;
+    expect(await createdOf(id)).toEqual({ created_via: "create", link_issue_count: 1, password_set_at: null, marked_by: adm.id, note: `E2E メモ${r}` });
+    const [proxy] = await sql<{ n: number }>(`select count(*)::int as n from public.proxy_registrations where user_id = ${lit(id)}`);
+    expect(proxy.n).toBe(0);
+    const actions = (await auditOf(id)).map((a) => a.action);
+    expect(actions).toEqual(expect.arrayContaining(["user.character_create", "kyc.character_skip", "user.character_link"]));
+    // リンクそのものは記録に残さない
+    const token = new URL(url).searchParams.get("token_hash") ?? "";
+    const logs = await sql<{ detail: string }>(`select detail::text as detail from public.audit_logs where target_id = ${lit(id)}`);
+    for (const l of logs) expect(l.detail).not.toContain(token);
+
+    // 一覧に確認済みで出て、「パスワードのリンク」がある
+    await page.reload();
+    const row = rowOf(page, name);
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("確認済み");
+    await expect(row.getByRole("button", { name: "パスワードのリンク", exact: true })).toHaveCount(1);
+
+    // 別の窓（管理者のログインと分ける）でリンクを開いてパスワードを決める
+    const strong = `E2e${Date.now().toString(36)}x9`;
+    const other = await browser.newContext({ extraHTTPHeaders: { "x-vercel-forwarded-for": uniqueIp() } });
+    try {
+      const op = await other.newPage();
+      await op.goto(url);
+      await expect(op.getByRole("heading", { name: "パスワードを決めましょう" })).toBeVisible();
+      await op.getByRole("button", { name: "パスワードを決める →" }).click();
+      await expect(op).toHaveURL(/\/auth\/update-password$/);
+      await op.locator("#newPw").fill(strong);
+      await op.locator("#newPwConf").fill(strong);
+      await op.getByRole("button", { name: "🔒 パスワードを変更する" }).click();
+      await expect(op.getByText("パスワードを変更しました。ほかの端末からはログアウトしています。")).toBeVisible();
+    } finally {
+      await other.close();
+    }
+    await expect.poll(async () => (await createdOf(id)).password_set_at).not.toBeNull();
+    const set = (await auditOf(id)).find((a) => a.action === "user.character_password");
+    expect(set?.actor_id).toBe(id);
+
+    // 決めたパスワードで、そのキャラとしてログインできる
+    const third = await browser.newContext({ extraHTTPHeaders: { "x-vercel-forwarded-for": uniqueIp() } });
+    try {
+      const lp = await third.newPage();
+      await lp.goto(`${BASE_URL}/auth`);
+      await lp.locator("#loginEmail").fill(email);
+      await lp.locator("#loginPw").fill(strong);
+      await lp.getByRole("button", { name: "🔑 ログイン" }).click();
+      await expect(lp.locator("nav.pt-nav")).toContainText(`${name}さん`);
+    } finally {
+      await third.close();
+    }
+
+    // 管理者のログインはそのまま。一覧の「パスワードのリンク」は消える
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "キャラ", level: 1 })).toBeVisible();
+    await expect(rowOf(page, name)).toHaveCount(1);
+    await expect(rowOf(page, name).getByRole("button", { name: "パスワードのリンク", exact: true })).toHaveCount(0);
+  });
+
+  test("一覧の「パスワードのリンク」で作り直すと、回数が増えて新しいリンクが出る", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const name = `F作直${rid()}`;
+    const email = `e2e-chara-${Date.now().toString(36)}${rid()}@example.test`;
+    const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true, user_metadata: { nickname: name, role: "seller" } });
+    if (error || !data.user) throw new Error(`キャラを作れませんでした: ${error?.message}`);
+    const made = await admin().rpc("admin_create_character", { p_admin: adm.id, p_user: data.user.id, p_note: "" });
+    if (made.error) throw new Error(`キャラの印を付けられませんでした: ${made.error.message}`);
+
+    await page.goto(`/admin/characters?q=${encodeURIComponent(name)}`);
+    await rowOf(page, name).getByRole("button", { name: "パスワードのリンク", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "パスワードのリンクを作りますか？" })).toBeVisible();
+    await expect(dialog).toContainText(name);
+    await dialog.getByRole("button", { name: "作る", exact: true }).click();
+    await expect(dialog.getByRole("heading", { name: "リンクを作りました" })).toBeVisible();
+    await expect(page.locator(".adm-toasts").getByText("リンクを作りました（1回目）。")).toBeVisible();
+    const url = await dialog.getByLabel(/^パスワードを決めるリンク/).inputValue();
+    expect(url).toMatch(LINK);
+    await expect(dialog).toContainText("シークレットウィンドウか別のブラウザで開いてください。");
+    await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect((await createdOf(data.user.id)).link_issue_count).toBe(1);
+    expect((await auditOf(data.user.id)).map((a) => a.action)).toContain("user.character_link");
+  });
+
+  test("もう使われているメールアドレスでは作らず、誤りを出す", async ({ page, context }) => {
+    await asAdmin(context);
+    const taken = await cast("buyer");
+    await page.goto("/admin/characters");
+    await expect(page.getByRole("heading", { name: "キャラ", level: 1 })).toBeVisible();
+
+    // 空のままでは窓を出さない
+    await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "メールアドレスを入れてください。" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await fillCreate(page, { email: taken.email, nickname: `F重複${rid()}` });
+    await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
+    await page.getByRole("dialog", { name: "キャラを作りますか？" }).getByRole("button", { name: "作る", exact: true }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "このメールアドレスはもう登録されています。" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const [n] = await sql<{ n: number }>(`select count(*)::int as n from public.character_accounts where user_id = ${lit(taken.id)}`);
+    expect(n.n).toBe(0);
   });
 });

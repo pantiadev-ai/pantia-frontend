@@ -1,7 +1,7 @@
 /* キャラ（運営で入れた売手）の印を付けられる相手か（lib/character.ts）。DB の admin_mark_character と同じ条件 */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canMarkCharacter } from "../../lib/character.ts";
+import { canMarkCharacter, characterBlockReason } from "../../lib/character.ts";
 
 const base = { role: "seller", status: "active", kycStatus: "unsubmitted", isProxy: false, isAdmin: false, isSelf: false, marked: false };
 
@@ -36,4 +36,32 @@ test("本人確認が未提出か済みの売手には付けられる", () => {
 
 test("代理登録の売手には付けられない", () => {
   assert.equal(canMarkCharacter({ ...base, isProxy: true }), false);
+});
+
+/* 「キャラにする」が出ないときに、画面へ出す理由（characterBlockReason）。並びは上から先に当たった物 */
+test("付けられる人と、もう印がある人には理由を出さない", () => {
+  assert.equal(characterBlockReason(base), null);
+  assert.equal(characterBlockReason({ ...base, kycStatus: "approved" }), null);
+  assert.equal(characterBlockReason({ ...base, marked: true }), null);
+  assert.equal(characterBlockReason({ ...base, marked: true, isProxy: true }), null);
+});
+
+test("自分自身・管理者は、それぞれの理由", () => {
+  assert.equal(characterBlockReason({ ...base, isSelf: true, isAdmin: true }), "自分自身はキャラにできません。");
+  assert.equal(characterBlockReason({ ...base, isAdmin: true, role: "buyer" }), "管理者はキャラにできません。");
+});
+
+test("代理登録の人は、新しく作る道を案内する", () => {
+  assert.equal(
+    characterBlockReason({ ...base, isProxy: true, role: "buyer", status: "suspended" }),
+    "代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。",
+  );
+});
+
+test("購入者・止めた人・本人確認を出した売手は、それぞれの理由", () => {
+  assert.equal(characterBlockReason({ ...base, role: "buyer", status: "suspended" }), "購入者はキャラにできません（キャラにできるのは売手だけです）。");
+  assert.equal(characterBlockReason({ ...base, status: "suspended", kycStatus: "pending" }), "利用を止めている人はキャラにできません。");
+  assert.equal(characterBlockReason({ ...base, status: "withdrawn" }), "利用を止めている人はキャラにできません。");
+  assert.equal(characterBlockReason({ ...base, kycStatus: "pending" }), "本人確認を出した売手はキャラにできません。");
+  assert.equal(characterBlockReason({ ...base, kycStatus: "rejected" }), "本人確認を出した売手はキャラにできません。");
 });

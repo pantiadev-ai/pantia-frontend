@@ -111,6 +111,12 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🔗", "blue", "代理登録", `${by}パスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
     case "user.proxy_handover":
       return v("🤝", "green", "代理登録", `${by}パスワードを決めました（本人に渡りました）`);
+    case "user.character_create":
+      return v("🎭", "blue", "キャラ", `${by}キャラを作りました`);
+    case "user.character_link":
+      return v("🔗", "blue", "キャラ", `${by}キャラのパスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
+    case "user.character_password":
+      return v("🎭", "green", "キャラ", "キャラのパスワードが決まりました");
     case "listing.publish":
       return v("📦", "pk", "出品", `${by}「${str(d.title)}」を出品しました`);
     case "listing.hidden":

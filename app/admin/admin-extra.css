@@ -447,9 +447,10 @@
   border-color: var(--red2);
   color: #fff;
 }
-/* スマホでは、窓の「やめる」「直す」などを指で押せる高さにする（約39pxだった。管理の窓のどれにも効く） */
+/* スマホでは、窓の「やめる」「直す」や、フォームの送るボタンを指で押せる高さにする（約39〜40pxだった。管理の窓とフォームのどれにも効く） */
 @media (max-width: 768px) {
-  .pg-admin .adm-modal-actions .adm-btn {
+  .pg-admin .adm-modal-actions .adm-btn,
+  .pg-admin .adm-save {
     min-height: 44px;
   }
 }
