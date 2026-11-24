@@ -226,6 +226,9 @@ test.describe("キャラを新しく作る", () => {
     const logs = await sql<{ detail: string }>(`select detail::text as detail from public.audit_logs where target_id = ${lit(id)}`);
     for (const l of logs) expect(l.detail).not.toContain(token);
 
+    // 読み直さなくても、作った直後の一覧に出る（出ないと「作れていない」と思って作り直し、「もう登録されています」で詰まる）
+    await expect(rowOf(page, name)).toHaveCount(1);
+
     // 一覧に確認済みで出て、「パスワードのリンク」がある
     await page.reload();
     const row = rowOf(page, name);
