@@ -232,6 +232,80 @@ test.describe("手動の売り切れ", () => {
   });
 });
 
+/** 今から days 日前の日本時間の日付（"2026-11-21"） */
+function jstDay(days: number): string {
+  const d = new Date(Date.now() - days * 86_400_000);
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+test.describe("出品日", () => {
+  test("運営が出品一覧から出品日を3日前に変えると、一覧の日付・並びと商品ページの出品日が変わり、記録に残る。下書きの行にはボタンが無い", async ({ page, context, browser }) => {
+    const r = rid();
+    const seller = await freshUser("d-pubat", { role: "seller", nickname: `D売手日${r}` });
+    const newer = `D出品日そのまま${r}`;
+    const title = `D出品日変える${r}`;
+    const draft = `D出品日下書き${r}`;
+    await seedListing(seller, { title: newer });
+    const listingId = await seedListing(seller, { title });
+    await seedListing(seller, { title: draft, status: "draft" });
+    const day = jstDay(3);
+    const shown = day.replaceAll("-", "/");
+    const adm = await asAdmin(context);
+    const guest = await browser.newContext();
+    try {
+      await page.goto(`/admin/items?seller=${seller.id}`);
+      await expect(rowOf(page, draft).getByRole("button", { name: "出品日を変える" }), "下書きにはボタンが無い").toHaveCount(0);
+      await expect(rowOf(page, newer).getByRole("button", { name: "出品日を変える" })).toHaveCount(1);
+
+      await rowOf(page, title).getByRole("button", { name: "出品日を変える", exact: true }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("heading", { name: "出品日を変える" })).toBeVisible();
+      await expect(dialog.getByText("商品ページの出品日と、新着の並びが変わります。フォロワーへの通知は出し直しません。")).toBeVisible();
+      await dialog.getByLabel("出品日（日本時間）").fill(`${day}T10:15`);
+      await dialog.getByRole("button", { name: "変える", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.locator(".adm-toasts").getByText("出品日を変えました。")).toBeVisible();
+      expect(await one<boolean>(`select published_at = ${lit(`${day} 10:15:00+09`)}::timestamptz from public.listings where id = ${lit(listingId)}`)).toBe(true);
+      expect(await one<string>(`select status from public.listings where id = ${lit(listingId)}`), "状態はそのまま").toBe("published");
+
+      // 一覧: 日付が変わり、出品日の新しい順（下書きは最後）に並ぶ
+      await expect(rowOf(page, title).getByText(shown, { exact: true })).toBeVisible();
+      const order = await page.locator("tbody tr .td-name").allTextContents();
+      expect(order).toEqual([newer, title, draft]);
+
+      // 公開の商品ページの「出品日」
+      const gp = await guest.newPage();
+      await gp.goto(`/items/${listingId}`);
+      await expect(gp.locator(".detail-row").filter({ hasText: "出品日" })).toContainText(shown);
+
+      // 記録
+      await page.goto(`/admin/logs?q=${listingId}`);
+      await expect(
+        page.getByText(new RegExp(`^${adm.nickname}さんが「${title}」の出品日を変えました（\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2} → ${shown} 10:15）$`)),
+      ).toBeVisible();
+    } finally {
+      await guest.close();
+    }
+  });
+
+  test("今より先の日時は窓の中で断り、出品日は変わらない", async ({ page, context }) => {
+    const r = rid();
+    const title = `D出品日未来${r}`;
+    const seller = await freshUser("d-pubat2", { role: "seller", nickname: `D売手日2${r}` });
+    const listingId = await seedListing(seller, { title });
+    const before = await one<string>(`select published_at::text from public.listings where id = ${lit(listingId)}`);
+    await asAdmin(context);
+    await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+    await rowOf(page, title).getByRole("button", { name: "出品日を変える", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("出品日（日本時間）").fill(`${jstDay(-1)}T10:15`);
+    await dialog.getByRole("button", { name: "変える", exact: true }).click();
+    await expect(dialog.getByRole("alert")).toHaveText("今より先の日時にはできません。");
+    await expect(dialog).toBeVisible();
+    expect(await one<string>(`select published_at::text from public.listings where id = ${lit(listingId)}`)).toBe(before);
+  });
+});
+
 test.describe("通報", () => {
   test("同じつぶやきへの通報は古い順に並び、対応中→非表示→解決・却下ができ、記録に残る", async ({ page, context }) => {
     const r = rid();

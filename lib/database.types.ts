@@ -2045,6 +2045,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_set_listing_published_at: {
+        Args: { p_admin: string; p_at: string; p_listing: string }
+        Returns: undefined
+      }
       admin_set_listing_status: {
         Args: {
           p_admin: string

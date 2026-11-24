@@ -600,6 +600,29 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(head, "見出しの「プロフィールを直しますか？」の行の数").toBe(1);
   });
 
+  test("出品一覧の「出品日を変える」の窓は、スマホで横にはみ出さず、欄も窓の中に収まり、ボタンが44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-pubat", { role: "seller" });
+    const title = `E2E出品日の窓${tok()}`;
+    await seedListing(seller, { title });
+    await asAdmin(context);
+    await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+    await page.getByRole("row").filter({ hasText: title }).getByRole("button", { name: "出品日を変える", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "出品日を変える" });
+    await expect(dialog).toBeVisible();
+    const width = page.viewportSize()!.width;
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "窓の右").toBeLessThanOrEqual(width + 1);
+    const input = (await dialog.getByLabel("出品日（日本時間）").boundingBox())!;
+    expect(input.x + input.width, "欄の右").toBeLessThanOrEqual(box.x + box.width + 1);
+    for (const name of ["やめる", "変える"]) {
+      const h = await dialog.getByRole("button", { name, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+  });
+
   // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
   test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
     const seller = await freshUser("mob-chip", { role: "seller" });
