@@ -85,7 +85,8 @@ test.describe("キャラ", () => {
     await page.goto(`/items/${listing.id}`);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
     await expect(page.getByText(chara.nickname).first()).toBeVisible();
-    await expect(page.getByText(adm.nickname)).toHaveCount(0);
+    // ヘッダーにはログイン中の運営の名前が出るので、本文（main）だけを見る
+    await expect(page.locator("main").getByText(adm.nickname)).toHaveCount(0);
 
     // キャラでログインすると「自分の出品」に出て、編集できる
     await loginAs(context, chara);
@@ -109,20 +110,25 @@ test.describe("キャラ", () => {
     expect((await profileOf(chara.id)).kyc_status).toBe("approved");
   });
 
-  test("印の無い売手・購入者にはキャラの出品の画面を出さない。購入者には「キャラにする」を出さない", async ({ page, context }) => {
-    await asAdmin(context);
-    const seller = await freshUser("e-chr-no", { role: "seller" });
-    const buyer = await freshUser("e-chr-buy", { role: "buyer" });
+  test.describe("印の無い人", () => {
+    // わざと 404 の画面を開くので、その読み込みの console.error は許す
+    test.use({ consoleAllow: [/status of 404/] });
 
-    const res = await page.goto(`/admin/characters/${seller.id}/new`);
-    expect(res?.status()).toBe(404);
-    const res2 = await page.goto(`/admin/characters/${buyer.id}/new`);
-    expect(res2?.status()).toBe(404);
+    test("印の無い売手・購入者にはキャラの出品の画面を出さない。購入者には「キャラにする」を出さない", async ({ page, context }) => {
+      await asAdmin(context);
+      const seller = await freshUser("e-chr-no", { role: "seller" });
+      const buyer = await freshUser("e-chr-buy", { role: "buyer" });
 
-    await page.goto(`/admin/users/${buyer.id}`);
-    await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(0);
-    await page.goto(`/admin/users/${seller.id}`);
-    await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "キャラを外す", exact: true })).toHaveCount(0);
+      const res = await page.goto(`/admin/characters/${seller.id}/new`);
+      expect(res?.status()).toBe(404);
+      const res2 = await page.goto(`/admin/characters/${buyer.id}/new`);
+      expect(res2?.status()).toBe(404);
+
+      await page.goto(`/admin/users/${buyer.id}`);
+      await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(0);
+      await page.goto(`/admin/users/${seller.id}`);
+      await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(1);
+      await expect(page.getByRole("button", { name: "キャラを外す", exact: true })).toHaveCount(0);
+    });
   });
 });
