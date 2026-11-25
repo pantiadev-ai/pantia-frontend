@@ -212,21 +212,33 @@ export type Database = {
       }
       character_accounts: {
         Row: {
+          created_via: string
+          link_issue_count: number
+          link_issued_at: string | null
           marked_at: string
           marked_by: string
           note: string
+          password_set_at: string | null
           user_id: string
         }
         Insert: {
+          created_via?: string
+          link_issue_count?: number
+          link_issued_at?: string | null
           marked_at?: string
           marked_by: string
           note?: string
+          password_set_at?: string | null
           user_id: string
         }
         Update: {
+          created_via?: string
+          link_issue_count?: number
+          link_issued_at?: string | null
           marked_at?: string
           marked_by?: string
           note?: string
+          password_set_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1945,9 +1957,17 @@ export type Database = {
         Args: { p_admin: string; p_user: string }
         Returns: Json
       }
+      admin_character_link_issued: {
+        Args: { p_admin: string; p_user: string }
+        Returns: number
+      }
       admin_confirm_transfer: {
         Args: { p_admin: string; p_amount: number; p_group: string }
         Returns: Json
+      }
+      admin_create_character: {
+        Args: { p_admin: string; p_note: string; p_user: string }
+        Returns: undefined
       }
       admin_create_character_listing: {
         Args: { p_admin: string; p_publish: boolean; p_row: Json; p_seller: string }
@@ -2043,6 +2063,10 @@ export type Database = {
           p_reason: string
           p_req: string
         }
+        Returns: undefined
+      }
+      admin_set_listing_published_at: {
+        Args: { p_admin: string; p_at: string; p_listing: string }
         Returns: undefined
       }
       admin_set_listing_status: {
@@ -2149,6 +2173,7 @@ export type Database = {
         }[]
       }
       cancel_my_pending_group: { Args: { p_group: string }; Returns: number }
+      character_mark_password_set: { Args: { p_user: string }; Returns: boolean }
       admin_user_balance: { Args: { p_admin: string; p_user: string }; Returns: number }
       delete_my_listing: { Args: { p_listing: string }; Returns: undefined }
       claim_mail_batch: {

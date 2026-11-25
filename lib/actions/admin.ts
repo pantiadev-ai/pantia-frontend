@@ -20,6 +20,7 @@ import { dbCode } from "@/lib/db-errors";
 import { ImageError, processImage, type ImageKind } from "@/lib/images";
 import { INCOMPLETE, ListingSchema, isComplete, listingRow, listingRowError, type ParsedListing } from "@/lib/listing-input";
 import { mailTemplateInput } from "@/lib/mail-templates";
+import { jstLocalToIso, publishedAtError } from "@/lib/published-at";
 import { isUuid } from "@/lib/search";
 import { SITE_NAME } from "@/lib/site";
 import { publicImageUrl } from "@/lib/storage";
@@ -519,6 +520,29 @@ export async function unmarkListingSold(listingId: string): Promise<ActionResult
     adminThrowDb(error);
     refresh();
     return { ok: true, message: data === "private" ? "非公開に戻しました。" : "公開に戻しました。" };
+  });
+}
+
+/** 運営が出品日（published_at）を変える。商品ページの「出品日」と新着の並びが変わる。
+    フォロワーへの知らせは出し直さない。local は窓の欄の値（日本時間の「2026-11-20T23:30」） */
+export async function setListingPublishedAt(listingId: unknown, local: unknown): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const id = parse(Id, listingId);
+    const at = jstLocalToIso(parse(z.string().max(32, "日時を確かめてください。"), local));
+    if (!at) throw new ActionError("日時を確かめてください。");
+    const bad = publishedAtError(at, new Date());
+    if (bad) throw new ActionError(bad);
+    const { error } = await createServiceClient().rpc("admin_set_listing_published_at", { p_admin: v.id, p_listing: id, p_at: at });
+    if (error && dbCode(error) === "bad_state") {
+      throw new ActionError("下書きと削除済みの商品は、出品日を変えられません。画面を読み込み直してください。");
+    }
+    if (error && dbCode(error) === "bad_request") {
+      throw new ActionError("日時か商品を確かめてください。画面を読み込み直してください。");
+    }
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: "出品日を変えました。" };
   });
 }
 

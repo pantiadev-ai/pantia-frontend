@@ -257,8 +257,13 @@ export async function updatePassword(input: unknown): Promise<ActionResult> {
     await supabase.auth.signOut({ scope: "others" });
     // 運営が代わりに作ったアカウント（lib/actions/proxy.ts）なら「本人に渡した」の印を付ける。以後、運営からはリンクを作れない。
     // 代理登録でない人には何もしない。印を付けられなくてもパスワードは変わっているので、ここでは止めない
-    const { error: handoverError } = await createServiceClient().rpc("proxy_mark_handed_over", { p_user: viewer.id });
+    const service = createServiceClient();
+    const { error: handoverError } = await service.rpc("proxy_mark_handed_over", { p_user: viewer.id });
     if (handoverError) console.error("[update-password] 代理登録の印を付けられませんでした", handoverError.code);
+    // 運営が「キャラを新しく作る」で作ったキャラ（lib/actions/character.ts）なら「パスワードを決めた」の印を付ける。以後、一覧からリンクを作れない。
+    // それ以外の人には何もしない。ここも止めない
+    const { error: charaError } = await service.rpc("character_mark_password_set", { p_user: viewer.id });
+    if (charaError) console.error("[update-password] キャラのパスワードの印を付けられませんでした", charaError.code);
     // 札は一度きり（消すと画面が描き直され、フォームは「期限切れ」の案内になるが、変えた旨の表示が先に出る）
     store.delete({ name: RECOVERY_COOKIE, path: RECOVERY_COOKIE_PATH });
     return { ok: true, message: "パスワードを変更しました。ほかの端末からはログアウトしています。" };

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import ActionButton from "@/components/admin/ActionButton";
 import AdminShell from "@/components/admin/AdminShell";
+import PublishedAtEditor from "@/components/admin/PublishedAtEditor";
 import { listingBadge, manualSoldBadge } from "@/components/admin/badges";
 import { Badge, Empty, FilterBar, Pager } from "@/components/admin/parts";
 import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
@@ -48,14 +49,18 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
 
   let query = service
     .from("listings")
-    .select("id, seller_id, title, category, price, status, image_paths, view_count, like_count, created_at", { count: "exact" });
+    .select("id, seller_id, title, category, price, status, image_paths, view_count, like_count, published_at, created_at", { count: "exact" });
   if (status === "reported") query = query.in("id", reportedIds.length > 0 ? reportedIds : ["00000000-0000-0000-0000-000000000000"]);
   else if (status) query = query.eq("status", status);
   if (category) query = query.eq("category", category);
   if (seller) query = query.eq("seller_id", seller);
   if (q) query = isUuid(q) ? query.eq("id", q) : query.ilike("title", `%${escapeLike(q)}%`);
 
-  const items = await query.order("created_at", { ascending: false }).range(from, to);
+  // 出品日（published_at）の新しい順。下書きは出品日が無いので最後に、作った日の新しい順で並べる
+  const items = await query
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
   if (items.error) console.error("[admin] listings", items.error.message);
   const rows = items.data ?? [];
 
@@ -166,7 +171,7 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
                       </td>
                       <td>{categoryLabel(it.category) || it.category}</td>
                       <td className="adm-price">{yen(it.price)}</td>
-                      <td className="adm-muted">{dateJst(it.created_at)}</td>
+                      <td className="adm-muted">{dateJst(it.published_at ?? it.created_at)}</td>
                       <td>{num(it.view_count)}</td>
                       <td>
                         <Badge b={listingBadge(it.status)} /> {manualSold && <Badge b={manualSoldBadge} />}{" "}
@@ -184,6 +189,7 @@ export default async function AdminItemsPage({ searchParams }: PageProps<"/admin
                               通報
                             </Link>
                           )}
+                          {it.published_at && it.status !== "deleted" && <PublishedAtEditor listingId={it.id} publishedAt={it.published_at} />}
                           {(it.status === "published" || it.status === "private") && (
                             <ActionButton
                               op="listing.sold"

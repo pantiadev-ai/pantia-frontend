@@ -600,6 +600,85 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(head, "見出しの「プロフィールを直しますか？」の行の数").toBe(1);
   });
 
+  test("出品一覧の「出品日を変える」の窓は、スマホで横にはみ出さず、欄も窓の中に収まり、ボタンが44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-pubat", { role: "seller" });
+    const title = `E2E出品日の窓${tok()}`;
+    await seedListing(seller, { title });
+    await asAdmin(context);
+    await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+    await page.getByRole("row").filter({ hasText: title }).getByRole("button", { name: "出品日を変える", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "出品日を変える" });
+    await expect(dialog).toBeVisible();
+    const width = page.viewportSize()!.width;
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "窓の右").toBeLessThanOrEqual(width + 1);
+    const input = (await dialog.getByLabel("出品日（日本時間）").boundingBox())!;
+    expect(input.x + input.width, "欄の右").toBeLessThanOrEqual(box.x + box.width + 1);
+    for (const name of ["やめる", "変える"]) {
+      const h = await dialog.getByRole("button", { name, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+  });
+
+  test("キャラの一覧の「キャラを新しく作る」の欄と、パスワードのリンクの窓は、スマホで横にはみ出さず、ボタンが44px以上ある", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const name = `E2E窓${tok()}`.slice(0, 20);
+    const email = `e2e-chara-mob-${Date.now().toString(36)}${tok()}@example.test`.toLowerCase();
+    const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true, user_metadata: { nickname: name, role: "seller" } });
+    if (error || !data.user) throw new Error(`キャラを作れませんでした: ${error?.message}`);
+    const made = await admin().rpc("admin_create_character", { p_admin: adm.id, p_user: data.user.id, p_note: "" });
+    if (made.error) throw new Error(`キャラの印を付けられませんでした: ${made.error.message}`);
+
+    await expectNoOverflow(page, `/admin/characters?q=${encodeURIComponent(name)}`);
+    const width = page.viewportSize()!.width;
+    // 作成の欄は画面の中に収まる
+    for (const label of [/^メールアドレス/, /^キャラの名前/, /^年齢/, /^運営のメモ/]) {
+      const b = (await page.getByLabel(label).boundingBox())!;
+      expect(b.x, `${label} の左`).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.width, `${label} の右`).toBeLessThanOrEqual(width + 1);
+    }
+    const save = await page.getByRole("button", { name: "キャラを作る", exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+    expect(save, "「キャラを作る」の高さ").toBeGreaterThanOrEqual(44);
+
+    await page.getByRole("row").filter({ hasText: name }).getByRole("button", { name: "パスワードのリンク", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "作る", exact: true }).click();
+    await expect(dialog.getByRole("heading", { name: "リンクを作りました" })).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "窓の右").toBeLessThanOrEqual(width + 1);
+    const link = (await dialog.getByLabel(/^パスワードを決めるリンク/).boundingBox())!;
+    expect(link.x + link.width, "リンクの欄の右").toBeLessThanOrEqual(box.x + box.width + 1);
+    for (const n of ["リンクをコピー", "閉じる"]) {
+      const h = await dialog.getByRole("button", { name: n, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${n}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+  });
+
+  // 確認の窓はメールを <strong> で出す。長いメールは語の切れ目が無く、窓の中で横に流れて読めなかった（2026-11-24 のレビュー）
+  test("キャラを作る確認の窓は、長いメールアドレスでも窓の中で折り返し、横に流れない", async ({ page, context }) => {
+    await asAdmin(context);
+    await page.goto("/admin/characters");
+    // ハイフンがあるとそこで折り返せてしまうので、英数字だけの長いメールにする
+    const email = `e2echaraconfirmverylongaddress${tok()}foriphonemini@example.test`;
+    await page.getByLabel(/^メールアドレス/).fill(email);
+    await page.getByLabel(/^キャラの名前/).fill("E2E長いメール");
+    await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "キャラを作りますか？" });
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    const mail = (await dialog.getByText(email, { exact: true }).boundingBox())!;
+    expect(mail.x + mail.width, "メールの右が窓の右を越えている").toBeLessThanOrEqual(box.x + box.width + 1);
+    const inner = await dialog.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(inner.scroll, "窓の中が横に流れている").toBeLessThanOrEqual(inner.client + 1);
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  });
+
   // 「対応できるオプション」の札のボタンは高さ36pxで、指で押しにくかった（2026-11-10 の点検）
   test("管理者のプロフィールの編集の「対応できるオプション」の札は、高さ44px以上ある", async ({ page, context }) => {
     const seller = await freshUser("mob-chip", { role: "seller" });

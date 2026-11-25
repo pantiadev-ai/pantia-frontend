@@ -1,7 +1,7 @@
 /* 操作の記録（audit_logs）を、管理画面で読める1行の文にする。ダッシュボードとログの画面で使う。
    detail は DB が決まった形で入れる jsonb。形が違っても落ちないよう、1つずつ型を確かめて読む。 */
 import { REPORT_TYPES } from "@/lib/labels";
-import { san, yen } from "@/lib/format";
+import { dateTimeJst, san, yen } from "@/lib/format";
 import { REPORT_STATUS_LABEL } from "./badges";
 
 export type AuditRow = {
@@ -111,6 +111,12 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🔗", "blue", "代理登録", `${by}パスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
     case "user.proxy_handover":
       return v("🤝", "green", "代理登録", `${by}パスワードを決めました（本人に渡りました）`);
+    case "user.character_create":
+      return v("🎭", "blue", "キャラ", `${by}キャラを作りました`);
+    case "user.character_link":
+      return v("🔗", "blue", "キャラ", `${by}キャラのパスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
+    case "user.character_password":
+      return v("🎭", "green", "キャラ", "キャラのパスワードが決まりました");
     case "listing.publish":
       return v("📦", "pk", "出品", `${by}「${str(d.title)}」を出品しました`);
     case "listing.hidden":
@@ -125,6 +131,8 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🏷", "yellow", "商品", `${by}「${str(d.title)}」を売り切れにしました（手動）${why}`);
     case "listing.manual_unsold":
       return v("🏷", "green", "商品", `${by}「${str(d.title)}」の売り切れを戻しました（${str(d.to) === "private" ? "非公開" : "公開"}）`);
+    case "listing.published_at":
+      return v("📅", "blue", "商品", `${by}「${str(d.title)}」の出品日を変えました（${dateTimeJst(str(d.from))} → ${dateTimeJst(str(d.to))}）`);
     case "order.paid":
       return v("💳", "yellow", "購入", `${by}${yen(int(d.total))}の支払いを済ませました（${orderLabel}）`);
     case "order.complete":
