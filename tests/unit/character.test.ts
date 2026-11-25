@@ -79,7 +79,7 @@ test("消せなかったら、ID と名前と取り戻し方を返す", async ()
   assert.match(left, /11111111-2222-4333-8444-555555555555/);
   assert.match(left, /「みゆ」/);
   assert.match(left, /「キャラにする」/);
-  assert.match(left, /「利用を止める」/);
+  assert.match(left, /「利用を停止」/);
 });
 
 test("消すときに例外が出ても投げ返さず、同じ文を返す", async () => {
