@@ -1,7 +1,7 @@
 /* 担当 A: スマホ（Pixel 7 の 412px と iPhone 12 mini の 375px）での見た目。
    主な画面が横にはみ出さないこと・右上の「☰ メニュー」から主な画面へ行けること・
    貼り付く欄が中身に重ならないこと・入力欄で iPhone が拡大しないこと（2026-11-03 に運営から指摘） */
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { admin, freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
@@ -759,6 +759,112 @@ function linesOf(el: Element, texts: string[]): number[] {
     return count;
   });
 }
+
+/* 管理画面の表は .adm-scroll の中で横に動く。スマホでは右端の「操作」が画面の外にあって、横に送らないと押せなかった。
+   行のボタンも高さ約25pxで押しにくく、保存ボタンの紫（#C455E8）と白い字の比は約3.6で足りなかった（2026-11-25 の点検） */
+test.describe("管理画面の表と保存ボタン", () => {
+  /** 表の右端の列: 中のボタンが画面の中に見え、列は表の見える幅の半分まで。表は横に動いたまま、貼り付いた列の地は透けない */
+  async function expectLastColumnPinned(page: Page, row: Locator, label: string) {
+    const width = page.viewportSize()!.width;
+    const scroll = row.locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' adm-scroll ')][1]");
+    const s = await scroll.evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+    expect(s.scroll, `${label}: 表が横に動かなくなっている`).toBeGreaterThan(s.client);
+    const cell = row.locator("td").last();
+    const buttons = await cell.locator("a, button").all();
+    expect(buttons.length, `${label}: 操作のボタンが無い`).toBeGreaterThan(0);
+    for (const b of buttons) {
+      const box = (await b.boundingBox())!;
+      const name = (await b.innerText()).trim();
+      expect(box.x, `${label}: 「${name}」の左`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `${label}: 「${name}」が画面の右の外にある`).toBeLessThanOrEqual(width + 1);
+    }
+    const c = (await cell.boundingBox())!;
+    expect(c.width, `${label}: 操作の列が表の見える幅の半分より広く、表の中身を隠している`).toBeLessThanOrEqual(s.client / 2);
+    for (const [where, el] of [["行", cell], ["見出し", scroll.locator("thead th").last()]] as const) {
+      const alpha = await el.evaluate((e) => {
+        const m = getComputedStyle(e).backgroundColor.match(/[\d.]+/g)?.map(Number) ?? [];
+        return m.length === 4 ? m[3]! : m.length === 3 ? 1 : 0;
+      });
+      expect(alpha, `${label}: 貼り付いた列の${where}の地が透けて、下を流れる列の字が重なって見える`).toBe(1);
+    }
+  }
+
+  /** 白い字と地の色の比（WCAG）。地が透けているときは 0 を返す（下の色で変わるので、比が決まらない） */
+  function contrastOf(el: Element): number {
+    const cs = getComputedStyle(el);
+    const rgb = (s: string) => s.match(/[\d.]+/g)?.map(Number) ?? [];
+    const fg = rgb(cs.color);
+    const bg = rgb(cs.backgroundColor);
+    if (bg.length === 4 && bg[3]! < 1) return 0;
+    const lum = (c: number[]) => {
+      const [r, g, b] = c.slice(0, 3).map((v) => {
+        const x = v / 255;
+        return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const [hi, lo] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+    return (hi! + 0.05) / (lo! + 0.05);
+  }
+
+  test("出品一覧と利用者の一覧は、表が横に動いても、右端の「操作」のボタンが画面の中に見えている", async ({ page, context }) => {
+    const seller = await freshUser("mob-tbl", { role: "seller", nickname: `表${tok()}`.slice(0, 20) });
+    const title = `E2E操作の列${tok()}`;
+    await seedListing(seller, { title });
+    await asAdmin(context);
+    await page.goto(`/admin/items?q=${encodeURIComponent(title)}`);
+    await expectLastColumnPinned(page, page.getByRole("row").filter({ hasText: title }), "出品一覧");
+    await page.goto(`/admin/users?q=${encodeURIComponent(seller.nickname)}`);
+    await expectLastColumnPinned(page, page.getByRole("row").filter({ hasText: seller.nickname }), "利用者の一覧");
+  });
+
+  // 「メールの控え」の表は右端が「結果」で、操作のボタンが無い。貼り付けると結果の字が他の列に重なるだけなので、貼り付けない
+  test("メールの控えの表は、右端の「結果」の列を貼り付けない", async ({ page, context }) => {
+    const subject = `E2E控え${tok()}`;
+    await sql(`insert into public.mail_outbox (to_address, kind, subject, body, mode, sent)
+      values ('e2e-log@example.test', 'e2e', ${lit(subject)}, 'e2e', 'mock', true)`);
+    await asAdmin(context);
+    await page.goto("/admin/logs?tab=mail");
+    const cell = page.getByRole("row").filter({ hasText: subject }).locator("td").last();
+    expect(await cell.evaluate((e) => getComputedStyle(e).position)).not.toBe("sticky");
+    expect(await page.locator("thead th").last().evaluate((e) => getComputedStyle(e).position)).not.toBe("sticky");
+  });
+
+  test("表の行の操作のボタンは、高さ44px以上ある", async ({ page, context }) => {
+    const seller = await freshUser("mob-rowbtn", { role: "seller", nickname: `行${tok()}`.slice(0, 20) });
+    const title = `E2E行のボタン${tok()}`;
+    await seedListing(seller, { title });
+    await asAdmin(context);
+    for (const [path, text] of [
+      [`/admin/items?q=${encodeURIComponent(title)}`, title],
+      [`/admin/users?q=${encodeURIComponent(seller.nickname)}`, seller.nickname],
+    ] as const) {
+      await page.goto(path);
+      const buttons = page.getByRole("row").filter({ hasText: text }).locator(".action-btn");
+      await expect(buttons.first()).toBeVisible();
+      for (const b of await buttons.all()) {
+        const name = (await b.innerText()).trim();
+        const h = await b.evaluate((el) => el.getBoundingClientRect().height);
+        expect(h, `${path} の「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+      }
+    }
+  });
+
+  test("保存ボタンと、確認の窓の確定のボタンは、紫の地と白い字の比が4.5以上ある", async ({ page, context }) => {
+    await asAdmin(context);
+    await page.goto("/admin/characters");
+    const save = page.getByRole("button", { name: "キャラを作る", exact: true });
+    expect(await save.evaluate(contrastOf), "保存ボタン（.adm-save）の比").toBeGreaterThanOrEqual(4.5);
+    await page.getByLabel(/^メールアドレス/).fill(`e2e-contrast-${tok()}@example.test`.toLowerCase());
+    await page.getByLabel(/^キャラの名前/).fill("E2E色の比");
+    await save.click();
+    const dialog = page.getByRole("dialog", { name: "キャラを作りますか？" });
+    await expect(dialog).toBeVisible();
+    const ok = dialog.getByRole("button", { name: "作る", exact: true });
+    expect(await ok.evaluate(contrastOf), "確定のボタン（.adm-btn.primary）の比").toBeGreaterThanOrEqual(4.5);
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  });
+});
 
 test.describe("商品一覧の絞り込み", () => {
   test("スマホでは絞り込みが畳まれていて、「絞り込み」を押すとその場（検索の上）に開き、もう一度押すと畳まれる", async ({ page }) => {

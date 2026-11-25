@@ -75,7 +75,8 @@ export default async function AdminLogsPage({ searchParams }: PageProps<"/admin/
           ) : rows.length === 0 ? (
             <Empty>メールの控えはありません。</Empty>
           ) : (
-            <div className="adm-scroll">
+            // 右端は「結果」で操作のボタンが無いので、スマホで右端の列を貼り付けない（admin-extra.css）
+            <div className="adm-scroll adm-no-pin">
               <table>
                 <thead>
                   <tr>
