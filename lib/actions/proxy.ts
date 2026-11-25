@@ -12,6 +12,7 @@ import { z } from "zod";
 import { ActionError, runAction, type ActionResult } from "@/lib/auth";
 import { actionAdminStrict, adminLimit, adminThrowDb, ADMIN_RULES } from "@/lib/admin";
 import { dbCode } from "@/lib/db-errors";
+import { discardUnregistered } from "@/lib/discard-account";
 import { publicEnv } from "@/lib/env";
 import { isUuid } from "@/lib/search";
 import { getSettings } from "@/lib/settings";
@@ -89,9 +90,10 @@ export async function proxyRegister(input: unknown): Promise<ActionResult<{ id: 
     const id = data.user.id;
     const { error: markError } = await service.rpc("admin_proxy_register", { p_admin: me.id, p_user: id, p_note: v.note });
     if (markError) {
-      // 台帳に載らないアカウントを残さない（作ったばかりで、まだ何も持っていない）
-      const removed = await service.auth.admin.deleteUser(id);
-      if (removed.error) console.error("[proxy] 作ったアカウントを消せませんでした", removed.error.code ?? removed.error.status);
+      // 台帳に載らないアカウントを残さない（作ったばかりで、まだ何も持っていない）。
+      // 消せなければ、運営が探して止められるよう、ID と名前を画面に出す（キャラの作成と同じ）
+      const left = await discardUnregistered(() => service.auth.admin.deleteUser(id), { id, nickname: v.nickname });
+      if (left) throw new ActionError(left);
       adminThrowDb(markError);
     }
     refresh();
