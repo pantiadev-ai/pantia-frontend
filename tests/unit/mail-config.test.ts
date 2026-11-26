@@ -107,6 +107,17 @@ test("BCC: アドレス1件の形でなければ付けない（複数・表示�
   }
 });
 
+test("BCC: 点が続く・点で始まる/終わる・ドメインの形が崩れたアドレスは付けない（Resend に断られると本人宛ても落ちるため）", () => {
+  for (const v of ["info@example..com", ".info@pan-tia.com", "info.@pan-tia.com", "in..fo@pan-tia.com", "info@pan-tia.com.", "info@.pan-tia.com", "info@-pan-tia.com", "info@pan-tia.c"]) {
+    assert.equal(noticeBcc("notice.order_paid", v), undefined, v);
+  }
+  assert.match(mailWarning({ ...LIVE, MAIL_BCC: "info@example..com" }, true) ?? "", /MAIL_BCC/);
+  // 正しい形は今までどおり付ける
+  for (const v of ["info@pan-tia.com", "info+bcc@pan-tia.com", "info.bcc@mail.pan-tia.co.jp"]) {
+    assert.equal(noticeBcc("notice.order_paid", v), v, v);
+  }
+});
+
 test("BCC: MAIL_BCC がアドレス1件の形でなければ、管理画面に警告を出す（お知らせは BCC なしで送る）", () => {
   assert.match(mailWarning({ ...LIVE, MAIL_BCC: "a@example.test,b@example.test" }, true) ?? "", /MAIL_BCC/);
   assert.deepEqual(mailConfig({ ...LIVE, MAIL_BCC: "info" }), { state: "live" });

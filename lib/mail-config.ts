@@ -4,6 +4,7 @@
    ・管理画面の上の警告もここで決める（値がおかしいときと、本番で mock のときを分ける）。
    ・MAIL_MODE の判定は lib/env.ts の mode() と同じにする（食い違うと、ここで通って送るときに止まる。tests/unit/mail-config.test.ts が見張る）。
    ・サーバーの部品を読まない形にしてある（tests/unit から直に試すため）。 */
+import { z } from "zod";
 
 /** process.env をそのまま渡せる形（読むのは MAIL_MODE・RESEND_API_KEY・MAIL_FROM・MAIL_BCC だけ） */
 export type MailEnv = Readonly<Record<string, string | undefined>>;
@@ -20,9 +21,12 @@ export function mailConfig(env: MailEnv): MailConfig {
   return { state: "live" };
 }
 
-/** アドレス1件の形か（表示名・複数・空白・改行を含まない） */
+/** アドレス1件の形か。サイトの他のメール欄（問い合わせなど）と同じ z.email() で見る。
+    表示名・複数・空白・改行に加え、点の続き・点で始まる/終わる・ドメインの崩れも断る
+    （Resend に断られると、同じ1通の本人宛ても送れないため。codex の指摘） */
+const SingleAddress = z.email().max(254);
 function isSingleAddress(v: string): boolean {
-  return /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/.test(v);
+  return SingleAddress.safeParse(v).success;
 }
 
 /** お知らせのメール（kind が notice.〜）にだけ、運営の控えの BCC を付ける（改修リスト 行16）。
