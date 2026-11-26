@@ -12,6 +12,7 @@ import {
   markListingSold,
   markTransferRefunded,
   moderate,
+  openThreadForReview,
   payPayout,
   rejectPayout,
   retryRefund,
@@ -53,7 +54,8 @@ export type AdminOp =
   | "report.dismissed"
   | "mod.approve"
   | "mod.hide"
-  | "kyc.resubmit";
+  | "kyc.resubmit"
+  | "thread.open";
 
 function call(op: AdminOp, id: string, sub: string, reason: string): Promise<ActionResult> {
   switch (op) {
@@ -109,6 +111,8 @@ function call(op: AdminOp, id: string, sub: string, reason: string): Promise<Act
       return moderate(sub, id, "hide");
     case "kyc.resubmit":
       return kycAllowResubmit(id);
+    case "thread.open":
+      return openThreadForReview(id, reason);
   }
 }
 
