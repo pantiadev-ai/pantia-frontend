@@ -439,11 +439,11 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
             {threadRows.map((t) => (
               <div className="adm-row" key={t.id}>
                 <div>
-                  <div className="adm-row-title">
-                    {names.get(t.partnerId) ?? "退会したユーザー"}{" "}
-                    <span className="adm-muted">（{t.side === "seller" ? "この人が出品者" : "この人が購入者"}）</span>
+                  {/* 名前のすぐ後ろに「この人が出品者」と書くと相手の方が出品者に読めたので、相手と、この利用者の側を分けて書く */}
+                  <div className="adm-row-title">相手: {names.get(t.partnerId) ?? "退会したユーザー"}</div>
+                  <div className="adm-row-note">
+                    この利用者は{t.side === "seller" ? "出品者" : "購入者"} ・ 最後のやり取り: {t.lastAt ? dateTimeJst(t.lastAt) : "—"}
                   </div>
-                  <div className="adm-row-note">最後のやり取り: {t.lastAt ? dateTimeJst(t.lastAt) : "—"}</div>
                 </div>
                 {t.viewable ? (
                   // 先読みしない（先読みで会話の画面が作られると、開いているあいだは見ていなくても「見た」と記録されるため）

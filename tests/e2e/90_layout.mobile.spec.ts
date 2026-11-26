@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import { admin, freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
 import { clippedItems, coverGaps, overflowOf, setListingStatus, tok } from "./_a";
+import { seedBank } from "./_b";
 import { seedThread } from "./_c";
 import { asAdmin } from "./_d";
 
@@ -410,6 +411,48 @@ test.describe("マイページの中の画面", () => {
       await setListingStatus(ids, "deleted");
     }
   });
+  // 2026-11-27 の点検: 同意の行の状態文（右）が長いと縮まず、説明文の欄が1文字の幅に潰れて縦に何千 px も伸び、
+  // 「取り消す」が画面の右の外に出て押せなかった（.setting-val が flex-shrink: 0）
+  test("設定の行は、右の文が長くても説明の欄が潰れず、ボタンが画面の中に収まる", async ({ page, context }) => {
+    const buyer = await freshUser("mob-row", { role: "buyer" });
+    await sql(`update public.message_consents set version = 1 where user_id = ${lit(buyer.id)}`);
+    const seller = await freshUser("mob-row", { role: "seller" });
+    await seedBank(seller); // 口座があると /payout に「登録口座」の行が出る
+    for (const [user, paths] of [
+      [buyer, ["/settings"]],
+      [seller, ["/settings", "/kyc", "/payout", "/mypage/profile"]],
+    ] as const) {
+      await loginAs(context, user);
+      for (const path of paths) {
+        await page.goto(path);
+        const rows = page.locator(".setting-row");
+        await expect(rows.first(), path).toBeVisible();
+        const problems = await rows.evaluateAll((els) => {
+          const vw = document.documentElement.clientWidth;
+          const out: string[] = [];
+          els.forEach((row, i) => {
+            const rb = row.getBoundingClientRect();
+            if (rb.width === 0) return;
+            const name = row.querySelector(".setting-name")?.textContent?.trim() ?? `${i + 1}行目`;
+            const info = row.querySelector(".setting-info");
+            if (info) {
+              const w = info.getBoundingClientRect().width;
+              if (w < Math.min(160, rb.width * 0.5)) out.push(`「${name}」の説明の欄が ${Math.round(w)}px に潰れている`);
+            }
+            for (const b of Array.from(row.querySelectorAll("button, a"))) {
+              const r = b.getBoundingClientRect();
+              if (r.width === 0) continue;
+              if (r.left < 0 || r.right > vw + 1) out.push(`「${name}」の「${b.textContent?.trim()}」が画面の外（${Math.round(r.left)}〜${Math.round(r.right)}px）`);
+            }
+          });
+          return out;
+        });
+        expect(problems, path).toEqual([]);
+        await expectNoOverflow(page, path);
+      }
+    }
+  });
+
 });
 
 test.describe("貼り付く欄と入力欄", () => {

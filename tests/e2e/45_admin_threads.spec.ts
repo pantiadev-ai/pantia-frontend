@@ -32,6 +32,9 @@ test.describe("運営が会話を見る", () => {
     await page.goto(`/admin/users/${seller.id}`);
     const row = threadRow(page, buyer.nickname);
     await expect(row).toHaveCount(1);
+    // 名前のすぐ後ろに「この人が出品者」と書くと、相手の方が出品者に読めた。相手と、この利用者の側を分けて書く
+    await expect(row.locator(".adm-row-title")).toHaveText(`相手: ${buyer.nickname}`);
+    await expect(row.locator(".adm-row-note")).toContainText("この利用者は出品者");
     await expect(page.locator("body")).not.toContainText(fromBuyer);
     // 一覧を見ただけでは記録に残さない
     expect((await auditOf(tid)).map((a) => a.action)).toEqual([]);
