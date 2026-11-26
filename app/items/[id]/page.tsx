@@ -27,7 +27,7 @@ import { getSettings } from "@/lib/settings";
 import { isUuid } from "@/lib/search";
 import { avatarImage, listingImage } from "@/lib/storage";
 import { COLORS, MATERIALS, SHIP_ESTIMATES, SIZES, categoryLabel, labelOf } from "@/lib/labels";
-import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, yen } from "@/lib/format";
+import { dateJst, displayName, excerpt, num, presenceView, ratingAvg, yen } from "@/lib/format";
 import { includedOptionKeys } from "@/lib/listing-options";
 import Gallery from "@/components/catalogue/Gallery";
 import MessageButton from "@/components/catalogue/MessageButton";
@@ -138,9 +138,12 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
   const catIcon = categoryIcon(item.category);
   const shipText = labelOf(SHIP_ESTIMATES, item.shipEstimate || seller?.shipEstimate) || "—";
   const sellerName = displayName(seller?.publicName);
-  const relatedItems = related.items.filter((r) => r.id !== item.id).slice(0, RELATED);
+  // 「他の商品」のカードには SOLD の札が無いので、売り切れは出さない（前どおり買える物だけ。改修リスト 行6）
+  const relatedItems = related.items.filter((r) => r.id !== item.id && !r.soldOut).slice(0, RELATED);
   const sellerAvatar = avatarImage(seller?.avatarPath);
-  const online = isOnline(seller?.lastSeenAt);
+  const pv = presenceView(settings.showPresence);
+  const online = pv.isOnline(seller?.lastSeenAt);
+  const lastSeen = online ? "🟢 オンライン" : pv.presence(seller?.lastSeenAt);
 
   const badges = [
     reserved && <span key="rs" className="badge badge-yellow">⏳ 取引中</span>,
@@ -197,7 +200,7 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
                   <div className="sm-meta">
                     <span className="sm-stat">⭐ {ratingAvg(seller.ratingSum, seller.ratingCount)}</span>
                     <span className="sm-stat">📦 {num(seller.salesCount)}件販売</span>
-                    <span className="sm-stat">{online ? "🟢 オンライン" : presence(seller.lastSeenAt)}</span>
+                    {lastSeen ? <span className="sm-stat">{lastSeen}</span> : null}
                   </div>
                 </div>
                 <div className="sm-arrow">›</div>

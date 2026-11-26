@@ -476,7 +476,7 @@
   border-radius: 12px;
   overflow: hidden;
   background: #f4f4f6;
-  cursor: zoom-in;
+  cursor: default;
 }
 .pg-seller-profile .profile-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .pg-seller-profile .profile-photo:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }

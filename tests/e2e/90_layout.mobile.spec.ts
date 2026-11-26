@@ -207,15 +207,21 @@ test.describe("スマホのメニュー", () => {
     const tid = await seedThread(seller, buyer);
     await sql(`update public.threads set negotiating = true where id = ${lit(tid)}`);
     await sql(`update public.profiles set last_seen_at = now() - interval '30 days' where id = ${lit(seller.id)}`);
-    await loginAs(context, buyer);
-    await page.goto(`/messages/${tid}`);
-    const head = page.locator(".chat-header");
-    await expect(head.locator(".chat-nego-badge")).toHaveText("交渉中");
-    await expect(head.locator(".ch-status")).toContainText("にログイン");
-    expect((await head.locator(".ch-status").boundingBox())!.height, "状態の文の高さ（1行）").toBeLessThanOrEqual(20);
-    expect((await head.boundingBox())!.height, "会話の頭の高さ").toBeLessThanOrEqual(72);
-    const o = await overflowOf(page);
-    expect(o.scrollWidth, `会話の画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+    // 長い「○○にログイン」は、ログイン中の表示を出す設定のときだけ出る（改修リスト 行9。既定は隠す）。この試験の中だけ出し、終わったら戻す
+    await sql(`update public.site_settings set show_presence = true where id`);
+    try {
+      await loginAs(context, buyer);
+      await page.goto(`/messages/${tid}`);
+      const head = page.locator(".chat-header");
+      await expect(head.locator(".chat-nego-badge")).toHaveText("交渉中");
+      await expect(head.locator(".ch-status")).toContainText("にログイン");
+      expect((await head.locator(".ch-status").boundingBox())!.height, "状態の文の高さ（1行）").toBeLessThanOrEqual(20);
+      expect((await head.boundingBox())!.height, "会話の頭の高さ").toBeLessThanOrEqual(72);
+      const o = await overflowOf(page);
+      expect(o.scrollWidth, `会話の画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+    } finally {
+      await sql(`update public.site_settings set show_presence = false where id`);
+    }
   });
 
   // 320px（初代 iPhone SE など）では、どの種類のヘッダーも右端から「☰ メニュー」が 3〜26px はみ出していた（2026-11-16 の点検）。

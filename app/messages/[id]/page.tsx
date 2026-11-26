@@ -15,7 +15,8 @@ import { initialOf, listEmpty, otherName, toThreadRow } from "@/components/chat/
 import ReportButton from "@/components/ReportButton";
 import { BlockButton } from "@/components/ToggleButtons";
 import { requireViewer } from "@/lib/auth";
-import { dateJst, isOnline, num, orderNo, presence, ratingAvg, yen } from "@/lib/format";
+import { dateJst, num, orderNo, presenceView, ratingAvg, yen } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { ORDER_STATUS } from "@/lib/labels";
 import { consentState } from "@/lib/message-consent";
 import { isUuid } from "@/lib/search";
@@ -58,7 +59,9 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const tid = id.toLowerCase();
-  const viewer = await requireViewer(`/messages/${tid}`);
+  const [viewer, settings] = await Promise.all([requireViewer(`/messages/${tid}`), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const supabase = await createClient();
 
   const { data: t, error } = await supabase
@@ -113,8 +116,8 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
   const orders = (ordersRes.data ?? []) as OrderRow[];
   const name = otherName(profile?.public_name ?? null, otherRole);
   const avatarUrl = avatarImage(profile?.avatar_path);
-  const online = otherRole === "seller" && !!profile && isOnline(profile.last_seen_at);
-  const statusText = !profile ? "退会・利用停止中" : otherRole === "seller" ? presence(profile.last_seen_at) || "出品者" : "購入者";
+  const online = otherRole === "seller" && !!profile && pv.isOnline(profile.last_seen_at);
+  const statusText = !profile ? "退会・利用停止中" : otherRole === "seller" ? pv.presence(profile.last_seen_at) || "出品者" : "購入者";
 
   const me: ChatPerson = { id: viewer.id, name: viewer.nickname, avatarUrl: avatarImage(viewer.avatarPath) };
   const other: ChatPerson = { id: otherId, name, avatarUrl };
@@ -171,7 +174,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
       <ChatHeaderBar viewer={viewer} />
       <div className="chat-layout is-room">
         <NegotiatingProvider initial={!!t.negotiating}>
-          <ThreadList initial={threads} activeId={tid} emptyText={empty.text} emptyLink={empty.link} />
+          <ThreadList initial={threads} activeId={tid} emptyText={empty.text} emptyLink={empty.link} showPresence={settings.showPresence} />
 
           <main className="chat-main">
             <div className="chat-header">

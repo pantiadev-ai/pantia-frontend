@@ -10,6 +10,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { getViewer, type Viewer } from "@/lib/auth";
 import { getUnread } from "@/lib/unread";
+import { getSettings } from "@/lib/settings";
 import { avatarImage } from "@/lib/storage";
 import { num, ratingAvg } from "@/lib/format";
 import { getMyProfile, getOpenOrderCount } from "./data";
@@ -109,10 +110,11 @@ export default async function MypageShell({ active, children }: MypageShellProps
     );
   }
 
-  const [unread, me, openOrders] = await Promise.all([
+  const [unread, me, openOrders, settings] = await Promise.all([
     getUnread(),
     getMyProfile(),
     viewer.role === "seller" ? getOpenOrderCount(viewer.id) : Promise.resolve(0),
+    getSettings(),
   ]);
   const items = navFor(viewer, unread, openOrders);
   const name = me?.nickname || viewer.nickname;
@@ -131,7 +133,8 @@ export default async function MypageShell({ active, children }: MypageShellProps
           <div className="profile-mini">
             <div className="pm-avatar">
               {avatar ? <img src={avatar} alt="" className="mp-avatar-img" /> : initial}
-              <div className="pm-online"></div>
+              {/* 緑の点は、運営の設定で隠しているあいだ出さない（改修リスト 行9） */}
+              {settings.showPresence ? <div className="pm-online"></div> : null}
             </div>
             <div className="pm-name">{name}</div>
             <div className="pm-handle">{viewer.role === "seller" ? "出品者アカウント" : "購入者アカウント"}</div>

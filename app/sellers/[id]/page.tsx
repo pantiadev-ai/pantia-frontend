@@ -27,7 +27,8 @@ import { optionLabel, sellerOptionKeys } from "@/lib/listing-options";
 import { isUuid } from "@/lib/search";
 import { avatarImage, postImage } from "@/lib/storage";
 import { BODY_TYPES, SHIP_ESTIMATES, labelOf } from "@/lib/labels";
-import { dateJst, displayName, excerpt, isOnline, num, presence, ratingAvg, relTime } from "@/lib/format";
+import { dateJst, displayName, excerpt, num, presenceView, ratingAvg, relTime } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import ItemCard from "@/components/catalogue/ItemCard";
 import MessageButton from "@/components/catalogue/MessageButton";
 import SellerMessageDisabled from "@/components/catalogue/SellerMessageDisabled";
@@ -83,7 +84,9 @@ function StarRow({ rating }: { rating: number }) {
 export default async function SellerProfilePage({ params, searchParams }: PageProps<"/sellers/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
-  const viewer = await getViewer();
+  const [viewer, settings] = await Promise.all([getViewer(), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const seller = await loadVisible(id, viewer?.id);
   if (!seller) notFound();
 
@@ -116,9 +119,9 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
   const avatar = avatarImage(seller.avatarPath);
   const cover = avatarImage(seller.coverPath);
   const photos = seller.photoPaths.map((p) => avatarImage(p)).filter((u): u is string => !!u);
-  const online = isOnline(seller.lastSeenAt);
+  const online = pv.isOnline(seller.lastSeenAt);
   // 一度もログインしていない人（代理登録など）は空になる。空の札は出さず、表では「—」にする
-  const lastSeen = presence(seller.lastSeenAt);
+  const lastSeen = pv.presence(seller.lastSeenAt);
   const meta = metaLine(seller.occupation, seller.age, " ");
   const avg = ratingAvg(seller.ratingSum, seller.ratingCount);
   const avgStars = seller.ratingCount ? Math.round(seller.ratingSum / seller.ratingCount) : 0;
@@ -176,7 +179,8 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
     },
     {
       key: "items",
-      label: `出品中 (${num(items?.total ?? 0)})`,
+      // 一覧には売り切れも後ろに並べるが、「出品中」の数は買える物だけ（ページ数は売り切れを含む total で数える。改修リスト 行6）
+      label: `出品中 (${num(items?.facets.available.all ?? 0)})`,
       content: blocked ? (
         blockedNotice
       ) : !items?.ok ? (
@@ -400,10 +404,12 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
               <span className="info-label">登録日</span>
               <span className="info-val">{dateJst(seller.createdAt)}</span>
             </div>
-            <div className="info-row">
-              <span className="info-label">最終ログイン</span>
-              <span className={`info-val${online ? " green" : ""}`}>{online ? "🟢 オンライン" : lastSeen || "—"}</span>
-            </div>
+            {settings.showPresence ? (
+              <div className="info-row">
+                <span className="info-label">最終ログイン</span>
+                <span className={`info-val${online ? " green" : ""}`}>{online ? "🟢 オンライン" : lastSeen || "—"}</span>
+              </div>
+            ) : null}
             <div className="info-row">
               <span className="info-label">発送目安</span>
               <span className="info-val pk">{labelOf(SHIP_ESTIMATES, seller.shipEstimate) || "—"}</span>

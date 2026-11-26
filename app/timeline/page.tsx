@@ -13,7 +13,8 @@ import PostComposer from "@/components/posts/PostComposer";
 import PostKycGuide from "@/components/posts/PostKycGuide";
 import { PAGE_SIZE, POST_COLUMNS, daysAgoIso, enrichPosts, loadRecommendedSellers, loadTrendTags, pageOf, type Supa } from "@/components/posts/data";
 import { requireViewer } from "@/lib/auth";
-import { displayName, isOnline, ratingAvg, san, yen } from "@/lib/format";
+import { displayName, presenceView, ratingAvg, san, yen } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { CATEGORIES } from "@/lib/labels";
 import { isUuid } from "@/lib/search";
 import { avatarImage, listingImage } from "@/lib/storage";
@@ -52,7 +53,9 @@ async function loadFollowedProfiles(supabase: Supa, ids: string[]) {
 }
 
 export default async function TimelinePage({ searchParams }: PageProps<"/timeline">) {
-  const viewer = await requireViewer("/timeline");
+  const [viewer, settings] = await Promise.all([requireViewer("/timeline"), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const sp = (await searchParams) as Sp;
   const tabRaw = one(sp.tab);
   const tab: Tab = tabRaw === "items" ? "items" : tabRaw === "sellers" ? "sellers" : "posts";
@@ -187,7 +190,7 @@ export default async function TimelinePage({ searchParams }: PageProps<"/timelin
                 return (
                   <Link key={p.id} href={href(tab === "sellers" ? "posts" : tab, { seller: p.id })} className={`fc-item${seller === p.id ? " pp-current" : ""}`}>
                     <Avatar url={avatarImage(p.avatar_path)} name={name} className="fc-avatar">
-                      {isOnline(p.last_seen_at) && <div className="fc-online" title="オンライン" />}
+                      {pv.isOnline(p.last_seen_at) && <div className="fc-online" title="オンライン" />}
                     </Avatar>
                     <div>
                       <div className="fc-name">{name}</div>
@@ -240,7 +243,7 @@ export default async function TimelinePage({ searchParams }: PageProps<"/timelin
                 <div className="discover-item pp-discover-wide" key={s.id}>
                   <Link href={`/sellers/${s.id}`} aria-label={`${s.name}のプロフィール`}>
                     <Avatar url={s.avatarUrl} name={s.name} className="di-avatar">
-                      {isOnline(s.lastSeenAt) && <div className="di-online" title="オンライン" />}
+                      {pv.isOnline(s.lastSeenAt) && <div className="di-online" title="オンライン" />}
                     </Avatar>
                   </Link>
                   <div>
@@ -346,7 +349,7 @@ export default async function TimelinePage({ searchParams }: PageProps<"/timelin
               <div className="pp-count-note">フォロー中の出品者 {followCount}人</div>
               {profiles.map((p) => {
                 const name = displayName(p.public_name);
-                const online = isOnline(p.last_seen_at);
+                const online = pv.isOnline(p.last_seen_at);
                 return (
                   <Link key={p.id} href={`/sellers/${p.id}`} className="seller-group-header">
                     <Avatar url={avatarImage(p.avatar_path)} name={name} className="sgh-avatar">
@@ -390,7 +393,7 @@ export default async function TimelinePage({ searchParams }: PageProps<"/timelin
                   <div className="discover-item" key={s.id}>
                     <Link href={`/sellers/${s.id}`} aria-label={`${s.name}のプロフィール`}>
                       <Avatar url={s.avatarUrl} name={s.name} className="di-avatar">
-                        {isOnline(s.lastSeenAt) && <div className="di-online" title="オンライン" />}
+                        {pv.isOnline(s.lastSeenAt) && <div className="di-online" title="オンライン" />}
                       </Avatar>
                     </Link>
                     <div>

@@ -78,6 +78,19 @@ export function presence(lastSeen: string | null | undefined, now: Date = new Da
   return d ? `${relTime(d, now)}にログイン` : "";
 }
 
+export type PresenceView = {
+  isOnline: (lastSeen: string | null | undefined, now?: Date) => boolean;
+  presence: (lastSeen: string | null | undefined, now?: Date) => string;
+};
+
+const HIDDEN_PRESENCE: PresenceView = { isOnline: () => false, presence: () => "" };
+const SHOWN_PRESENCE: PresenceView = { isOnline, presence };
+
+/** 公開の画面のログイン中の表示。運営の設定（site_settings.show_presence）が「隠す」なら、緑の点も「○○前にログイン」も出さない（改修リスト 行9）。管理画面はこれを通さない */
+export function presenceView(show: boolean): PresenceView {
+  return show ? SHOWN_PRESENCE : HIDDEN_PRESENCE;
+}
+
 /** 呼び名に「さん」を付ける。購入者の伏せた名前（K***さん）や、もう「さん」で終わる呼び名には重ねない（DB の public.san と同じ） */
 export function san(name: string | null | undefined): string {
   const s = name ?? "";

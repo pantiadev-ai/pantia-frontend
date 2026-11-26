@@ -55,6 +55,14 @@ test("返信先があるときだけ reply_to を付ける", () => {
   assert.ok(!("reply_to" in JSON.parse(n.body)));
 });
 
+test("BCC があるときだけ bcc を付ける（Resend の bcc は配列も受ける）", () => {
+  const r = resendRequest({ to: "a@example.test", subject: "s", text: "t", bcc: "ops@example.test" }, OPTS);
+  assert.deepEqual(JSON.parse(r.body).bcc, ["ops@example.test"]);
+  assert.deepEqual(JSON.parse(r.body).to, ["a@example.test"]);
+  const n = resendRequest({ to: "a@example.test", subject: "s", text: "t" }, OPTS);
+  assert.ok(!("bcc" in JSON.parse(n.body)));
+});
+
 test("鍵が空なら止める", () => {
   assert.throws(() => resendRequest({ to: "a@example.test", subject: "s", text: "t" }, { ...OPTS, apiKey: " " }));
 });

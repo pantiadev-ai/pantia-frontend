@@ -187,7 +187,7 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  cursor: zoom-in;
+  cursor: default;
 }
 
 .pg-item-detail .gallery-main-img {

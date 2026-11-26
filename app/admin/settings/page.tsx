@@ -17,7 +17,7 @@ export default async function AdminSettingsPage() {
   const { data: st, error } = await service
     .from("site_settings")
     .select(
-      "fee_rate, anonymous_fee, video_fee, extend_fee_per_day, min_payout, payout_fee, auto_complete_days, registration_open, maintenance, notice, mail_order, mail_kyc, mail_payout, mod_spam_filter, forwarding_address, transfer_enabled, transfer_bank, transfer_branch, transfer_type, transfer_number, transfer_holder, banned_words, updated_at, updated_by",
+      "fee_rate, anonymous_fee, video_fee, extend_fee_per_day, min_payout, payout_fee, auto_complete_days, registration_open, maintenance, notice, mail_order, mail_kyc, mail_payout, mod_spam_filter, show_presence, forwarding_address, transfer_enabled, transfer_bank, transfer_branch, transfer_type, transfer_number, transfer_holder, banned_words, updated_at, updated_by",
     )
     .limit(1)
     .maybeSingle();
@@ -41,6 +41,7 @@ export default async function AdminSettingsPage() {
         mailKyc: st.mail_kyc,
         mailPayout: st.mail_payout,
         modSpamFilter: st.mod_spam_filter,
+        showPresence: st.show_presence,
         notice: st.notice,
         forwardingAddress: st.forwarding_address,
         transferEnabled: st.transfer_enabled,

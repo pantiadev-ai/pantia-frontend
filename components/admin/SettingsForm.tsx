@@ -9,7 +9,7 @@ import { useFlash } from "./Flash";
 import { Modal } from "./Modal";
 
 type NumKey = "feePercent" | "anonymousFee" | "videoFee" | "extendFeePerDay" | "minPayout" | "payoutFee" | "autoCompleteDays";
-type BoolKey = "registrationOpen" | "maintenance" | "mailOrder" | "mailKyc" | "mailPayout" | "modSpamFilter" | "transferEnabled";
+type BoolKey = "registrationOpen" | "maintenance" | "mailOrder" | "mailKyc" | "mailPayout" | "modSpamFilter" | "showPresence" | "transferEnabled";
 type TextKey = "notice" | "forwardingAddress" | "transferBank" | "transferBranch" | "transferType" | "transferNumber" | "transferHolder";
 
 export type SettingsValues = { [K in NumKey]: number } & { [K in BoolKey]: boolean } & { [K in TextKey]: string } & { bannedWords: string[] };
@@ -28,6 +28,7 @@ const LABELS: Record<NumKey | BoolKey | TextKey, string> = {
   mailKyc: "KYC審査結果メール",
   mailPayout: "振込完了メール",
   modSpamFilter: "スパムフィルター",
+  showPresence: "ログイン中の表示",
   notice: "お知らせ（全ページの上に出す文）",
   forwardingAddress: "匿名配送の転送先（非公開）",
   transferEnabled: "銀行振込の受付",
@@ -48,7 +49,7 @@ function wordList(list: string[]): string {
 const ACCOUNT_TYPES = { ordinary: "普通", checking: "当座" } as const;
 
 const NUM_KEYS: NumKey[] = ["feePercent", "anonymousFee", "videoFee", "extendFeePerDay", "minPayout", "payoutFee", "autoCompleteDays"];
-const BOOL_KEYS: BoolKey[] = ["registrationOpen", "maintenance", "mailOrder", "mailKyc", "mailPayout", "modSpamFilter", "transferEnabled"];
+const BOOL_KEYS: BoolKey[] = ["registrationOpen", "maintenance", "mailOrder", "mailKyc", "mailPayout", "modSpamFilter", "showPresence", "transferEnabled"];
 const TEXT_KEYS: TextKey[] = ["notice", "forwardingAddress", "transferBank", "transferBranch", "transferType", "transferNumber", "transferHolder"];
 
 function toNum(s: string): number {
@@ -162,6 +163,7 @@ export default function SettingsForm({
       mailKyc: v.mailKyc,
       mailPayout: v.mailPayout,
       modSpamFilter: v.modSpamFilter,
+      showPresence: v.showPresence,
       forwardingAddress: v.forwardingAddress,
       transferEnabled: v.transferEnabled,
       transferBank: v.transferBank,
@@ -276,6 +278,7 @@ export default function SettingsForm({
             {numField("minPayout", { min: 1 })}
             {toggle("registrationOpen", "ユーザー登録を受け付ける")}
             {toggle("maintenance", "管理者以外の利用を一時停止する")}
+            {toggle("showPresence", "出品者の緑の点・「オンライン」「○○前にログイン」・オンラインの絞り込みを、公開の画面に出す（管理画面には出ます）")}
           </div>
         </div>
         <div className="chart-card">
