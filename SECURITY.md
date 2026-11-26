@@ -74,6 +74,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 
 メッセージの守り（2026-11-03 に追加）: 運営が自由に会話を読める作りにしない。
 - 初めて送る前に、「通報された物と自動で保留になった物は運営が確かめる。必要なときは理由を記録して会話を確かめる」への同意をチェックボックスでもらう（message_consents の版2。0023）。版2の同意が無ければ send_message が止める。版1だけの人も、同意し直すまで送れない。取り消すと、また同意するまで送れない。
+- 同意は、画面が見せた文の版で残す（agree_message_terms(p_version)。今の画面は2）。引数なし（0023 の前の画面）は版1として残し、1・2 以外は bad_request。版は下げず、版が上がったときだけ同意の時刻を今にする。
 - 禁止ワードが入っていたら送らせない（行を作らない・相手に届かない）。比べ方は部分一致で、NFKC・小文字・空白なしにそろえて strpos で探す（外の値を正規表現に入れない。O2）。当たった語は送った人の画面にだけ出す。
 - 通報・保留の物から会話を開けるのは、通報されたか、保留・非表示になったメッセージからだけ（admin_view_thread。それ以外は 42501。理由を残して開く道は、下の「運営が会話を確かめる」）。返すのはそのメッセージの前30件・後10件で、開いたことを audit_logs（thread.viewed）に残す。
 - 確かめ方: supabase/tests/08_message_safety.sql（同意・禁止ワード・会話を開ける条件・記録）。
@@ -84,6 +85,7 @@ Next.js 16（Vercel）＋ Supabase（DB・Auth・Storage・Realtime）。常駐�
 - 開くと、その管理者だけに30分の券（thread_view_grants）ができる。券の表は service_role からも直接読み書きできない（関数だけ）。券のあいだに見るたびに thread.read を記録する（admin_view_any_thread）。券が無ければ view_grant_required。
 - 見せるのは、送った人が版2に同意した時刻より後のメッセージだけ（新しい200件まで。system のお知らせは出さない）。
 - 一覧の「開く」のリンクは先読みしない（先読みで画面が作られると、見ていないのに thread.read が残るため）。
+- 画像の期限つき URL は、券の残りの秒より長くしない（lib/view-window.ts。残りが無ければ画像を出さない。券が切れたあとに画像だけ見られる、を作らない）。
 - 確かめ方: supabase/tests/17_admin_thread_view.sql（許可・拒否・券の期限・同意の前後・記録）と tests/e2e/45_admin_threads.spec.ts（画面の流れ）、tests/e2e/34_message_safety.spec.ts（版1の人の同意し直し）。
 
 ## 4. 秘密（鍵・パスワード。28 §C・§J）

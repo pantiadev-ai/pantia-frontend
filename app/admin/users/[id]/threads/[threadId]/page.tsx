@@ -15,11 +15,16 @@ import { dateTimeJst } from "@/lib/format";
 import { isUuid } from "@/lib/search";
 import { signedUrls } from "@/lib/storage-server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { VIEW_MINUTES, viewSecondsLeft, viewUntil } from "@/lib/view-window";
 
 export const metadata: Metadata = { title: "会話の確認" };
 
 const STATUS_LABEL: Record<string, string> = { held: "保留中", hidden: "非表示" };
-const VIEW_MINUTES = 30;
+
+/** 画像の期限つき URL に使う、券の残りの秒（描く処理の外で今の時刻を取る。notifications と同じ形） */
+function secondsLeftNow(openedAt: string): number {
+  return viewSecondsLeft(openedAt, Date.now());
+}
 
 export default async function AdminUserThreadPage({ params }: PageProps<"/admin/users/[id]/threads/[threadId]">) {
   const me = await requireAdminPage();
@@ -50,7 +55,7 @@ export default async function AdminUserThreadPage({ params }: PageProps<"/admin/
   const t = obj(data);
   const reason = s(t.reason);
   const openedAt = s(t.opened_at);
-  const until = openedAt && !Number.isNaN(Date.parse(openedAt)) ? new Date(Date.parse(openedAt) + VIEW_MINUTES * 60_000).toISOString() : "";
+  const until = viewUntil(openedAt);
   const rows = list(t.messages).map((m) => ({
     id: s(m.id),
     sender: s(m.sender_id) || null,
@@ -60,7 +65,12 @@ export default async function AdminUserThreadPage({ params }: PageProps<"/admin/
     status: s(m.status),
     at: s(m.created_at),
   }));
-  const [names, signed] = await Promise.all([nicknamesOf(service, [sellerId, buyerId]), signedUrls("chat-images", rows.flatMap((r) => r.images))]);
+  // 画像の URL は券の残りの間だけ（券が切れたあとに画像だけ見られる、を作らない）
+  const images = closed ? [] : rows.flatMap((r) => r.images);
+  const [names, signed] = await Promise.all([
+    nicknamesOf(service, [sellerId, buyerId]),
+    signedUrls("chat-images", images, secondsLeftNow(openedAt)),
+  ]);
   const nameOf = (uid: string) => names.get(uid) ?? "退会したユーザー";
   const senderOf = (uid: string | null) =>
     uid === sellerId ? `${nameOf(sellerId)}（出品者）` : uid === buyerId ? `${nameOf(buyerId)}（購入者）` : "お知らせ（自動）";

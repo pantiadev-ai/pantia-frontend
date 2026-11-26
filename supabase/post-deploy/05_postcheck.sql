@@ -256,4 +256,11 @@ select 28, 'メッセージの同意の版の既定が 2（0023。版1の人は�
              where table_schema = 'public' and table_name = 'message_consents' and column_name = 'version') = '2'
        then 'OK' else 'NG' end,
   '版1のまま: ' || (select count(*) from public.message_consents where version < 2) || ' 人'
+union all
+select 29, 'メッセージの同意の関数が、見せた文の版を受け取る（0023。引数なしの古い形が残っていない。匿名は呼べない）',
+  case when to_regprocedure('public.agree_message_terms(integer)') is null then 'NG'
+       when to_regprocedure('public.agree_message_terms()') is not null then 'NG'
+       when has_function_privilege('anon', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
+       when not has_function_privilege('authenticated', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
+       else 'OK' end, ''
 order by no;

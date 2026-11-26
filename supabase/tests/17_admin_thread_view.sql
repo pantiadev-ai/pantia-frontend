@@ -3,6 +3,7 @@
 --         中身を見るには、会話ごとに理由（1〜200字）を書いて「開く」。開いてから30分のあいだ、その管理者だけが読める。
 --         見せるのは、送った人が新しい同意（版2）をした後のメッセージだけ。版1の同意しかない人がいる会話は開けない。
 --         同意の版は2に上がる。版1の人は、次に送る前に同意し直す。同意し直しても、版2の同意の時刻は動かさない。
+--         同意の関数は、画面が見せた文の版を受け取る。引数なし（0023 の前の画面）は版1として残す（古い文への同意を版2にしない）。
 --         開くこと（理由つき）と読むことは、毎回、操作ログに残す。一覧を見ることは残さない。
 create function pg_temp.lst(p_admin uuid, p_user uuid) returns text language sql as $f$
   select pg_temp.val(null, 'service_role', format('select public.admin_list_user_threads(%L, %L)::text', p_admin, p_user));
@@ -46,19 +47,37 @@ begin
     pg_temp.run(b3, 'authenticated', format('select public.send_message(%L, %L)', th3, 'こんにちは')) like 'ERR %message_consent_required%',
     pg_temp.run(b3, 'authenticated', format('select public.send_message(%L, %L)', th3, 'こんにちは')));
   perform pg_temp.ok('K03 版2の同意がある人は送れる', b1, 'authenticated', format('select public.send_message(%L, %L)', th, 'はじめまして'));
-  perform pg_temp.ok('K04 版1の人が同意し直せる', b3, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.ok('K04 版1の人が同意し直せる', b3, 'authenticated', 'select public.agree_message_terms(2)');
   perform pg_temp.eq('K05 同意し直すと版2になり、同意の時刻は今になる', null, 'postgres',
     format('select version || %L || (agreed_at = now())::text from public.message_consents where user_id = %L', '/', b3), '2/true');
   perform pg_temp.consent(b2, 2, old);
-  perform pg_temp.ok('K06 版2の人がもう一度同意しても通る', b2, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.ok('K06 版2の人がもう一度同意しても通る', b2, 'authenticated', 'select public.agree_message_terms(2)');
   perform pg_temp.eq('K07 版2の人がもう一度同意しても、同意の時刻は動かない', null, 'postgres',
     format('select (agreed_at = %L::timestamptz)::text from public.message_consents where user_id = %L', old, b2), 'true');
   perform pg_temp.ok('K08 取り消せる', b2, 'authenticated', 'select public.withdraw_message_terms()');
-  perform pg_temp.ok('K09 取り消した後に同意し直せる', b2, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.ok('K09 取り消した後に同意し直せる', b2, 'authenticated', 'select public.agree_message_terms(2)');
   perform pg_temp.eq('K10 取り消してから同意し直すと、同意の時刻は今になる', null, 'postgres',
     format('select (agreed_at = now())::text from public.message_consents where user_id = %L', b2), 'true');
   perform pg_temp.eq('K11 同意の記録は版2として残る', null, 'postgres',
     format('select detail ->> %L from public.audit_logs where actor_id = %L and action = %L order by id desc limit 1', 'version', b3, 'message_terms.agree'), '2');
+
+  -- 0023 の前の画面（引数なし）からの同意は版1のまま。migration を先に当てて画面を出すまでの間に、古い文への同意が版2にならない
+  perform pg_temp.run(b2, 'authenticated', 'select public.withdraw_message_terms()');
+  perform pg_temp.ok('K12 引数なしの同意も通る（前の画面のまま）', b2, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.eq('K13 引数なしの同意は版1として残る', null, 'postgres',
+    format('select version::text from public.message_consents where user_id = %L', b2), '1');
+  perform pg_temp.ng('K14 版1の同意では送れない', b2, 'authenticated',
+    format('select public.send_message(%L, %L)', th2, 'もしもし'), 'pantia:message_consent_required');
+  perform pg_temp.eq('K15 引数なしの同意は、記録にも版1として残る', null, 'postgres',
+    format('select detail ->> %L from public.audit_logs where actor_id = %L and action = %L order by id desc limit 1', 'version', b2, 'message_terms.agree'), '1');
+  perform pg_temp.consent(b2, 2, old);
+  perform pg_temp.ok('K16 版2の人が引数なしで同意しても通る', b2, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.eq('K17 版2の人が引数なしで同意しても、版2のままで、同意の時刻も動かない', null, 'postgres',
+    format('select version || %L || (agreed_at = %L::timestamptz)::text from public.message_consents where user_id = %L', '/', old, b2), '2/true');
+  perform pg_temp.ng('K18 知らない版（3）は断る', b2, 'authenticated', 'select public.agree_message_terms(3)', 'pantia:bad_request');
+  perform pg_temp.ng('K19 版0は断る', b2, 'authenticated', 'select public.agree_message_terms(0)', 'pantia:bad_request');
+  perform pg_temp.ng('K20 版が null なら断る', b2, 'authenticated', 'select public.agree_message_terms(null)', 'pantia:bad_request');
+  perform pg_temp.consent(b2, 2, now());
 
   -- 会話を作る（th: みさき⇔たろう。たろうは同意の前にも1通ある。運営からの知らせ＝送り手なしも1通）
   perform pg_temp.run(null, 'postgres', format('update public.message_consents set agreed_at = now() - interval %L where user_id = %L', '1 hour', b1));

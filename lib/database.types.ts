@@ -2185,7 +2185,10 @@ export type Database = {
         Args: { p_admin: string; p_reason: string; p_user: string }
         Returns: Json
       }
-      agree_message_terms: { Args: never; Returns: undefined }
+      agree_message_terms: {
+        Args: { p_version?: number }
+        Returns: undefined
+      }
       assert_admin: { Args: { p_admin: string }; Returns: undefined }
       attach_payment_ref: {
         Args: { p_group: string; p_ref: string }

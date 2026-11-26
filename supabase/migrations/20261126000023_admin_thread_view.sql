@@ -7,6 +7,7 @@
 --   ・見せるのは、送った人が新しい同意（版2）をした後のメッセージだけ。送り手のない知らせは出さない。新しい200件を古い順に
 --   ・片方でも版2の同意が無い会話は開けない。同意を取り消した人のメッセージは、それ以後は見せない
 --   ・同意の版は2に上がる。版1の人は、次に送る前に同意し直す。版2の人が同意し直しても、同意の時刻は動かさない
+--   ・同意の関数は、画面が見せた文の版を受け取る（今の画面は2）。引数なし（この前の画面）は版1として残す。知らない版は断る
 --   ・開くこと（理由つき）と読むことは、毎回、操作ログに残す（thread.opened・thread.read）。今の thread.viewed（0012）とは分ける
 --   ・券の表（thread_view_grants）は関数からしか読み書きできない（service_role も直接は触れない）
 --   ・0021・0022 とは別の物を触るので、どの順に当ててもよい
@@ -17,7 +18,8 @@
 -- -----------------------------------------------------------------------------
 alter table public.message_consents alter column version set default 2;
 
-create or replace function public.agree_message_terms()
+drop function if exists public.agree_message_terms();
+create or replace function public.agree_message_terms(p_version integer default 1)
 returns void
 language plpgsql
 security definer
@@ -29,16 +31,20 @@ begin
   if v_uid is null or not exists (select 1 from public.profiles p where p.id = v_uid and p.status = 'active') then
     raise exception 'pantia:not_allowed' using errcode = '42501';
   end if;
-  -- 版1からの同意し直しは今の時刻にする。版2の人がもう一度同意しても、時刻は動かさない
-  insert into public.message_consents as c (user_id, version, agreed_at) values (v_uid, 2, now())
+  -- 画面が見せた文の版を受け取る。引数なし＝0023 の前の画面（版1の文）。古い文への同意を版2として残さない
+  if p_version is null or p_version not in (1, 2) then
+    raise exception 'pantia:bad_request' using errcode = '22023';
+  end if;
+  -- 版は下げない。版が上がったときだけ同意の時刻を今にする（版2の人が同意し直しても時刻は動かさない）
+  insert into public.message_consents as c (user_id, version, agreed_at) values (v_uid, p_version, now())
   on conflict (user_id) do update
-    set version = 2,
-        agreed_at = case when c.version >= 2 then c.agreed_at else excluded.agreed_at end;
-  perform public.audit(v_uid, 'message_terms.agree', 'user', v_uid::text, jsonb_build_object('version', 2));
+    set version = greatest(c.version, excluded.version),
+        agreed_at = case when excluded.version > c.version then excluded.agreed_at else c.agreed_at end;
+  perform public.audit(v_uid, 'message_terms.agree', 'user', v_uid::text, jsonb_build_object('version', p_version));
 end;
 $$;
-revoke all on function public.agree_message_terms() from public, anon;
-grant execute on function public.agree_message_terms() to authenticated;
+revoke all on function public.agree_message_terms(integer) from public, anon;
+grant execute on function public.agree_message_terms(integer) to authenticated;
 
 -- 送る: 版2の同意が無ければ止める（0012 の send_message から、同意の確かめの1行だけを変えた）
 create or replace function public.send_message(p_thread uuid, p_body text, p_image_paths text[] default '{}', p_listing uuid default null)
