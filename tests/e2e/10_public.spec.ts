@@ -311,7 +311,17 @@ test.describe("出品者・ランキング・つぶやき", () => {
     await page.goto(`/sellers/${seller.id}`);
     const tags = page.locator(".profile-tags .ptag");
     for (const text of await tags.allInnerTexts()) expect(text.trim(), "空の札").not.toBe("");
-    await expect(page.locator(".info-row", { hasText: "最終ログイン" }).locator(".info-val")).toHaveText("—");
+    // ログイン中の表示を隠す設定（既定）では、最終ログインの行ごと出さない（改修リスト 行9）
+    await expect(page.locator(".info-row", { hasText: "最終ログイン" })).toHaveCount(0);
+    // 出す設定のときは「—」。この試験の中だけ出し、終わったら戻す
+    await sql(`update public.site_settings set show_presence = true where id`);
+    try {
+      await page.reload();
+      for (const text of await tags.allInnerTexts()) expect(text.trim(), "空の札").not.toBe("");
+      await expect(page.locator(".info-row", { hasText: "最終ログイン" }).locator(".info-val")).toHaveText("—");
+    } finally {
+      await sql(`update public.site_settings set show_presence = false where id`);
+    }
   });
 
   test("% や _ を入れて出品者を探しても、全員が出たりエラーになったりしない", async ({ page }) => {

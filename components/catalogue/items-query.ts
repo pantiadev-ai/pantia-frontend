@@ -1,8 +1,8 @@
 /* /items の絞り込みと URL の行き来。サーバー（ページ）とブラウザ（絞り込みの欄）の両方から使う。
    URL の形: ?q=&categories=panty&categories=bra&price_min=&price_max=&worn=1&worn=4-5&same_day=1…&sort=&page=
    CONVENTIONS の ?category=（1つ）も受け付ける。 */
-import { CATEGORIES, SORTS, WORN_FILTERS } from "@/lib/labels";
-import { safeSearch } from "@/lib/search";
+import { CATEGORIES, SORTS, WORN_FILTERS } from "../../lib/labels.ts";
+import { safeSearch } from "../../lib/search.ts";
 
 /** チェックの絞り込み。key は search_listings の key と同じ */
 export const ITEM_FLAGS = [
@@ -17,6 +17,11 @@ export const ITEM_FLAGS = [
 ] as const;
 
 export type ItemFlag = (typeof ITEM_FLAGS)[number]["key"];
+
+/** 欄に出す絞り込み。ログイン中の表示を隠す設定のあいだは「オンライン中」を出さない（改修リスト 行9） */
+export function visibleItemFlags(showPresence: boolean) {
+  return showPresence ? ITEM_FLAGS : ITEM_FLAGS.filter((f) => f.key !== "online");
+}
 export type SortValue = (typeof SORTS)[number]["value"];
 
 export type ItemsState = {
@@ -73,6 +78,11 @@ export function parseItemsQuery(sp: RawParams): ItemsState {
     sort: (SORT_VALUES.includes(sort) ? sort : "new") as SortValue,
     page: Number.isInteger(page) && page >= 1 ? Math.min(page, MAX_PAGE) : 1,
   };
+}
+
+/** 隠す設定のあいだに ?online=1 が来たら、その絞り込みだけ外す（0件にせず、札も出さない） */
+export function withoutHiddenFlags(s: ItemsState, showPresence: boolean): ItemsState {
+  return showPresence ? s : { ...s, flags: s.flags.filter((f) => f !== "online") };
 }
 
 /** 状態から URL の ? 以降を作る（既定の値は書かない） */

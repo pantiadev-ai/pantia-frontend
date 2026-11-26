@@ -1,17 +1,20 @@
 /* フォロー中の出品者の行（マイページの先頭と /mypage/following で使う） */
 import Link from "next/link";
 import { FollowButton } from "@/components/ToggleButtons";
-import { displayName, num, presence, ratingAvg } from "@/lib/format";
+import { displayName, num, presenceView, ratingAvg } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { avatarImage } from "@/lib/storage";
 import type { FollowingRow } from "./data";
 
-export default function FollowingList({ rows }: { rows: FollowingRow[] }) {
+export default async function FollowingList({ rows }: { rows: FollowingRow[] }) {
+  // 「○○前にログイン」は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView((await getSettings()).showPresence);
   return (
     <div className="mp-user-list">
       {rows.map((r) => {
         const name = displayName(r.name);
         const img = avatarImage(r.avatarPath);
-        const meta = [presence(r.lastSeenAt), `フォロワー ${num(r.followerCount)}`, `販売 ${num(r.salesCount)}`, `評価 ${ratingAvg(r.ratingSum, r.ratingCount)}`]
+        const meta = [pv.presence(r.lastSeenAt), `フォロワー ${num(r.followerCount)}`, `販売 ${num(r.salesCount)}`, `評価 ${ratingAvg(r.ratingSum, r.ratingCount)}`]
           .filter(Boolean)
           .join("・");
         return (

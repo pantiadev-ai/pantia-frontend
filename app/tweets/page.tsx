@@ -23,7 +23,8 @@ import {
   tagOf,
 } from "@/components/posts/data";
 import { getViewer } from "@/lib/auth";
-import { isOnline, yen } from "@/lib/format";
+import { presenceView, yen } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { CATEGORIES } from "@/lib/labels";
 import { escapeLike, safeSearch } from "@/lib/search";
 import { listingImage } from "@/lib/storage";
@@ -55,7 +56,9 @@ export default async function TweetsPage({ searchParams }: PageProps<"/tweets">)
   const page = pageOf(one(sp.page));
   const base = { q, tag, category, sort };
 
-  const viewer = await getViewer();
+  const [viewer, settings] = await Promise.all([getViewer(), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const supabase = await createClient();
   const canPost = viewer?.role === "seller" && viewer.kycStatus === "approved";
 
@@ -185,7 +188,7 @@ export default async function TweetsPage({ searchParams }: PageProps<"/tweets">)
                 <div className="active-seller" key={s.id}>
                   <Link href={`/sellers/${s.id}`} aria-label={`${s.name}のプロフィール`}>
                     <Avatar url={s.avatarUrl} name={s.name} className="as-avatar">
-                      {isOnline(s.lastSeenAt) && <div className="as-online" title="オンライン" />}
+                      {pv.isOnline(s.lastSeenAt) && <div className="as-online" title="オンライン" />}
                     </Avatar>
                   </Link>
                   <div>

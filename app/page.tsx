@@ -20,10 +20,11 @@ import {
 } from "@/lib/catalogue";
 import { avatarImage } from "@/lib/storage";
 import { CATEGORIES } from "@/lib/labels";
-import { displayName, excerpt, isOnline, num, relTime, san, yen } from "@/lib/format";
+import { displayName, excerpt, num, presenceView, relTime, san, yen } from "@/lib/format";
 import HomeItemCard from "@/components/catalogue/HomeItemCard";
 import { payMethods } from "@/components/static/facts";
 import { payNamesText } from "@/lib/pay-text";
+import { getSettings } from "@/lib/settings";
 import { initialOf, isRecent, metaLine } from "@/components/catalogue/card-helpers";
 
 const NEW_ITEMS = 8;
@@ -146,7 +147,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const cat = CATEGORIES.some((c) => c.value === catRaw) ? catRaw : null;
 
   const viewer = await getViewer();
-  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked, methods] = await Promise.all([
+  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked, methods, settings] = await Promise.all([
     countPublicSellers(),
     searchListings({ sort: "new", limit: NEW_ITEMS }),
     cat ? searchListings({ categories: [cat], sort: "new", limit: NEW_ITEMS }) : Promise.resolve(null),
@@ -156,7 +157,10 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     rankingListings(RANKS + 2),
     myBlockedIds(viewer?.id),
     payMethods(),
+    getSettings(),
   ]);
+  // ログイン中の表示（緑の点）は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   // 「安全な決済処理」に出す支払い方法（設定で消した方法は出さない）
   const payText = payNamesText(methods.map((m) => m.name));
 
@@ -278,7 +282,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                   <Link href={`/sellers/${s.id}`} className="girl-card" key={s.id}>
                     <div className="girl-avatar-wrap">
                       <Avatar path={s.avatarPath} name={s.publicName} />
-                      <span className={`status-badge${isOnline(s.lastSeenAt) ? "" : " offline"}`} />
+                      {settings.showPresence ? <span className={`status-badge${pv.isOnline(s.lastSeenAt) ? "" : " offline"}`} /> : null}
                     </div>
                     <div className="girl-name">{displayName(s.publicName)}</div>
                     <div className="girl-tag">{meta || NBSP}</div>

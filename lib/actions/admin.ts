@@ -914,6 +914,7 @@ const SettingsSchema = z.object({
   mailKyc: z.boolean(),
   mailPayout: z.boolean(),
   modSpamFilter: z.boolean(),
+  showPresence: z.boolean(),
   forwardingAddress: optional(300, "匿名配送の転送先"),
   transferEnabled: z.boolean(),
   transferBank: optional(30, "銀行名"),
@@ -958,6 +959,7 @@ export async function updateSettings(raw: SettingsInput): Promise<ActionResult> 
       mail_kyc: s.mailKyc,
       mail_payout: s.mailPayout,
       mod_spam_filter: s.modSpamFilter,
+      show_presence: s.showPresence,
       forwarding_address: s.forwardingAddress,
       // 運営の口座（振込の受付）。監査ログには口座番号を残さない（DB が「変えた」だけ書く）
       transfer_enabled: s.transferEnabled,

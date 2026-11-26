@@ -3,7 +3,7 @@
    会話が動いたら（threads の Realtime）、少し待ってから自分の権限で my_threads を読み直す */
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { isOnline } from "@/lib/format";
+import { presenceView } from "@/lib/format";
 import { createClient, realtimeReady } from "@/lib/supabase/browser";
 import { useNegotiating } from "./NegotiatingToggle";
 import type { ThreadRow } from "./types";
@@ -16,9 +16,12 @@ type Props = {
   /** 0件のときの案内（役割で文が変わる） */
   emptyText: string;
   emptyLink?: { href: string; label: string };
+  /** 出品者の緑の点を出すか（運営の設定。改修リスト 行9） */
+  showPresence: boolean;
 };
 
-export default function ThreadList({ initial, activeId, emptyText, emptyLink }: Props) {
+export default function ThreadList({ initial, activeId, emptyText, emptyLink, showPresence }: Props) {
+  const pv = presenceView(showPresence);
   const [rows, setRows] = useState(initial);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "unread">("all");
@@ -114,7 +117,7 @@ export default function ThreadList({ initial, activeId, emptyText, emptyLink }: 
           </div>
         ) : (
           shown.map((r) => {
-            const online = r.role === "seller" && isOnline(r.lastSeenAt);
+            const online = r.role === "seller" && pv.isOnline(r.lastSeenAt);
             const active = r.threadId === activeId;
             return (
               <Link

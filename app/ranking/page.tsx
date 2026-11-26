@@ -10,7 +10,8 @@ import { getViewer } from "@/lib/auth";
 import { myBlockedIds, rankingListings, rankingSellers } from "@/lib/catalogue";
 import { avatarImage, listingImage } from "@/lib/storage";
 import { categoryLabel } from "@/lib/labels";
-import { displayName, isOnline, num, yen } from "@/lib/format";
+import { displayName, num, presenceView, yen } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import { categoryIcon, initialOf, metaLine } from "@/components/catalogue/card-helpers";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default async function RankingPage({ searchParams }: PageProps<"/ranking"
   const tabRaw = Array.isArray(sp.tab) ? sp.tab[0] : sp.tab;
   const tab: "sellers" | "listings" = tabRaw === "listings" ? "listings" : "sellers";
 
-  const viewer = await getViewer();
+  const [viewer, settings] = await Promise.all([getViewer(), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const [sellers, listings, blocked] = await Promise.all([
     tab === "sellers" ? rankingSellers(LIMIT) : Promise.resolve(null),
     tab === "listings" ? rankingListings(LIMIT) : Promise.resolve(null),
@@ -86,7 +89,7 @@ export default async function RankingPage({ searchParams }: PageProps<"/ranking"
                   <span className={rankClass(i)}>{i + 1}</span>
                   <div className="cat-avatar sm">
                     {avatar ? <img src={avatar} alt="" loading="lazy" /> : initialOf(r.publicName)}
-                    {isOnline(r.lastSeenAt) ? <span className="cat-online-dot" title="オンライン" /> : null}
+                    {pv.isOnline(r.lastSeenAt) ? <span className="cat-online-dot" title="オンライン" /> : null}
                   </div>
                   <div className="cat-rank-info">
                     <Link href={`/sellers/${r.id}`} className="cat-rank-title cat-stretch">

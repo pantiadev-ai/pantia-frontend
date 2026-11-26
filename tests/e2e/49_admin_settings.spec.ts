@@ -15,13 +15,14 @@ type Snapshot = {
   mail_kyc: boolean;
   mail_payout: boolean;
   mod_spam_filter: boolean;
+  show_presence: boolean;
 };
-const COLS = "registration_open, maintenance, notice, mail_order, mail_kyc, mail_payout, mod_spam_filter";
+const COLS = "registration_open, maintenance, notice, mail_order, mail_kyc, mail_payout, mod_spam_filter, show_presence";
 let saved: Snapshot | null = null;
 
 test.beforeEach(async () => {
   saved = (await sql<Snapshot>(`select ${COLS} from public.site_settings where id`))[0] ?? null;
-  await sql(`update public.site_settings set registration_open = true, maintenance = false, notice = '', mail_kyc = true where id`);
+  await sql(`update public.site_settings set registration_open = true, maintenance = false, notice = '', mail_kyc = true, show_presence = false where id`);
 });
 
 test.afterEach(async () => {
@@ -30,7 +31,8 @@ test.afterEach(async () => {
   await sql(`
     update public.site_settings set
       registration_open = ${s.registration_open}, maintenance = ${s.maintenance}, notice = ${lit(s.notice)},
-      mail_order = ${s.mail_order}, mail_kyc = ${s.mail_kyc}, mail_payout = ${s.mail_payout}, mod_spam_filter = ${s.mod_spam_filter}
+      mail_order = ${s.mail_order}, mail_kyc = ${s.mail_kyc}, mail_payout = ${s.mail_payout}, mod_spam_filter = ${s.mod_spam_filter},
+      show_presence = ${s.show_presence}
     where id`);
   saved = null;
 });
@@ -178,3 +180,49 @@ test("本人確認の結果のメールを止めると、承認しても画面�
   }
 });
 
+/* 改修リスト 行9: 出品者のログイン中の表示（緑の点・「オンライン」「○○前にログイン」・オンラインの絞り込み）は、
+   既定で公開の画面から隠し、管理画面の設定で出せる（管理画面の表示は残す） */
+test("ログイン中の表示は既定で隠れていて、管理画面で出すにすると出て、戻すと隠れる", async ({ page, context, browser }) => {
+  const r = rid();
+  const title = `Dログイン${r}`;
+  const seller = await freshUser("d-pres", { role: "seller" });
+  const id = await seedListing(seller, { title });
+  await sql(`update public.profiles set last_seen_at = now() where id = ${lit(seller.id)}`);
+  await asAdmin(context);
+  const guest = await browser.newContext();
+  try {
+    const gp = await guest.newPage();
+    const expectShown = async (shown: boolean) => {
+      await gp.goto(`/items/${id}`);
+      await expect(gp.locator(".seller-mini")).toBeVisible();
+      await expect(gp.locator(".sm-online")).toHaveCount(shown ? 1 : 0);
+      if (shown) await expect(gp.locator(".seller-mini")).toContainText("オンライン");
+      else await expect(gp.locator(".seller-mini")).not.toContainText("オンライン");
+      await gp.goto(`/sellers/${seller.id}`);
+      await expect(gp.locator(".profile-name")).toBeVisible();
+      await expect(gp.locator(".online-badge")).toHaveCount(shown ? 1 : 0);
+      await gp.goto("/items");
+      await expect(gp.locator('input[name="same_day"]')).toHaveCount(1);
+      await expect(gp.locator('input[name="online"]')).toHaveCount(shown ? 1 : 0);
+      // 隠すあいだは ?online=1 で来ても絞り込まない（0件にしない）
+      await gp.goto(`/items?q=${encodeURIComponent(title)}&online=1`);
+      await expect(gp.getByText(title).first()).toBeVisible();
+    };
+
+    await expectShown(false);
+
+    await page.goto("/admin/settings");
+    await flip(page, "ログイン中の表示", true);
+    await save(page, ["ログイン中の表示"]);
+    expect(await setting("show_presence")).toBe(true);
+    await expectShown(true);
+
+    await page.reload();
+    await flip(page, "ログイン中の表示", false);
+    await save(page, ["ログイン中の表示"]);
+    expect(await setting("show_presence")).toBe(false);
+    await expectShown(false);
+  } finally {
+    await guest.close();
+  }
+});

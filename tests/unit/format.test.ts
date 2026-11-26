@@ -1,7 +1,7 @@
 /* 画面の値の書き方。日付は日本時間で出ること（サーバーは UTC で動く） */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateJst, dateTimeJst, displayName, excerpt, last4, maskName, ratingAvg, relTime, san, stars, yen } from "../../lib/format.ts";
+import { dateJst, dateTimeJst, displayName, excerpt, last4, maskName, presenceView, ratingAvg, relTime, san, stars, yen } from "../../lib/format.ts";
 
 test("yen は3桁区切り・端数は丸める", () => {
   assert.equal(yen(1234567), "¥1,234,567");
@@ -48,4 +48,23 @@ test("san は「さん」を重ねない（購入者の伏せた名前・さん�
   assert.equal(san("たろうさん"), "たろうさん");
   assert.equal(san(""), "");
   assert.equal(san(null), "");
+});
+
+/* 改修リスト 行9: ログイン中の表示（緑の点・「オンライン」「○○前にログイン」）は、運営の設定（site_settings.show_presence）で出す／隠す */
+test("presenceView: 隠す設定なら、いまいる人でもオンラインにせず、ログインの文字も出さない", () => {
+  const now = new Date("2026-11-26T12:00:00Z");
+  const view = presenceView(false);
+  assert.equal(view.isOnline("2026-11-26T11:58:00Z", now), false);
+  assert.equal(view.presence("2026-11-26T11:58:00Z", now), "");
+  assert.equal(view.presence("2026-11-26T09:00:00Z", now), "");
+});
+
+test("presenceView: 出す設定なら、今までどおり（10分以内はオンライン・それより前は「○○前にログイン」）", () => {
+  const now = new Date("2026-11-26T12:00:00Z");
+  const view = presenceView(true);
+  assert.equal(view.isOnline("2026-11-26T11:58:00Z", now), true);
+  assert.equal(view.presence("2026-11-26T11:58:00Z", now), "オンライン");
+  assert.equal(view.isOnline("2026-11-26T09:00:00Z", now), false);
+  assert.equal(view.presence("2026-11-26T09:00:00Z", now), "3時間前にログイン");
+  assert.equal(view.presence(null, now), "");
 });

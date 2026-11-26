@@ -13,7 +13,8 @@ import ItemCard from "@/components/catalogue/ItemCard";
 import ItemsFilterForm from "@/components/catalogue/ItemsFilterForm";
 import ItemsGridView from "@/components/catalogue/ItemsGridView";
 import Pager from "@/components/catalogue/Pager";
-import { ITEMS_PER_PAGE, MAX_PAGE, activeFilterTags, itemsHref, itemsSearch, parseItemsQuery } from "@/components/catalogue/items-query";
+import { ITEMS_PER_PAGE, MAX_PAGE, activeFilterTags, itemsHref, itemsSearch, parseItemsQuery, withoutHiddenFlags } from "@/components/catalogue/items-query";
+import { getSettings } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "商品一覧",
@@ -24,8 +25,9 @@ export const metadata: Metadata = {
 const SELLER_HITS = 5;
 
 export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
-  const state = parseItemsQuery(await searchParams);
-  const viewer = await getViewer();
+  const [sp, viewer, settings] = await Promise.all([searchParams, getViewer(), getSettings()]);
+  // ログイン中の表示を隠しているあいだは、?online=1 が来ても「オンライン中」の絞り込みを外す（改修リスト 行9）
+  const state = withoutHiddenFlags(parseItemsQuery(sp), settings.showPresence);
   // 上の検索欄は「商品・出品者を検索」なので、言葉があれば1ページ目に名前の当てはまる出品者も出す
   const [result, sellerHits] = await Promise.all([
     searchListings({
@@ -58,7 +60,7 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
       </div>
 
       <main className="page-layout">
-        <ItemsFilterForm key={itemsSearch(state)} state={state} optionCounts={result.facets.options}>
+        <ItemsFilterForm key={itemsSearch(state)} state={state} optionCounts={result.facets.options} showPresence={settings.showPresence}>
           {tags.length > 0 ? (
             <div className="active-filters">
               <span className="af-label">絞り込み中：</span>
