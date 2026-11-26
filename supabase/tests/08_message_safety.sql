@@ -42,8 +42,8 @@ begin
   perform pg_temp.eq('C02 止まったら行は増えない', null, 'postgres', format('select count(*)::text from public.messages where thread_id = %L', th), '0');
   perform pg_temp.ng('C03 同意の行は画面から直接作れない', b1, 'authenticated', format('insert into public.message_consents (user_id) values (%L)', b1), 'permission denied');
   perform pg_temp.ng('C04 匿名は同意できない', null, 'anon', 'select public.agree_message_terms()', 'permission denied');
-  perform pg_temp.ok('C05 同意する', b1, 'authenticated', 'select public.agree_message_terms()');
-  perform pg_temp.ok('C06 2回同意してもよい', b1, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.ok('C05 同意する', b1, 'authenticated', 'select public.agree_message_terms(2)');
+  perform pg_temp.ok('C06 2回同意してもよい', b1, 'authenticated', 'select public.agree_message_terms(2)');
   perform pg_temp.eq('C07 本人は自分の同意を読める（1行）', b1, 'authenticated', 'select count(*)::text from public.message_consents', '1');
   perform pg_temp.eq('C08 他人の同意は見えない', s1, 'authenticated', format('select count(*)::text from public.message_consents where user_id = %L', b1), '0');
   perform pg_temp.ok('C09 同意すれば送れる', b1, 'authenticated', pg_temp.send(th, 'こんにちは'));
@@ -51,7 +51,7 @@ begin
   perform pg_temp.ng('C11 取り消すとまた止まる', b1, 'authenticated', pg_temp.send(th, 'もしもし'), 'pantia:message_consent_required');
   perform pg_temp.eq('C12 同意と取り消しは記録に残る', null, 'postgres',
     format('select count(*)::text from public.audit_logs where actor_id = %L and action in (%L, %L)', b1, 'message_terms.agree', 'message_terms.withdraw'), '3');
-  perform pg_temp.ok('C13 また同意できる', b1, 'authenticated', 'select public.agree_message_terms()');
+  perform pg_temp.ok('C13 また同意できる', b1, 'authenticated', 'select public.agree_message_terms(2)');
 
   -- 禁止ワード（管理画面で入れる。入っていたら送らせない）-----------------------
   r := pg_temp.words(adm, '["死ね","ＢＡＫＡ","振込先","カネ"]');

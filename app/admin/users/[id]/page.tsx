@@ -9,6 +9,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { characterBadge, kycAppBadge, kycBadge, orderBadge, reportBadge, reportTypeBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import CharacterBank from "@/components/admin/CharacterBank";
 import LedgerAdjustForm from "@/components/admin/LedgerAdjustForm";
+import { list, s } from "@/components/admin/json";
 import { Badge, Card, Dl, Empty } from "@/components/admin/parts";
 import type { UploadedImage } from "@/components/ImageUploader";
 import type { ProfileInitial } from "@/components/mypage/ProfileForm";
@@ -53,7 +54,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
   if (!p) notFound();
 
   const head = { count: "exact" as const, head: true };
-  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow] = await Promise.all([
+  const [auth, asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow, threads] = await Promise.all([
     service.auth.admin.getUserById(id),
     service.from("orders").select("id", head).eq("seller_id", id),
     service.from("orders").select("id", head).eq("buyer_id", id),
@@ -82,14 +83,24 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
     service.from("character_accounts").select("user_id, marked_at").eq("user_id", id).maybeSingle(),
     // 管理者にはキャラの印を付けない（DB の admin_mark_character も断る）
     service.from("admin_users").select("user_id").eq("user_id", id).maybeSingle(),
+    // 利用者同士の会話の一覧（相手・どちら側か・最後の時刻・開けるか。中身は返さず、記録もしない。0023）
+    service.rpc("admin_list_user_threads", { p_admin: me.id, p_user: id }),
   ]);
-  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow })) {
+  for (const [name, r] of Object.entries({ asSeller, asBuyer, openOrders, listings, ledger, ledgerRecent, reports, sanctions, kycApps, orders, proxy, character, adminRow, threads })) {
     if (r.error) console.error(`[admin] user ${name}`, r.error.message);
   }
   const user = auth.data?.user ?? null;
+  const threadRows = list(threads.data).map((t) => ({
+    id: s(t.thread_id),
+    partnerId: s(t.partner_id),
+    side: s(t.side),
+    lastAt: s(t.last_message_at),
+    viewable: t.viewable === true,
+  }));
   const names = await nicknamesOf(service, [
     ...(sanctions.data ?? []).map((s) => s.admin_id),
     ...(reports.data ?? []).map((r) => r.reporter_id),
+    ...threadRows.map((t) => t.partnerId),
   ]);
   const self = me.id === id;
   const name = p.nickname || "（名前なし）";
@@ -414,6 +425,39 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
           )}
         </Card>
       </div>
+
+      <Card icon="💬" tone="yellow" title="利用者同士の会話">
+        <p className="adm-hint">
+          中身を見るには、会話ごとに理由を書いて開きます。開いたことと中身を見たことは操作ログに残ります。見られるのは、両方が同意したあとのメッセージだけです。
+        </p>
+        {threads.error ? (
+          <Empty>会話を読めませんでした。</Empty>
+        ) : threadRows.length === 0 ? (
+          <Empty>会話はありません。</Empty>
+        ) : (
+          <div>
+            {threadRows.map((t) => (
+              <div className="adm-row" key={t.id}>
+                <div>
+                  {/* 名前のすぐ後ろに「この人が出品者」と書くと相手の方が出品者に読めたので、相手と、この利用者の側を分けて書く */}
+                  <div className="adm-row-title">相手: {names.get(t.partnerId) ?? "退会したユーザー"}</div>
+                  <div className="adm-row-note">
+                    この利用者は{t.side === "seller" ? "出品者" : "購入者"} ・ 最後のやり取り: {t.lastAt ? dateTimeJst(t.lastAt) : "—"}
+                  </div>
+                </div>
+                {t.viewable ? (
+                  // 先読みしない（先読みで会話の画面が作られると、開いているあいだは見ていなくても「見た」と記録されるため）
+                  <Link href={`/admin/users/${p.id}/threads/${t.id}`} className="action-btn" prefetch={false}>
+                    開く
+                  </Link>
+                ) : (
+                  <span className="adm-muted">同意が無いため開けません</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <div className="dual-grid">
         <Card icon="🛍" title="最近の注文" right={<Link href={`/admin/orders?user=${p.id}`} className="adm-link">すべて見る →</Link>}>

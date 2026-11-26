@@ -25,6 +25,7 @@ const ADMIN_PAGES = [
   "/admin/logs",
   "/admin/search",
   "/admin/settings",
+  `/admin/users/${ZERO}/threads/${ZERO}`,
 ];
 
 test.describe("管理者でない人", () => {

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { avatarImage } from "@/lib/storage";
 import { dateJst, displayName } from "@/lib/format";
 import { KYC_STATUS } from "@/lib/labels";
+import { consentState } from "@/lib/message-consent";
 import MypageShell from "@/components/mypage/MypageShell";
 import { getMyProfile } from "@/components/mypage/data";
 import { BlockButton } from "@/components/ToggleButtons";
@@ -64,7 +65,7 @@ export default async function SettingsPage() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("message_consents").select("agreed_at").eq("user_id", viewer.id).maybeSingle(),
+    supabase.from("message_consents").select("agreed_at, version").eq("user_id", viewer.id).maybeSingle(),
   ]);
 
   if (addressRes.error) console.error("[settings] saved_addresses", addressRes.error.message);
@@ -152,7 +153,10 @@ export default async function SettingsPage() {
         <h2 className="settings-title">
           <span className="icon-pill">💬</span> メッセージ
         </h2>
-        <MessageConsentForm agreedOn={consentRes.data ? dateJst(consentRes.data.agreed_at) : null} />
+        <MessageConsentForm
+          agreedOn={consentRes.data ? dateJst(consentRes.data.agreed_at) : null}
+          outdated={consentState(consentRes.data) === "outdated"}
+        />
       </section>
 
       {/* ブロック */}

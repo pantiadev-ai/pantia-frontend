@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { actionViewer, ActionError, assertKyc, runAction, type ActionResult } from "@/lib/auth";
 import { dbCode, throwDb } from "@/lib/db-errors";
+import { MESSAGE_CONSENT_VERSION } from "@/lib/message-consent";
 import { RULES, takeRateLimit } from "@/lib/rate-limit";
 import { isUuid } from "@/lib/search";
 import { signedUrls } from "@/lib/storage-server";
@@ -103,7 +104,8 @@ export async function sendMessage(threadId: string, input: unknown): Promise<Act
 
     const supabase = await createClient();
     if (parsed.data.agree) {
-      const { error: agreeError } = await supabase.rpc("agree_message_terms");
+      // 見せた文の版を渡す。引数なし（0023 の前の画面）は DB が版1として残す
+      const { error: agreeError } = await supabase.rpc("agree_message_terms", { p_version: MESSAGE_CONSENT_VERSION });
       throwDb(agreeError);
     }
     const args: { p_thread: string; p_body: string; p_image_paths: string[]; p_listing?: string } = {

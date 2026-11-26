@@ -886,6 +886,24 @@ export async function moderate(type: string, id: string, action: string): Promis
   });
 }
 
+/* ───────────── 利用者同士の会話（理由を残して開く。開くと見るは操作ログに残る） ───────────── */
+
+/** 会話を開く（理由は必須。開いてから30分、その管理者だけが中身を見られる） */
+export async function openThreadForReview(threadId: string, reason: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const v = await begin();
+    const input = parse(z.object({ threadId: Id, reason: need(200, "確認の理由") }), { threadId, reason });
+    const { error } = await createServiceClient().rpc("admin_open_thread", {
+      p_admin: v.id,
+      p_thread: input.threadId,
+      p_reason: input.reason,
+    });
+    adminThrowDb(error);
+    refresh();
+    return { ok: true, message: "会話を開きました。30分のあいだ見られます。" };
+  });
+}
+
 /* ───────────── サイト設定 ───────────── */
 
 const yen = (min: number, max: number, label: string) =>

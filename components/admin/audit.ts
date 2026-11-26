@@ -188,6 +188,10 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("↩️", "yellow", "同意", `${by}メッセージの確認への同意を取り消しました`);
     case "thread.viewed":
       return v("👁", "yellow", "会話", `${by}通報・保留のメッセージの前後の会話を見ました`);
+    case "thread.opened":
+      return v("🔓", "red", "会話", `${by}利用者同士の会話を開きました（理由: ${str(d.reason)}）`);
+    case "thread.read":
+      return v("👁", "yellow", "会話", `${by}開いた会話の中身を見ました`);
     case "moderation.held":
       return v("🛡", "yellow", "モデレ", `${REPORT_TYPES[row.target_type ?? ""] ?? "投稿"}を自動で保留にしました`);
     case "moderation.approve":

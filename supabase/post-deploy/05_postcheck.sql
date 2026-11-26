@@ -22,7 +22,9 @@ with
     -- 0017 キャラ
     ('character_accounts'),
     -- 0018 メールの文面
-    ('mail_templates')
+    ('mail_templates'),
+    -- 0023 運営が会話を見る
+    ('thread_view_grants')
   ),
   new_functions(name) as (values
     ('admin_cancel_order'), ('admin_dashboard'), ('admin_kyc_allow_resubmit'), ('admin_kyc_decide'), ('admin_kyc_start_review'), ('admin_ledger_adjust'),
@@ -58,7 +60,9 @@ with
     -- 0019 出品日の変更
     ('admin_set_listing_published_at'),
     -- 0020 キャラの作成
-    ('admin_character_link_issued'), ('admin_create_character'), ('character_mark_password_set')
+    ('admin_character_link_issued'), ('admin_create_character'), ('character_mark_password_set'),
+    -- 0023 運営が会話を見る
+    ('admin_list_user_threads'), ('admin_open_thread'), ('admin_view_any_thread')
   ),
   new_buckets(id) as (values
     ('avatars'), ('chat-images'), ('kyc-documents'), ('listing-images'), ('post-images')
@@ -88,7 +92,7 @@ with
   missing_buckets as (select id from new_buckets b where not exists (select 1 from storage.buckets s where s.id = b.id))
 select 1 as no, '新しい表が全部ある' as item,
   case when exists (select 1 from missing_tables) then 'NG' else 'OK' end as result,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '34 表') as detail
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_tables), '38 表') as detail
 union all
 select 2, '新しい表は全部 RLS が入っている',
   case when exists (select 1 from no_rls) then 'NG' else 'OK' end,
@@ -96,7 +100,7 @@ select 2, '新しい表は全部 RLS が入っている',
 union all
 select 3, '関数が全部ある',
   case when exists (select 1 from missing_functions) then 'NG' else 'OK' end,
-  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '109 個')
+  coalesce((select '無い: ' || string_agg(name, ', ' order by name) from missing_functions), '126 個')
 union all
 select 4, 'SECURITY DEFINER の関数は search_path が固定',
   case when exists (select 1 from open_definer) then 'NG' else 'OK' end,
@@ -233,5 +237,30 @@ select 26, 'メールの文面（mail_templates）は関数からしか書けず
          or not has_table_privilege('service_role', 'public.mail_templates', 'SELECT')
          or has_table_privilege('anon', 'public.mail_templates', 'SELECT')
          or has_table_privilege('authenticated', 'public.mail_templates', 'SELECT') then 'NG'
+       else 'OK' end, ''
+union all
+select 27, '会話を開く券（thread_view_grants）は関数からしか読み書きできない（0023）',
+  case when to_regclass('public.thread_view_grants') is null then 'NG'
+       when has_table_privilege('service_role', 'public.thread_view_grants', 'SELECT')
+         or has_table_privilege('service_role', 'public.thread_view_grants', 'INSERT')
+         or has_table_privilege('service_role', 'public.thread_view_grants', 'UPDATE')
+         or has_table_privilege('service_role', 'public.thread_view_grants', 'DELETE')
+         or has_table_privilege('authenticated', 'public.thread_view_grants', 'SELECT')
+         or has_table_privilege('authenticated', 'public.thread_view_grants', 'INSERT')
+         or has_table_privilege('anon', 'public.thread_view_grants', 'SELECT')
+         or has_table_privilege('anon', 'public.thread_view_grants', 'INSERT') then 'NG'
+       else 'OK' end, ''
+union all
+select 28, 'メッセージの同意の版の既定が 2（0023。版1の人は次に送る前に同意し直す）',
+  case when (select column_default from information_schema.columns
+             where table_schema = 'public' and table_name = 'message_consents' and column_name = 'version') = '2'
+       then 'OK' else 'NG' end,
+  '版1のまま: ' || (select count(*) from public.message_consents where version < 2) || ' 人'
+union all
+select 29, 'メッセージの同意の関数が、見せた文の版を受け取る（0023。引数なしの古い形が残っていない。匿名は呼べない）',
+  case when to_regprocedure('public.agree_message_terms(integer)') is null then 'NG'
+       when to_regprocedure('public.agree_message_terms()') is not null then 'NG'
+       when has_function_privilege('anon', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
+       when not has_function_privilege('authenticated', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
        else 'OK' end, ''
 order by no;

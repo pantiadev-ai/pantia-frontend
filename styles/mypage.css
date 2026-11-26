@@ -834,18 +834,21 @@
 
 .pg-mypage .setting-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px dashed rgba(0,0,0,0.06);
-  gap: 16px;
+  gap: 8px 16px;
 }
 
 .pg-mypage .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
-.pg-mypage .setting-info { flex: 1; }
+/* 説明の欄は 160px までしか縮めない。右の文（長いメールアドレスや同意の状態）やボタンが入らなければ次の行へ送る。
+   前は右の文が縮まず、スマホで説明の欄が1文字の幅に潰れ、ボタンが画面の外に出た（2026-11-27） */
+.pg-mypage .setting-info { flex: 1 1 160px; min-width: 0; }
 .pg-mypage .setting-name { font-size: 13px; font-weight: 700; color: var(--text-main); }
 .pg-mypage .setting-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
-.pg-mypage .setting-val { font-size: 12px; color: var(--text-sub); font-weight: 600; flex-shrink: 0; }
+.pg-mypage .setting-val { font-size: 12px; color: var(--text-sub); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 
 .pg-mypage .setting-btn {
   padding: 6px 14px;

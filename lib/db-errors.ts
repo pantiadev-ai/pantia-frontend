@@ -43,6 +43,8 @@ const MESSAGES: Record<string, string> = {
   registration_closed: "ただいま新規登録の受付を停止しています。",
   message_consent_required: "送る前に、下の確認に同意してください。",
   banned_word: "使えない言葉が入っています。（送っていません）",
+  consent_missing: "どちらかがメッセージの確認に同意していないため、この会話は開けません。",
+  view_grant_required: "この会話は開いていないか、開いてから30分を過ぎました。理由を書いて開き直してください。",
 };
 
 export type DbError = { message?: string; code?: string; details?: string | null; hint?: string | null } | null | undefined;

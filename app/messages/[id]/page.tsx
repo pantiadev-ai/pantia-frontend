@@ -18,6 +18,7 @@ import { requireViewer } from "@/lib/auth";
 import { dateJst, num, orderNo, presenceView, ratingAvg, yen } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
 import { ORDER_STATUS } from "@/lib/labels";
+import { consentState } from "@/lib/message-consent";
 import { isUuid } from "@/lib/search";
 import { avatarImage, listingImage } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
@@ -105,7 +106,8 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
           .limit(50)
       : null,
     supabase.rpc("my_threads"),
-    supabase.from("message_consents").select("user_id").eq("user_id", viewer.id).maybeSingle(),
+    // 版1だけの人は、送る前に同意し直す（0023）
+    supabase.from("message_consents").select("version").eq("user_id", viewer.id).maybeSingle(),
   ]);
 
   // 退会・停止した相手は RLS で読めない
@@ -228,7 +230,7 @@ export default async function MessageThreadPage({ params }: PageProps<"/messages
               initialOtherReadAt={otherReadAt(t, viewer.id)}
               myListings={myListings}
               closed={closed}
-              consented={!!consentRes.data}
+              consented={consentState(consentRes.data) === "current"}
             />
           </main>
 

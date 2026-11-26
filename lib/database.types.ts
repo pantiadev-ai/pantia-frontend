@@ -1855,6 +1855,38 @@ export type Database = {
         }
         Relationships: []
       }
+      thread_view_grants: {
+        Row: {
+          admin_id: string
+          id: string
+          opened_at: string
+          reason: string
+          thread_id: string
+        }
+        Insert: {
+          admin_id: string
+          id?: string
+          opened_at?: string
+          reason: string
+          thread_id: string
+        }
+        Update: {
+          admin_id?: string
+          id?: string
+          opened_at?: string
+          reason?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_view_grants_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       threads: {
         Row: {
           buyer_id: string
@@ -2009,6 +2041,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_list_user_threads: {
+        Args: { p_admin: string; p_user: string }
+        Returns: Json
+      }
       admin_mark_character: {
         Args: { p_admin: string; p_note: string; p_user: string }
         Returns: undefined
@@ -2033,6 +2069,10 @@ export type Database = {
       admin_new_orders: {
         Args: { p_admin: string; p_limit: number }
         Returns: Json
+      }
+      admin_open_thread: {
+        Args: { p_admin: string; p_reason: string; p_thread: string }
+        Returns: string
       }
       admin_payout_pay: {
         Args: { p_admin: string; p_payout: string }
@@ -2132,6 +2172,10 @@ export type Database = {
         Args: { p_admin: string; p_patch: Json }
         Returns: undefined
       }
+      admin_view_any_thread: {
+        Args: { p_admin: string; p_thread: string }
+        Returns: Json
+      }
       admin_view_thread: {
         Args: { p_admin: string; p_message: string }
         Returns: Json
@@ -2144,7 +2188,10 @@ export type Database = {
         Args: { p_admin: string; p_reason: string; p_user: string }
         Returns: Json
       }
-      agree_message_terms: { Args: never; Returns: undefined }
+      agree_message_terms: {
+        Args: { p_version?: number }
+        Returns: undefined
+      }
       assert_admin: { Args: { p_admin: string }; Returns: undefined }
       attach_payment_ref: {
         Args: { p_group: string; p_ref: string }

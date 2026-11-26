@@ -18,11 +18,18 @@ export async function putImage(bucket: Bucket, folder: string, data: Buffer): Pr
   return path;
 }
 
-/** 非公開の箱の期限つき URL。チャットは60分、本人確認の書類は5分（管理画面で見る間だけ） */
-export async function signedUrls(bucket: "chat-images" | "kyc-documents", paths: string[]): Promise<Record<string, string>> {
+/** 非公開の箱の期限つき URL。チャットは60分、本人確認の書類は5分（管理画面で見る間だけ）。
+    maxSeconds を渡すと、それより長くしない（運営が会話を見る券の残り。0023） */
+export async function signedUrls(
+  bucket: "chat-images" | "kyc-documents",
+  paths: string[],
+  maxSeconds?: number,
+): Promise<Record<string, string>> {
   const ok = paths.filter((p) => PATH_RE.test(p));
   if (ok.length === 0) return {};
-  const expires = bucket === "kyc-documents" ? 5 * 60 : 60 * 60;
+  const base = bucket === "kyc-documents" ? 5 * 60 : 60 * 60;
+  if (maxSeconds !== undefined && !(maxSeconds >= 1)) return {};
+  const expires = maxSeconds === undefined ? base : Math.min(base, Math.floor(maxSeconds));
   const { data, error } = await createServiceClient().storage.from(bucket).createSignedUrls(ok, expires);
   if (error || !data) return {};
   const out: Record<string, string> = {};
