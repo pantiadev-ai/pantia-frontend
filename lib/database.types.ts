@@ -1786,6 +1786,7 @@ export type Database = {
           notice: string
           payout_fee: number
           registration_open: boolean
+          show_presence: boolean
           transfer_bank: string
           transfer_branch: string
           transfer_enabled: boolean
@@ -1813,6 +1814,7 @@ export type Database = {
           notice?: string
           payout_fee?: number
           registration_open?: boolean
+          show_presence?: boolean
           transfer_bank?: string
           transfer_branch?: string
           transfer_enabled?: boolean
@@ -1840,6 +1842,7 @@ export type Database = {
           notice?: string
           payout_fee?: number
           registration_open?: boolean
+          show_presence?: boolean
           transfer_bank?: string
           transfer_branch?: string
           transfer_enabled?: boolean

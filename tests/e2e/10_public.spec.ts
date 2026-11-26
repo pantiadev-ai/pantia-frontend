@@ -17,6 +17,15 @@ async function searchItems(page: import("@playwright/test").Page, q: string) {
 
 const itemNames = (page: import("@playwright/test").Page) => page.locator("a.item-name");
 
+/** 売り切れのカードの札と値段が、買える商品のカード（即日の札）と色で見分けがつく（改修リスト 行6） */
+async function expectSoldStandsOut(sold: import("@playwright/test").Locator, available: import("@playwright/test").Locator) {
+  const style = (l: import("@playwright/test").Locator, prop: "backgroundColor" | "color") =>
+    l.evaluate((el, p) => getComputedStyle(el)[p], prop);
+  await expect(available.locator(".item-badge")).toHaveText("即日");
+  expect(await style(sold.locator(".item-badge"), "backgroundColor"), "SOLD の札の地の色").not.toBe(await style(available.locator(".item-badge"), "backgroundColor"));
+  expect(await style(sold.locator(".item-price"), "color"), "売り切れの値段の色").not.toBe(await style(available.locator(".item-price"), "color"));
+}
+
 test.describe("トップページ", () => {
   test("新しく出品・つぶやきをすると、トップの新着と、みんなのつぶやきに出る", async ({ page }) => {
     const seller = await publicSeller("pub-top");
@@ -35,6 +44,25 @@ test.describe("トップページ", () => {
     } finally {
       await setListingStatus([id], "deleted");
       await hidePosts([postId]);
+    }
+  });
+
+  test("トップの「公開中の商品」「即日発送の商品」の数と新着には、売り切れを入れない（改修リスト 行6）", async ({ page }) => {
+    const seller = await publicSeller("pub-topsold");
+    const t = tok();
+    const statNum = (label: string) => page.locator(".stat-item", { hasText: label }).locator(".stat-num");
+    await page.goto("/");
+    await expect(statNum("公開中の商品")).not.toHaveText("-");
+    const before = { all: await statNum("公開中の商品").innerText(), sameDay: await statNum("即日発送の商品").innerText() };
+    // 一番新しい売り切れ（当日発送の既定は true）。新着のカードには SOLD の札が無いので、新着にも出さない
+    const sold = await seedListing(seller, { title: `E2Eトップ売切${t}`, status: "sold", set: "published_at = now() + interval '3 minutes'" });
+    try {
+      await page.goto("/");
+      await expect(statNum("公開中の商品")).toHaveText(before.all);
+      await expect(statNum("即日発送の商品")).toHaveText(before.sameDay);
+      await expect(page.locator("a.item-title", { hasText: `E2Eトップ売切${t}` })).toHaveCount(0);
+    } finally {
+      await setListingStatus([sold], "deleted");
     }
   });
 });
@@ -190,17 +218,24 @@ test.describe("商品の検索（/items）", () => {
 test.describe("出してはいけない商品", () => {
   test.use({ consoleAllow: [/status of 404/] });
 
-  test("下書き・非公開・運営の非表示は一覧に出ず詳細は404、売り切れは一覧に出ず詳細は売り切れと出る", async ({ page }) => {
+  test("下書き・非公開・運営の非表示は一覧に出ず詳細は404、売り切れは一覧の後ろに SOLD の札つきで出て詳細は売り切れと出る", async ({ page }) => {
     const seller = await publicSeller("pub-hide");
     const t = tok();
     const ids: Record<string, string> = {};
     for (const status of ["published", "draft", "private", "hidden", "sold"] as const) {
-      ids[status] = await seedListing(seller, { title: `E2E状態${t} ${status}`, status });
+      // 売り切れの方を新しくしておく（新着順でも後ろに回るかを見る）
+      const set = status === "sold" ? "published_at = now() + interval '1 minute'" : undefined;
+      ids[status] = await seedListing(seller, { title: `E2E状態${t} ${status}`, status, set });
     }
     try {
       await page.goto(`/items?q=${t}`);
-      await expect(page.locator(".result-count")).toContainText("1 件の商品");
-      await expect(itemNames(page)).toHaveText([`E2E状態${t} published`]);
+      // 売り切れも一覧に残し、買える商品の後ろに並べる（改修リスト 行6）
+      await expect(page.locator(".result-count")).toContainText("2 件の商品");
+      await expect(itemNames(page)).toHaveText([`E2E状態${t} published`, `E2E状態${t} sold`]);
+      const soldCard = page.locator(".cat-card", { has: page.locator("a.item-name", { hasText: `E2E状態${t} sold` }) });
+      await expect(soldCard).toHaveClass(/cat-soldout/);
+      await expect(soldCard.locator(".item-badge")).toHaveText("SOLD");
+      await expectSoldStandsOut(soldCard, page.locator(".cat-card", { has: page.locator("a.item-name", { hasText: `E2E状態${t} published` }) }));
 
       for (const status of ["draft", "private", "hidden"]) {
         const res = await page.goto(`/items/${ids[status]}`);
@@ -305,13 +340,45 @@ test.describe("出品者・ランキング・つぶやき", () => {
     }
   });
 
+  test("出品者のページでは、売り切れも SOLD の札つきで後ろに出て、「出品中」の数には売り切れを数えない", async ({ page }) => {
+    const seller = await publicSeller("pub-soldtab");
+    const t = tok();
+    const pub = await seedListing(seller, { title: `E2E出品中${t}` });
+    const sold = await seedListing(seller, { title: `E2E売切済${t}`, status: "sold", set: "published_at = now() + interval '1 minute'" });
+    try {
+      await page.goto(`/sellers/${seller.id}`);
+      await page.getByRole("tab", { name: /^出品中/ }).click();
+      await expect(page.getByRole("tab", { name: /^出品中/ })).toHaveText("出品中 (1)");
+      const panel = page.getByRole("tabpanel");
+      await expect(panel.locator("a.item-name")).toHaveText([`E2E出品中${t}`, `E2E売切済${t}`]);
+      await expect(panel.locator(".cat-card", { hasText: `E2E売切済${t}` }).locator(".item-badge")).toHaveText("SOLD");
+      await expectSoldStandsOut(panel.locator(".cat-card", { hasText: `E2E売切済${t}` }), panel.locator(".cat-card", { hasText: `E2E出品中${t}` }));
+      // 商品の詳細の「他の商品」は、買える物だけ（売り切れは出さない）
+      await page.goto(`/items/${pub}`);
+      await expect(page.locator(".rel-card")).toHaveCount(0);
+      await expect(page.getByText("他に公開中の商品はありません")).toBeVisible();
+    } finally {
+      await setListingStatus([pub, sold], "deleted");
+    }
+  });
+
   // 一度もログインしていない出品者（運営の代理登録など）は最終ログインの時刻が無い（2026-11-09 に写真で見つけた）
   test("一度もログインしていない出品者のページは、名前の下に空の札が出ず、最終ログインは「—」", async ({ page }) => {
     const seller = await publicSeller("pub-nev");
     await page.goto(`/sellers/${seller.id}`);
     const tags = page.locator(".profile-tags .ptag");
     for (const text of await tags.allInnerTexts()) expect(text.trim(), "空の札").not.toBe("");
-    await expect(page.locator(".info-row", { hasText: "最終ログイン" }).locator(".info-val")).toHaveText("—");
+    // ログイン中の表示を隠す設定（既定）では、最終ログインの行ごと出さない（改修リスト 行9）
+    await expect(page.locator(".info-row", { hasText: "最終ログイン" })).toHaveCount(0);
+    // 出す設定のときは「—」。この試験の中だけ出し、終わったら戻す
+    await sql(`update public.site_settings set show_presence = true where id`);
+    try {
+      await page.reload();
+      for (const text of await tags.allInnerTexts()) expect(text.trim(), "空の札").not.toBe("");
+      await expect(page.locator(".info-row", { hasText: "最終ログイン" }).locator(".info-val")).toHaveText("—");
+    } finally {
+      await sql(`update public.site_settings set show_presence = false where id`);
+    }
   });
 
   test("% や _ を入れて出品者を探しても、全員が出たりエラーになったりしない", async ({ page }) => {

@@ -69,6 +69,10 @@
 }
 .cat-soldout .item-img,
 .cat-soldout .cat-noimg { filter: grayscale(0.7); opacity: 0.7; }
+/* 売り切れは札を濃い灰色・値段を灰色にして、買える商品（黄色の札・ピンクの値段）と見分けやすくする（改修リスト 行6）。
+   ページ別の .pg-items-list .item-badge などに勝つよう .cat-card を重ねる */
+.cat-card.cat-soldout .item-badge { background: #5f5b66; color: #fff; }
+.cat-card.cat-soldout .item-price { color: #6b6772; }
 .cat-fo {
   position: absolute;
   bottom: 9px;

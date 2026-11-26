@@ -10,7 +10,8 @@ import { getViewer } from "@/lib/auth";
 import { listSellers, myBlockedIds, type SellerSort } from "@/lib/catalogue";
 import { avatarImage } from "@/lib/storage";
 import { SUPPORTED_OPTIONS, labelOf } from "@/lib/labels";
-import { displayName, excerpt, isOnline, num, ratingAvg } from "@/lib/format";
+import { displayName, excerpt, num, presenceView, ratingAvg } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
 import AutoSubmitSelect from "@/components/catalogue/AutoSubmitSelect";
 import Pager from "@/components/catalogue/Pager";
 import { initialOf, isRecent, metaLine } from "@/components/catalogue/card-helpers";
@@ -50,7 +51,9 @@ export default async function SellersPage({ searchParams }: PageProps<"/sellers"
   const pageNum = Number.parseInt(first(sp.page), 10);
   const page = Number.isFinite(pageNum) && pageNum >= 1 ? Math.min(pageNum, MAX_PAGE) : 1;
 
-  const viewer = await getViewer();
+  const [viewer, settings] = await Promise.all([getViewer(), getSettings()]);
+  // ログイン中の表示は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   const [result, blocked] = await Promise.all([
     listSellers({ q: q || undefined, sort, limit: PER_PAGE, offset: (page - 1) * PER_PAGE }),
     myBlockedIds(viewer?.id),
@@ -120,7 +123,7 @@ export default async function SellersPage({ searchParams }: PageProps<"/sellers"
                 <div className="cat-seller-card" key={s.id}>
                   <div className="cat-avatar">
                     {avatar ? <img src={avatar} alt="" loading="lazy" /> : initialOf(s.publicName)}
-                    {isOnline(s.lastSeenAt) ? <span className="cat-online-dot" title="オンライン" /> : null}
+                    {pv.isOnline(s.lastSeenAt) ? <span className="cat-online-dot" title="オンライン" /> : null}
                   </div>
                   <Link href={`/sellers/${s.id}`} className="cat-seller-name cat-stretch">
                     {name}

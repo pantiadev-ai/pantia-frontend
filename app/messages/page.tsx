@@ -6,6 +6,7 @@ import ChatHeaderBar from "@/components/chat/ChatHeaderBar";
 import ThreadList from "@/components/chat/ThreadList";
 import { listEmpty, toThreadRow } from "@/components/chat/view";
 import { requireViewer } from "@/lib/auth";
+import { getSettings } from "@/lib/settings";
 import { isUuid } from "@/lib/search";
 import { createClient } from "@/lib/supabase/server";
 import "@/styles/chat.css";
@@ -22,7 +23,7 @@ export default async function MessagesPage({ searchParams }: PageProps<"/message
   // ログインの前に送る（ログインの後に、その会話へ戻れるように）
   if (isUuid(t)) redirect(`/messages/${t.toLowerCase()}`);
 
-  const viewer = await requireViewer("/messages");
+  const [viewer, settings] = await Promise.all([requireViewer("/messages"), getSettings()]);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("my_threads");
   if (error) throw new Error(`会話の一覧を読めませんでした: ${error.code ?? ""}`);
@@ -33,7 +34,7 @@ export default async function MessagesPage({ searchParams }: PageProps<"/message
     <div className="pg-chat">
       <ChatHeaderBar viewer={viewer} />
       <div className="chat-layout no-side is-list">
-        <ThreadList initial={rows} activeId={null} emptyText={empty.text} emptyLink={empty.link} />
+        <ThreadList initial={rows} activeId={null} emptyText={empty.text} emptyLink={empty.link} showPresence={settings.showPresence} />
         <main className="chat-main chat-placeholder">
           <div className="chat-placeholder-icon" aria-hidden="true">
             💬

@@ -15,6 +15,8 @@ export type PublicSettings = {
   registrationOpen: boolean;
   maintenance: boolean;
   notice: string;
+  /** ログイン中の表示（緑の点・「オンライン」「○○前にログイン」・オンラインの絞り込み）を公開の画面に出すか（改修リスト 行9） */
+  showPresence: boolean;
 };
 
 const FALLBACK: PublicSettings = {
@@ -28,6 +30,8 @@ const FALLBACK: PublicSettings = {
   registrationOpen: true,
   maintenance: false,
   notice: "",
+  // 読めないときは隠す側に倒す（DB の既定と同じ）
+  showPresence: false,
 };
 
 export const getSettings = cache(async (): Promise<PublicSettings> => {
@@ -35,7 +39,7 @@ export const getSettings = cache(async (): Promise<PublicSettings> => {
   const { data, error } = await supabase
     .from("site_settings")
     .select(
-      "fee_rate, anonymous_fee, min_payout, payout_fee, auto_complete_days, video_fee, extend_fee_per_day, registration_open, maintenance, notice",
+      "fee_rate, anonymous_fee, min_payout, payout_fee, auto_complete_days, video_fee, extend_fee_per_day, registration_open, maintenance, notice, show_presence",
     )
     .maybeSingle();
   if (error || !data) {
@@ -54,5 +58,6 @@ export const getSettings = cache(async (): Promise<PublicSettings> => {
     registrationOpen: data.registration_open,
     maintenance: data.maintenance,
     notice: data.notice,
+    showPresence: data.show_presence === true,
   };
 });

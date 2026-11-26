@@ -20,10 +20,11 @@ import {
 } from "@/lib/catalogue";
 import { avatarImage } from "@/lib/storage";
 import { CATEGORIES } from "@/lib/labels";
-import { displayName, excerpt, isOnline, num, relTime, san, yen } from "@/lib/format";
+import { displayName, excerpt, num, presenceView, relTime, san, yen } from "@/lib/format";
 import HomeItemCard from "@/components/catalogue/HomeItemCard";
 import { payMethods } from "@/components/static/facts";
 import { payNamesText } from "@/lib/pay-text";
+import { getSettings } from "@/lib/settings";
 import { initialOf, isRecent, metaLine } from "@/components/catalogue/card-helpers";
 
 const NEW_ITEMS = 8;
@@ -146,7 +147,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const cat = CATEGORIES.some((c) => c.value === catRaw) ? catRaw : null;
 
   const viewer = await getViewer();
-  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked, methods] = await Promise.all([
+  const [sellerCount, base, catRes, posts, active, rankS, rankL, blocked, methods, settings] = await Promise.all([
     countPublicSellers(),
     searchListings({ sort: "new", limit: NEW_ITEMS }),
     cat ? searchListings({ categories: [cat], sort: "new", limit: NEW_ITEMS }) : Promise.resolve(null),
@@ -156,13 +157,17 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     rankingListings(RANKS + 2),
     myBlockedIds(viewer?.id),
     payMethods(),
+    getSettings(),
   ]);
+  // ログイン中の表示（緑の点）は、運営の設定で隠しているあいだ出さない（改修リスト 行9）
+  const pv = presenceView(settings.showPresence);
   // 「安全な決済処理」に出す支払い方法（設定で消した方法は出さない）
   const payText = payNamesText(methods.map((m) => m.name));
 
   // 自分がブロックした人は、どの区画にも出さない（仮。RLS で除かれない物もあるので画面でも除く）
   const newRes = catRes ?? base;
-  const newItems = newRes.items.filter((i) => !blocked.has(i.sellerId));
+  // 新着のカードには SOLD の札が無いので、売り切れは出さない（並びの後ろにあるので、削れるのは末尾だけ。改修リスト 行6）
+  const newItems = newRes.items.filter((i) => !blocked.has(i.sellerId) && !i.soldOut);
   const shownPosts = posts.filter((p) => !blocked.has(p.authorId));
   const girls = active.sellers.filter((s) => !blocked.has(s.id)).slice(0, GIRLS);
   const topSellers = rankS.rows.filter((r) => !blocked.has(r.id)).slice(0, RANKS);
@@ -176,7 +181,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     ),
   ]);
   const tweets = shownPosts.filter((p) => authors.has(p.authorId));
-  const sameDayCount = base.facets.options.same_day ?? 0;
+  // 数字の帯は買える物だけ数える（一覧には売り切れも残すので、total は売り切れを含む）
+  const availableCount = base.facets.available.all ?? 0;
+  const sameDayCount = base.facets.available.same_day ?? 0;
   const moreItemsHref = cat ? `/items?categories=${cat}` : "/items";
 
   return (
@@ -193,7 +200,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <div className="stat-label">登録出品者</div>
           </div>
           <div className="stat-item">
-            <div className="stat-num">{base.ok ? num(base.total) : "-"}</div>
+            <div className="stat-num">{base.ok ? num(availableCount) : "-"}</div>
             <div className="stat-label">公開中の商品</div>
           </div>
           <div className="stat-item">
@@ -278,7 +285,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
                   <Link href={`/sellers/${s.id}`} className="girl-card" key={s.id}>
                     <div className="girl-avatar-wrap">
                       <Avatar path={s.avatarPath} name={s.publicName} />
-                      <span className={`status-badge${isOnline(s.lastSeenAt) ? "" : " offline"}`} />
+                      {settings.showPresence ? <span className={`status-badge${pv.isOnline(s.lastSeenAt) ? "" : " offline"}`} /> : null}
                     </div>
                     <div className="girl-name">{displayName(s.publicName)}</div>
                     <div className="girl-tag">{meta || NBSP}</div>

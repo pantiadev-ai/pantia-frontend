@@ -4,8 +4,9 @@
    ・管理画面の上の警告もここで決める（値がおかしいときと、本番で mock のときを分ける）。
    ・MAIL_MODE の判定は lib/env.ts の mode() と同じにする（食い違うと、ここで通って送るときに止まる。tests/unit/mail-config.test.ts が見張る）。
    ・サーバーの部品を読まない形にしてある（tests/unit から直に試すため）。 */
+import { z } from "zod";
 
-/** process.env をそのまま渡せる形（読むのは MAIL_MODE・RESEND_API_KEY・MAIL_FROM だけ） */
+/** process.env をそのまま渡せる形（読むのは MAIL_MODE・RESEND_API_KEY・MAIL_FROM・MAIL_BCC だけ） */
 export type MailEnv = Readonly<Record<string, string | undefined>>;
 export type MailConfig = { state: "mock" } | { state: "live" } | { state: "broken"; reason: string };
 
@@ -20,6 +21,23 @@ export function mailConfig(env: MailEnv): MailConfig {
   return { state: "live" };
 }
 
+/** アドレス1件の形か。サイトの他のメール欄（問い合わせなど）と同じ z.email() で見る。
+    表示名・複数・空白・改行に加え、点の続き・点で始まる/終わる・ドメインの崩れも断る
+    （Resend に断られると、同じ1通の本人宛ても送れないため。codex の指摘） */
+const SingleAddress = z.email().max(254);
+function isSingleAddress(v: string): boolean {
+  return SingleAddress.safeParse(v).success;
+}
+
+/** お知らせのメール（kind が notice.〜）にだけ、運営の控えの BCC を付ける（改修リスト 行16）。
+    MAIL_BCC が空・アドレス1件の形でないときは付けない（お知らせは本人に送る。形が違うときは管理画面に警告）。
+    会員登録の確認・パスワード再設定は Supabase Auth が送るので、ここでは付けられない。 */
+export function noticeBcc(kind: string, bcc: string | undefined): string | undefined {
+  if (!kind.startsWith("notice.")) return undefined;
+  const v = (bcc ?? "").trim();
+  return v && isSingleAddress(v) ? v : undefined;
+}
+
 /** 管理画面の上に出す警告。無ければ null */
 export function mailWarning(env: MailEnv, isProduction: boolean): string | null {
   const c = mailConfig(env);
@@ -28,6 +46,10 @@ export function mailWarning(env: MailEnv, isProduction: boolean): string | null 
   }
   if (c.state === "mock" && isProduction) {
     return "本番なのにメールが mock（送らずに控えだけ）になっています。環境変数 MAIL_MODE を live にしてください。";
+  }
+  const bcc = (env.MAIL_BCC ?? "").trim();
+  if (bcc && !isSingleAddress(bcc)) {
+    return "MAIL_BCC がメールアドレス1件の形ではないので、お知らせのメールに運営の控え（BCC）を付けずに送っています。";
   }
   return null;
 }

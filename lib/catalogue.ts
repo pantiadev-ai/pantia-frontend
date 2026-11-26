@@ -81,7 +81,8 @@ export type SearchResult = {
   ok: boolean;
   total: number;
   items: ListingCard[];
-  facets: { categories: Record<string, number>; options: Record<string, number> };
+  /** categories・options は売り切れも数える（一覧に並ぶ物と合わせる）。available は買える物だけの数（all・same_day。改修リスト 行6） */
+  facets: { categories: Record<string, number>; options: Record<string, number>; available: Record<string, number> };
 };
 
 const FLAG_KEYS = ["same_day", "photo", "anonymous", "letter", "negotiable", "online", "rating4", "sales10"] as const;
@@ -111,7 +112,7 @@ export async function searchListings(input: SearchInput): Promise<SearchResult> 
   const { data, error } = await supabase.rpc("search_listings", { p });
   if (error) {
     console.error("[catalogue] search_listings", error.message);
-    return { ok: false, total: 0, items: [], facets: { categories: {}, options: {} } };
+    return { ok: false, total: 0, items: [], facets: { categories: {}, options: {}, available: {} } };
   }
   const o = obj(data);
   const facets = obj(o.facets);
@@ -119,7 +120,7 @@ export async function searchListings(input: SearchInput): Promise<SearchResult> 
     ok: true,
     total: int(o.total),
     items: cards(o.items),
-    facets: { categories: numMap(facets.categories), options: numMap(facets.options) },
+    facets: { categories: numMap(facets.categories), options: numMap(facets.options), available: numMap(facets.available) },
   };
 }
 

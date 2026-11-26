@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CATEGORIES, SORTS, WORN_FILTERS } from "@/lib/labels";
 import { num } from "@/lib/format";
-import { ITEM_FLAGS, PRICE_LIMIT, itemsHref, parseItemsQuery, type ItemsState } from "./items-query";
+import { PRICE_LIMIT, itemsHref, parseItemsQuery, visibleItemFlags, type ItemsState } from "./items-query";
 import AutoSubmitSelect from "./AutoSubmitSelect";
 
 type Props = {
@@ -17,6 +17,8 @@ type Props = {
   optionCounts: Record<string, number>;
   /** 右の欄の検索・並べ替えより下（絞り込み中の札・カテゴリのタブ・商品・ページ送り） */
   children: ReactNode;
+  /** 「オンライン中」の絞り込みを出すか（運営の設定。改修リスト 行9） */
+  showPresence: boolean;
 };
 
 const SearchIcon = () => (
@@ -26,7 +28,8 @@ const SearchIcon = () => (
   </svg>
 );
 
-export default function ItemsFilterForm({ state, optionCounts, children }: Props) {
+export default function ItemsFilterForm({ state, optionCounts, children, showPresence }: Props) {
+  const flags = visibleItemFlags(showPresence);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const active =
@@ -128,7 +131,7 @@ export default function ItemsFilterForm({ state, optionCounts, children }: Props
           {(["option", "seller"] as const).map((group) => (
             <div className="filter-group" key={group}>
               <div className="filter-label">{group === "option" ? "オプション" : "出品者"}</div>
-              {ITEM_FLAGS.filter((f) => f.group === group).map((f) => {
+              {flags.filter((f) => f.group === group).map((f) => {
                 const on = state.flags.includes(f.key);
                 return (
                   <label key={f.key} className="fcheck-row">

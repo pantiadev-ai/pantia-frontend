@@ -1,7 +1,7 @@
 /* メールの設定の確かめ（lib/mail-config.ts）。設定がおかしいあいだは、お知らせをメール用に拾わない（lib/mail-dispatch.ts） */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mailConfig, mailWarning } from "../../lib/mail-config.ts";
+import { mailConfig, mailWarning, noticeBcc } from "../../lib/mail-config.ts";
 import { serverEnv } from "../../lib/env.ts";
 
 const LIVE = { MAIL_MODE: "live", RESEND_API_KEY: "test-key", MAIL_FROM: "info@example.test" };
@@ -82,4 +82,45 @@ test("本番でない mock・正しい live では警告を出さない", () => 
   assert.equal(mailWarning({ MAIL_MODE: "mock" }, false), null);
   assert.equal(mailWarning(LIVE, true), null);
   assert.equal(mailWarning(LIVE, false), null);
+});
+
+/* 改修リスト 行16: お知らせのメール（notice.*）に、運営の控えを BCC で付ける（宛先は MAIL_BCC） */
+test("BCC: お知らせのメールで MAIL_BCC があれば、その1件を付ける（前後の空白は除く）", () => {
+  assert.equal(noticeBcc("notice.order_paid", "info@pan-tia.com"), "info@pan-tia.com");
+  assert.equal(noticeBcc("notice.kyc_approved", "  info@pan-tia.com "), "info@pan-tia.com");
+});
+
+test("BCC: お問い合わせなど、お知らせ以外のメールには付けない", () => {
+  assert.equal(noticeBcc("contact", "info@pan-tia.com"), undefined);
+  assert.equal(noticeBcc("notice", "info@pan-tia.com"), undefined);
+});
+
+test("BCC: MAIL_BCC が空・未設定なら付けない", () => {
+  assert.equal(noticeBcc("notice.order_paid", undefined), undefined);
+  assert.equal(noticeBcc("notice.order_paid", ""), undefined);
+  assert.equal(noticeBcc("notice.order_paid", "   "), undefined);
+});
+
+test("BCC: アドレス1件の形でなければ付けない（複数・表示名つき・@ なし・改行）", () => {
+  for (const v of ["a@example.test,b@example.test", "a@example.test b@example.test", "運営 <a@example.test>", "info", "a@example.test\r\nBcc: x@example.test"]) {
+    assert.equal(noticeBcc("notice.order_paid", v), undefined, v);
+  }
+});
+
+test("BCC: 点が続く・点で始まる/終わる・ドメインの形が崩れたアドレスは付けない（Resend に断られると本人宛ても落ちるため）", () => {
+  for (const v of ["info@example..com", ".info@pan-tia.com", "info.@pan-tia.com", "in..fo@pan-tia.com", "info@pan-tia.com.", "info@.pan-tia.com", "info@-pan-tia.com", "info@pan-tia.c"]) {
+    assert.equal(noticeBcc("notice.order_paid", v), undefined, v);
+  }
+  assert.match(mailWarning({ ...LIVE, MAIL_BCC: "info@example..com" }, true) ?? "", /MAIL_BCC/);
+  // 正しい形は今までどおり付ける
+  for (const v of ["info@pan-tia.com", "info+bcc@pan-tia.com", "info.bcc@mail.pan-tia.co.jp"]) {
+    assert.equal(noticeBcc("notice.order_paid", v), v, v);
+  }
+});
+
+test("BCC: MAIL_BCC がアドレス1件の形でなければ、管理画面に警告を出す（お知らせは BCC なしで送る）", () => {
+  assert.match(mailWarning({ ...LIVE, MAIL_BCC: "a@example.test,b@example.test" }, true) ?? "", /MAIL_BCC/);
+  assert.deepEqual(mailConfig({ ...LIVE, MAIL_BCC: "info" }), { state: "live" });
+  assert.equal(mailWarning({ ...LIVE, MAIL_BCC: "info@pan-tia.com" }, true), null);
+  assert.equal(mailWarning({ ...LIVE, MAIL_BCC: "" }, true), null);
 });

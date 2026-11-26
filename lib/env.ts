@@ -96,6 +96,10 @@ export const serverEnv = {
   get mailFrom() {
     return need("MAIL_FROM", process.env.MAIL_FROM);
   },
+  /** お知らせのメールの控えを BCC で受け取るアドレス（例 info@pan-tia.com）。空なら付けない。形は lib/mail-config.ts の noticeBcc で確かめる */
+  get mailBcc(): string | undefined {
+    return process.env.MAIL_BCC;
+  },
   /** お問い合わせの届け先。未設定なら受け付けない（画面にその旨を出す） */
   get contactTo(): string | null {
     const v = (process.env.CONTACT_TO ?? "").trim();

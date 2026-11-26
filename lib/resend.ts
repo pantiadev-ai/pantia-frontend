@@ -16,7 +16,8 @@ export function fromHeader(name: string, address: string): string {
   return label ? `${label} <${addr}>` : addr;
 }
 
-export type ResendMail = { to: string; subject: string; text: string; replyTo?: string };
+/** bcc: 運営の控え（お知らせのメールだけ。lib/mail-config.ts の noticeBcc で決める） */
+export type ResendMail = { to: string; subject: string; text: string; replyTo?: string; bcc?: string };
 
 export function resendRequest(
   mail: ResendMail,
@@ -34,6 +35,7 @@ export function resendRequest(
       subject: mail.subject,
       text: mail.text,
       ...(mail.replyTo ? { reply_to: mail.replyTo } : {}),
+      ...(mail.bcc ? { bcc: [mail.bcc] } : {}),
     }),
   };
 }

@@ -6,6 +6,7 @@ import "server-only";
 import { serverEnv } from "@/lib/env";
 import { SITE_NAME } from "@/lib/site";
 import { RESEND_URL, fromHeader, resendRequest, retryDelayMs, resendErrorLabel } from "@/lib/resend";
+import { noticeBcc } from "@/lib/mail-config";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /** replyTo: 返信の宛先（お問い合わせで、運営が返信すると送った人に届くように）。入力を検めたアドレスだけを渡す */
@@ -20,7 +21,12 @@ export async function sendMail(mail: Mail): Promise<{ sent: boolean }> {
   if (mode === "live") {
     try {
       // 鍵・送信元が未設定ならここで止まり、控えに理由が残る
-      const req = resendRequest(mail, { apiKey: serverEnv.resendApiKey, from: fromHeader(SITE_NAME, serverEnv.mailFrom) });
+      // お知らせのメールには運営の控えを BCC で付ける（MAIL_BCC。同じ1通なので、送れなければ本人宛ても送れない）
+      const bcc = noticeBcc(mail.kind, serverEnv.mailBcc);
+      const req = resendRequest(
+        { to: mail.to, subject: mail.subject, text: mail.text, replyTo: mail.replyTo, bcc },
+        { apiKey: serverEnv.resendApiKey, from: fromHeader(SITE_NAME, serverEnv.mailFrom) },
+      );
       let res = await fetch(RESEND_URL, { ...req, signal: AbortSignal.timeout(10_000) });
       if (!res.ok) {
         let bodyText = await res.text().catch(() => "");
