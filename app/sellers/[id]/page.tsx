@@ -179,7 +179,8 @@ export default async function SellerProfilePage({ params, searchParams }: PagePr
     },
     {
       key: "items",
-      label: `出品中 (${num(items?.total ?? 0)})`,
+      // 一覧には売り切れも後ろに並べるが、「出品中」の数は買える物だけ（ページ数は売り切れを含む total で数える。改修リスト 行6）
+      label: `出品中 (${num(items?.facets.available.all ?? 0)})`,
       content: blocked ? (
         blockedNotice
       ) : !items?.ok ? (

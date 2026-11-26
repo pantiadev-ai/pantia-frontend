@@ -166,7 +166,8 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
 
   // 自分がブロックした人は、どの区画にも出さない（仮。RLS で除かれない物もあるので画面でも除く）
   const newRes = catRes ?? base;
-  const newItems = newRes.items.filter((i) => !blocked.has(i.sellerId));
+  // 新着のカードには SOLD の札が無いので、売り切れは出さない（並びの後ろにあるので、削れるのは末尾だけ。改修リスト 行6）
+  const newItems = newRes.items.filter((i) => !blocked.has(i.sellerId) && !i.soldOut);
   const shownPosts = posts.filter((p) => !blocked.has(p.authorId));
   const girls = active.sellers.filter((s) => !blocked.has(s.id)).slice(0, GIRLS);
   const topSellers = rankS.rows.filter((r) => !blocked.has(r.id)).slice(0, RANKS);
@@ -180,7 +181,9 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
     ),
   ]);
   const tweets = shownPosts.filter((p) => authors.has(p.authorId));
-  const sameDayCount = base.facets.options.same_day ?? 0;
+  // 数字の帯は買える物だけ数える（一覧には売り切れも残すので、total は売り切れを含む）
+  const availableCount = base.facets.available.all ?? 0;
+  const sameDayCount = base.facets.available.same_day ?? 0;
   const moreItemsHref = cat ? `/items?categories=${cat}` : "/items";
 
   return (
@@ -197,7 +200,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
             <div className="stat-label">登録出品者</div>
           </div>
           <div className="stat-item">
-            <div className="stat-num">{base.ok ? num(base.total) : "-"}</div>
+            <div className="stat-num">{base.ok ? num(availableCount) : "-"}</div>
             <div className="stat-label">公開中の商品</div>
           </div>
           <div className="stat-item">

@@ -138,7 +138,8 @@ export default async function ItemDetailPage({ params }: PageProps<"/items/[id]"
   const catIcon = categoryIcon(item.category);
   const shipText = labelOf(SHIP_ESTIMATES, item.shipEstimate || seller?.shipEstimate) || "—";
   const sellerName = displayName(seller?.publicName);
-  const relatedItems = related.items.filter((r) => r.id !== item.id).slice(0, RELATED);
+  // 「他の商品」のカードには SOLD の札が無いので、売り切れは出さない（前どおり買える物だけ。改修リスト 行6）
+  const relatedItems = related.items.filter((r) => r.id !== item.id && !r.soldOut).slice(0, RELATED);
   const sellerAvatar = avatarImage(seller?.avatarPath);
   const pv = presenceView(settings.showPresence);
   const online = pv.isOnline(seller?.lastSeenAt);
