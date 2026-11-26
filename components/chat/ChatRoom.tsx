@@ -665,7 +665,7 @@ export default function ChatRoom({ threadId, me, other, isSeller, initial, initi
             <label className="chat-consent">
               <input type="checkbox" checked={agreeTick} onChange={(e) => setAgreeTick(e.target.checked)} disabled={sending} />
               <span>
-                取引の安全のため、通報されたメッセージや、連絡先の交換などで自動で止まったメッセージは、運営がその前後のやり取りを含めて確認します。これに同意します（
+                取引の安全のため、通報されたメッセージや、連絡先の交換などで自動で止まったメッセージは、運営がその前後のやり取りを含めて確認します。また、取引の行き違いの申し出や規約違反の疑いなど必要なときは、運営が理由を記録したうえで、同意のあとのメッセージを確認することがあります。これに同意します（
                 <Link href="/terms#s10" target="_blank">
                   利用規約
                 </Link>

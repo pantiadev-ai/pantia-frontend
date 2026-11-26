@@ -1,12 +1,12 @@
 "use client";
-/* メッセージの同意（通報・自動で止まったメッセージを運営が確かめること）の取り消し。
+/* メッセージの同意（通報・自動で止まったメッセージと、必要なときに理由を記録して会話を運営が確かめること）の取り消し。
    同意は初めて送るときにチャットの画面でもらう。ここでは今の状態を見せて、取り消せるようにする */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { withdrawMessageConsent } from "@/lib/actions/account";
 import { FormMessage, useAction } from "@/components/useAction";
 
-export default function MessageConsentForm({ agreedOn }: { agreedOn: string | null }) {
+export default function MessageConsentForm({ agreedOn, outdated }: { agreedOn: string | null; outdated: boolean }) {
   const [open, setOpen] = useState(false);
   const { pending, error, message, run } = useAction();
   const router = useRouter();
@@ -18,10 +18,13 @@ export default function MessageConsentForm({ agreedOn }: { agreedOn: string | nu
           <div className="setting-name">運営による確認への同意</div>
           <div className="setting-desc">
             通報されたメッセージや、連絡先の交換などで自動で止まったメッセージは、運営が前後のやり取りを含めて確かめます。
+            また、取引の行き違いの申し出や規約違反の疑いなど必要なときは、運営が理由を記録したうえで、同意のあとのメッセージを確かめることがあります。
             同意していないと、メッセージは送れません。
           </div>
         </div>
-        <div className="setting-val">{agreedOn ? `${agreedOn} に同意` : "未同意"}</div>
+        <div className="setting-val">
+          {!agreedOn ? "未同意" : outdated ? "前の内容に同意（次に送るときに同意し直し）" : `${agreedOn} に同意`}
+        </div>
         {agreedOn && (
           <button type="button" className="setting-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "閉じる" : "取り消す"}

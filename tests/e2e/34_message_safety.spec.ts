@@ -72,6 +72,29 @@ test.describe("送る前の同意", () => {
     await box(page).fill("C取り消しのあと");
     await expect(sendBtn(page)).toBeDisabled();
   });
+
+  test("前の内容（版1）にだけ同意した人は、設定に「同意し直しが必要」と出て、会話の画面にまた確認が出て、印を付けて送ると版2になる", async ({ page, context }) => {
+    const seller = await freshSeller("ms-v1");
+    const buyer = await freshBuyer("ms-v1");
+    const tid = await seedThread(seller, buyer);
+    await sql(`update public.message_consents set version = 1 where user_id = ${lit(buyer.id)}`);
+    await loginAs(context, buyer);
+
+    await page.goto("/settings");
+    await expect(page.getByText("前の内容に同意（次に送るときに同意し直し）")).toBeVisible();
+    await expect(page.getByRole("button", { name: "取り消す" })).toBeVisible();
+
+    await page.goto(`/messages/${tid}`);
+    const body = `C版1から同意し直す ${rnd()}`;
+    await box(page).fill(body);
+    await expect(consentBox(page)).not.toBeChecked();
+    await expect(sendBtn(page)).toBeDisabled();
+    await consentBox(page).check();
+    await sendBtn(page).click();
+    await expect(page.locator(".bubble.mine", { hasText: body })).toBeVisible();
+    const rows = await sql<{ version: number }>(`select version from public.message_consents where user_id = ${lit(buyer.id)}`);
+    expect(rows.map((r) => r.version)).toEqual([2]);
+  });
 });
 
 test.describe("禁止ワード", () => {
