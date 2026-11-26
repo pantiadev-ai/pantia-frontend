@@ -17,6 +17,15 @@ async function searchItems(page: import("@playwright/test").Page, q: string) {
 
 const itemNames = (page: import("@playwright/test").Page) => page.locator("a.item-name");
 
+/** 売り切れのカードの札と値段が、買える商品のカード（即日の札）と色で見分けがつく（改修リスト 行6） */
+async function expectSoldStandsOut(sold: import("@playwright/test").Locator, available: import("@playwright/test").Locator) {
+  const style = (l: import("@playwright/test").Locator, prop: "backgroundColor" | "color") =>
+    l.evaluate((el, p) => getComputedStyle(el)[p], prop);
+  await expect(available.locator(".item-badge")).toHaveText("即日");
+  expect(await style(sold.locator(".item-badge"), "backgroundColor"), "SOLD の札の地の色").not.toBe(await style(available.locator(".item-badge"), "backgroundColor"));
+  expect(await style(sold.locator(".item-price"), "color"), "売り切れの値段の色").not.toBe(await style(available.locator(".item-price"), "color"));
+}
+
 test.describe("トップページ", () => {
   test("新しく出品・つぶやきをすると、トップの新着と、みんなのつぶやきに出る", async ({ page }) => {
     const seller = await publicSeller("pub-top");
@@ -226,6 +235,7 @@ test.describe("出してはいけない商品", () => {
       const soldCard = page.locator(".cat-card", { has: page.locator("a.item-name", { hasText: `E2E状態${t} sold` }) });
       await expect(soldCard).toHaveClass(/cat-soldout/);
       await expect(soldCard.locator(".item-badge")).toHaveText("SOLD");
+      await expectSoldStandsOut(soldCard, page.locator(".cat-card", { has: page.locator("a.item-name", { hasText: `E2E状態${t} published` }) }));
 
       for (const status of ["draft", "private", "hidden"]) {
         const res = await page.goto(`/items/${ids[status]}`);
@@ -342,6 +352,7 @@ test.describe("出品者・ランキング・つぶやき", () => {
       const panel = page.getByRole("tabpanel");
       await expect(panel.locator("a.item-name")).toHaveText([`E2E出品中${t}`, `E2E売切済${t}`]);
       await expect(panel.locator(".cat-card", { hasText: `E2E売切済${t}` }).locator(".item-badge")).toHaveText("SOLD");
+      await expectSoldStandsOut(panel.locator(".cat-card", { hasText: `E2E売切済${t}` }), panel.locator(".cat-card", { hasText: `E2E出品中${t}` }));
       // 商品の詳細の「他の商品」は、買える物だけ（売り切れは出さない）
       await page.goto(`/items/${pub}`);
       await expect(page.locator(".rel-card")).toHaveCount(0);
