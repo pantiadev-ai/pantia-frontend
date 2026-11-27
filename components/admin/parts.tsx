@@ -94,7 +94,8 @@ export function FilterBar({
   );
 }
 
-/** 表の下の件数とページ送り。«（最初）‹（前）番号 ›（次）»（最後）。スマホでは今から2つ以上離れた番号を隠す（admin-extra.css の .pg-btn.far） */
+/** 表の下の件数とページ送り。«（最初）‹（前）番号 ›（次）»（最後）。
+    768px 以下では44px四方にして今から2つ以上離れた番号（.far）を、520px 以下では今のページ以外の番号（.pg-num）を隠す（admin-extra.css） */
 export function Pager({ base, q, page, total, size = 20 }: { base: string; q: Q; page: number; total: number; size?: number }) {
   const { pages, from, to, nums, prev, next } = pagerModel(page, total, size);
   const edge = (label: string, mark: string, target: number, on: boolean) => (
@@ -113,7 +114,7 @@ export function Pager({ base, q, page, total, size = 20 }: { base: string; q: Q;
         {nums.map(({ n, far }) => (
           <Link
             key={n}
-            className={`pg-btn${n === page ? " active" : ""}${far ? " far" : ""}`}
+            className={`pg-btn pg-num${n === page ? " active" : ""}${far ? " far" : ""}`}
             href={hrefOf(base, { ...q, page: n })}
             aria-current={n === page ? "page" : undefined}
           >

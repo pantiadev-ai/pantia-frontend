@@ -746,6 +746,21 @@
     flex-direction: column;
   }
 }
+/* ページ送り: 指で押せるよう44px四方にする（32pxだった）。9つでは入らないので、今から2つ以上離れた番号を隠して7つにする（lib/pager.ts の far）。
+   それでも入らない幅（320px など）では折り返す */
+@media (max-width: 768px) {
+  .pg-admin .pagination {
+    flex-wrap: wrap;
+  }
+  .pg-admin .pg-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+  .pg-admin .pg-btn.far {
+    display: none;
+  }
+}
 @media (max-width: 520px) {
   .pg-admin .kpi-grid {
     grid-template-columns: 1fr;
@@ -753,8 +768,9 @@
   .pg-admin .kpi-num {
     font-size: 24px;
   }
-  /* ページ送り: «‹ と ›» を足したので、今から2つ以上離れた番号を隠して7つ（約260px）にする（lib/pager.ts の far） */
-  .pg-admin .pg-btn.far {
+  /* ページ送り: 44pxでは7つも入らない（iPhone 12 mini の表の下は約253px）。今のページの番号だけを残して « ‹ 3 › » の5つ（約244px）にする。
+     隣の番号は ‹ › と同じ所へ行くので、隠しても行ける所は減らない */
+  .pg-admin .pg-num:not(.active) {
     display: none;
   }
 }

@@ -706,8 +706,9 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     await dialog.getByRole("button", { name: "やめる", exact: true }).click();
   });
 
-  // 改修 ㉘（2026-11-27）: «» を足すとボタンが9つ（32px）になり、375px を超える。スマホでは今のページから2つ以上離れた番号を隠す
-  test("ページ送りは、«» を足してもスマホで横にはみ出さず、離れた番号を隠して7つにする", async ({ page, context }) => {
+  // 改修 ㉘（2026-11-27）: «» を足すとボタンが9つ（32px）になり、375px を超える。
+  // 2026-11-28: ボタンを44pxにすると7つ（約340px）も入らない（iPhone 12 mini の表の下は約253px）。スマホでは今のページの番号だけを残す（隣の番号は ‹ › と同じ）
+  test("ページ送りは、スマホで今のページの番号だけを残して5つにし、どのボタンも44px四方以上で横にはみ出さない", async ({ page, context }) => {
     // 決まった対象 ID の記録を260件（50件ずつで6ページ）入れて、その ID で絞った3ページ目を見る
     const target = randomUUID();
     await sql(`
@@ -719,16 +720,36 @@ test.describe("選ぶ欄と有料オプションの行", () => {
       await page.goto(`/admin/logs?q=${target}&page=3`);
       const nav = page.getByRole("navigation", { name: "ページ送り" });
       await expect(nav.getByRole("link", { name: "3", exact: true })).toHaveAttribute("aria-current", "page");
-      // 1 と 5 は隠れ、« ‹ 2 3 4 › » の7つが見える
-      await expect(nav.getByRole("link", { name: "1", exact: true })).toBeHidden();
-      await expect(nav.getByRole("link", { name: "5", exact: true })).toBeHidden();
-      await expect(nav.locator(".pg-btn:visible")).toHaveCount(7);
+      // 1・2・4・5 は隠れ、« ‹ 3 › » の5つが見える
+      for (const n of ["1", "2", "4", "5"]) await expect(nav.getByRole("link", { name: n, exact: true })).toBeHidden();
+      await expect(nav.locator(".pg-btn:visible")).toHaveCount(5);
+      for (const name of ["最初のページ", "前のページ", "次のページ", "最後のページ"]) await expect(nav.getByRole("link", { name })).toBeVisible();
       const width = page.viewportSize()!.width;
       const box = (await nav.boundingBox())!;
       expect(box.x, "ページ送りの左").toBeGreaterThanOrEqual(0);
       expect(box.x + box.width, "ページ送りの右").toBeLessThanOrEqual(width + 1);
+      // 2026-11-28 に決めた: スマホでは指で押せるよう、どのボタンも44px四方以上にする（32pxだった）
+      const room = await nav.evaluate((el) => {
+        const f = el.closest(".table-footer")!;
+        const cs = getComputedStyle(f);
+        return `表の下の中の幅 ${f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)}px`;
+      });
+      for (const b of await nav.locator(".pg-btn:visible").all()) {
+        const bb = (await b.boundingBox())!;
+        const label = (await b.getAttribute("aria-label")) ?? (await b.textContent());
+        expect(Math.min(bb.width, bb.height), `「${label}」の大きさ ${bb.width}×${bb.height}（${room}）`).toBeGreaterThanOrEqual(44);
+        expect(bb.x + bb.width, `「${label}」の右（${room}）`).toBeLessThanOrEqual(width + 1);
+      }
       const o = await overflowOf(page);
       expect(o.scrollWidth, `ログの画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+      // 320px の古い小さい機種でも、ボタンは横にはみ出さない（入らなければ折り返す）
+      await page.setViewportSize({ width: 320, height: 640 });
+      for (const b of await nav.locator(".pg-btn:visible").all()) {
+        const bb = (await b.boundingBox())!;
+        const label = (await b.getAttribute("aria-label")) ?? (await b.textContent());
+        expect(bb.x, `320px で「${label}」の左`).toBeGreaterThanOrEqual(0);
+        expect(bb.x + bb.width, `320px で「${label}」の右`).toBeLessThanOrEqual(321);
+      }
     } finally {
       await sql(`delete from public.audit_logs where target_id = ${lit(target)}`);
     }
