@@ -241,6 +241,9 @@ test.describe("キャラ", () => {
     await page.goto(`/admin/characters?q=${gone.id}`);
     await expect(goneRow).toHaveCount(0);
     await expect(page.getByText("条件に合うキャラはいません。退会したキャラは「退会済みも表示」で見られます。", { exact: true })).toBeVisible();
+    // 件数（ページ送りの «» の最後のページも、この数から決まる）も退会を除いて数える
+    const count = page.locator(".tbl-count");
+    await expect(count).toHaveText("全 0件中 0件表示");
 
     // 「退会済みも表示」で絞り込むと出て、「退会済み」の札が付く
     await status.selectOption("all");
@@ -249,6 +252,7 @@ test.describe("キャラ", () => {
     await expect(goneRow).toHaveCount(1);
     await expect(goneRow.getByText("退会済み", { exact: true })).toBeVisible();
     await expect(goneRow).toContainText("退会したユーザー");
+    await expect(count).toHaveText("全 1件中 1-1件表示");
     // 利用中のキャラも、「退会済みも表示」のときに出る
     await page.goto(`/admin/characters?status=all&q=${live.id}`);
     await expect(rowOf(page, live.nickname)).toHaveCount(1);
