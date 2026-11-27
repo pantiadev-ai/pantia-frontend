@@ -192,6 +192,9 @@ test.describe("キャラ", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(/本人から頼まれて代理で登録した人には、\s*使わないでください。/);
     await expect(dialog).toContainText("本人のアカウントを運営が使ってしまいます。");
+    // 2026-11-28 に決めた: 本人に渡したかどうかと、キャラにすると口座が全桁で見られることも窓に出す
+    await expect(dialog).toContainText("まだ本人に渡していません。");
+    await expect(dialog).toContainText(/キャラにすると、振込先の口座を\s*全桁で見られるようになります。/);
     await expect(dialog.getByText("キャラにする理由（必須）")).toBeVisible();
 
     // 理由が空なら押しても閉じず、印も付かない
@@ -215,6 +218,23 @@ test.describe("キャラ", () => {
     // 代理登録の一覧でも、キャラにした人だと分かる
     await page.goto(`/admin/proxy?q=${encodeURIComponent(proxied.nickname)}`);
     await expect(rowOf(page, proxied.nickname).getByText("キャラ", { exact: true })).toBeVisible();
+  });
+
+  // 2026-11-28 に決めた: 本人に渡し済みの代理登録の人は、窓に渡した日を出す（DB では止めない）
+  test("本人に渡し済みの代理登録の人の「キャラにする」の窓には、渡した日が出る", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const proxied = await seedProxy(adm);
+    // 2026-11-20 12:00（日本時間）に渡した、という形にする
+    await sql(`update public.proxy_registrations set handed_over_at = '2026-11-20T03:00:00Z' where user_id = ${lit(proxied.id)}`);
+    await page.goto(`/admin/users/${proxied.id}`);
+    await page.getByRole("button", { name: "キャラにする", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
+    await expect(dialog).toContainText("本人に渡し済みです（2026/11/20）。");
+    await expect(dialog).not.toContainText("まだ本人に渡していません。");
+    await expect(dialog).toContainText(/本人から頼まれて代理で登録した人には、\s*使わないでください。/);
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    expect(await markOf(proxied.id)).toBeUndefined();
   });
 
   // 2026-11-27 に決めた: 強制退会したキャラは、一覧で既定で隠し、「退会済みも表示」で見る
