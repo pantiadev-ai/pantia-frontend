@@ -287,7 +287,24 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
                 reasonMax={500}
                 confirmLabel="警告を送る"
               />
-              {markable && (
+              {/* 代理登録の人は本人のアカウントのこともあるので、注意を出し、理由のメモを必須にする（2026-11-27。DB も 0024 で断る） */}
+              {markable && candidate.isProxy && (
+                <ActionButton
+                  op="character.mark"
+                  id={p.id}
+                  label="キャラにする"
+                  className="approve"
+                  title={`${san(name)}をキャラにする`}
+                  body={
+                    "代理登録で作ったアカウントを、運営で入れたキャラに切り替えます。本人から頼まれて代理で登録した人には使わないでください（本人のアカウントを、運営がキャラとして使うことになります）。\n代理登録の記録は残り、「キャラを外す」で戻せます。"
+                  }
+                  reason="required"
+                  reasonLabel="キャラにする理由"
+                  reasonMax={200}
+                  confirmLabel="キャラにする"
+                />
+              )}
+              {markable && !candidate.isProxy && (
                 <ActionButton
                   op="character.mark"
                   id={p.id}

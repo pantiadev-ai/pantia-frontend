@@ -4,7 +4,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
-import { kycBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
+import { characterBadge, kycBadge, roleBadge, userStatusBadge } from "@/components/admin/badges";
 import ProxyRegisterForm from "@/components/admin/ProxyRegisterForm";
 import { Badge, Card, Empty, FilterBar, Initial, Pager } from "@/components/admin/parts";
 import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
@@ -42,7 +42,14 @@ export default async function AdminProxyPage({ searchParams }: PageProps<"/admin
   const [list, settings] = await Promise.all([query.order("created_at", { ascending: false }).range(from, to), getSettings()]);
   if (list.error) console.error("[admin] proxy", list.error.message);
   const rows = list.data ?? [];
-  const names = await nicknamesOf(service, rows.map((r) => r.registered_by));
+  const ids = rows.map((r) => r.user_id);
+  // キャラにした人（2026-11-27 から代理登録の人もキャラにできる）は、名前の横に札を出す。読めなければ札を出さないだけ
+  const [names, marks] = await Promise.all([
+    nicknamesOf(service, rows.map((r) => r.registered_by)),
+    ids.length > 0 ? service.from("character_accounts").select("user_id").in("user_id", ids) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (marks.error) console.error("[admin] proxy characters", marks.error.message);
+  const characters = new Set((marks.data ?? []).map((m) => m.user_id));
   const filter = { q, handover, kyc };
 
   return (
@@ -122,6 +129,12 @@ export default async function AdminProxyPage({ searchParams }: PageProps<"/admin
                         <Link href={`/admin/users/${r.user_id}`} className="td-name adm-link">
                           {p.nickname || "（名前なし）"}
                         </Link>
+                        {characters.has(r.user_id) && (
+                          <>
+                            {" "}
+                            <Badge b={characterBadge} />
+                          </>
+                        )}
                       </td>
                       <td>
                         <Badge b={roleBadge(p.role)} />

@@ -34,8 +34,17 @@ test("本人確認が未提出か済みの売手には付けられる", () => {
   assert.equal(canMarkCharacter({ ...base, kycStatus: "approved" }), true);
 });
 
-test("代理登録の売手には付けられない", () => {
-  assert.equal(canMarkCharacter({ ...base, isProxy: true }), false);
+test("代理登録の売手にも付けられる（2026-11-27 に決めた。理由のメモは画面と DB が必須にする）", () => {
+  assert.equal(canMarkCharacter({ ...base, isProxy: true, kycStatus: "approved" }), true);
+  assert.equal(canMarkCharacter({ ...base, isProxy: true, kycStatus: "unsubmitted" }), true);
+});
+
+test("代理登録でも、ほかの条件は同じ（購入者・止めた人・審査中・もう印がある人には付けられない）", () => {
+  const proxy = { ...base, isProxy: true, kycStatus: "approved" };
+  assert.equal(canMarkCharacter({ ...proxy, role: "buyer" }), false);
+  assert.equal(canMarkCharacter({ ...proxy, status: "suspended" }), false);
+  assert.equal(canMarkCharacter({ ...proxy, kycStatus: "pending" }), false);
+  assert.equal(canMarkCharacter({ ...proxy, marked: true }), false);
 });
 
 /* 「キャラにする」が出ないときに、画面へ出す理由（characterBlockReason）。並びは上から先に当たった物 */
@@ -51,11 +60,13 @@ test("自分自身・管理者は、それぞれの理由", () => {
   assert.equal(characterBlockReason({ ...base, isAdmin: true, role: "buyer" }), "管理者はキャラにできません。");
 });
 
-test("代理登録の人は、新しく作る道を案内する", () => {
-  assert.equal(
-    characterBlockReason({ ...base, isProxy: true, role: "buyer", status: "suspended" }),
-    "代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。",
-  );
+test("代理登録の売手（本人確認済み）には理由を出さない（「キャラにする」を出す）", () => {
+  assert.equal(characterBlockReason({ ...base, isProxy: true, kycStatus: "approved" }), null);
+});
+
+test("代理登録の人が付けられないときは、ふつうの人と同じ理由", () => {
+  assert.equal(characterBlockReason({ ...base, isProxy: true, role: "buyer", status: "suspended" }), "購入者はキャラにできません（キャラにできるのは売手だけです）。");
+  assert.equal(characterBlockReason({ ...base, isProxy: true, kycStatus: "pending" }), "本人確認を出した売手はキャラにできません。");
 });
 
 test("購入者・止めた人・本人確認を出した売手は、それぞれの理由", () => {

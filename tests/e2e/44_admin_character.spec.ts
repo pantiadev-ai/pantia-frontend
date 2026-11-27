@@ -73,6 +73,9 @@ test.describe("キャラ", () => {
     const actions = (await auditOf(chara.id)).map((a) => a.action);
     expect(actions).toContain("kyc.character_skip");
     expect(actions).toContain("user.character_mark");
+    // 記録の画面では、操作の名前ではなく文で読める
+    await page.goto(`/admin/logs?q=${chara.id}`);
+    await expect(page.getByText(`${adm.nickname}さんが売手をキャラにしました（メモ: E2E の試験のキャラ）`, { exact: true })).toBeVisible();
 
     // 一覧「キャラ」に出る
     await page.goto("/admin/characters");
@@ -133,6 +136,8 @@ test.describe("キャラ", () => {
     await act(page, page, { button: "キャラを外す", title: "キャラを外す", confirm: "外す", done: "キャラを外しました。" });
     expect(await markOf(chara.id)).toBeUndefined();
     expect((await auditOf(chara.id)).map((a) => a.action)).toContain("user.character_unmark");
+    await page.goto(`/admin/logs?q=${chara.id}`);
+    await expect(page.getByText(`${adm.nickname}さんがキャラを外しました`, { exact: true })).toBeVisible();
     await page.goto("/admin/characters");
     await expect(rowOf(page, chara.nickname)).toHaveCount(0);
     expect((await listingByTitle(title))[0]?.status).toBe("published");
@@ -161,19 +166,54 @@ test.describe("キャラ", () => {
       await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(1);
       await expect(page.getByRole("button", { name: "キャラを外す", exact: true })).toHaveCount(0);
       await expect(page.getByText(/キャラにできません/)).toHaveCount(0);
+      // ふつうの売手の窓は今までの文のまま。メモは任意で、代理登録の注意は出さない
+      await page.getByRole("button", { name: "キャラにする", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
+      await expect(dialog).toContainText("運営で入れた売手として印を付けます。");
+      await expect(dialog.getByText("メモ（任意）")).toBeVisible();
+      await expect(dialog).not.toContainText("代理で登録した人");
+      await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+      await expect(dialog).toBeHidden();
     });
   });
 
-  test("代理登録の人には「キャラにする」を出さず、「キャラを新しく作る」へ案内する", async ({ page, context }) => {
+  // 2026-11-27 に決めた: 代理登録で作った人も、運営が理由のメモを残してキャラにできる（DB は 0024）
+  test("代理登録の人も、理由のメモを書けばキャラにでき、代理登録の印も残る。代理登録の一覧の行に「キャラ」の札が出る", async ({ page, context }) => {
     const adm = await asAdmin(context);
     const proxied = await seedProxy(adm);
     await page.goto(`/admin/users/${proxied.id}`);
     // カードの題は見出しの要素ではなく（Card は div）、前に飾りの絵文字が付くので、題の要素を中身の一部で待つ
     await expect(page.locator(".card-title", { hasText: "この利用者への操作" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "キャラにする", exact: true })).toHaveCount(0);
+    await expect(page.getByText(/キャラにできません/)).toHaveCount(0);
+
+    // 窓: 本人から頼まれた代理登録の人には使わない、という注意と、必須の理由
+    await page.getByRole("button", { name: "キャラにする", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("本人から頼まれて代理で登録した人には使わないでください");
+    await expect(dialog.getByText("キャラにする理由（必須）")).toBeVisible();
+
+    // 理由が空なら押しても閉じず、印も付かない
+    await dialog.getByRole("button", { name: "キャラにする", exact: true }).click();
+    await expect(dialog.getByRole("alert")).toHaveText("キャラにする理由を入力してください。");
+    await expect(dialog).toBeVisible();
+    expect(await markOf(proxied.id)).toBeUndefined();
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+    await expect(dialog).toBeHidden();
+
+    await act(page, page, { button: "キャラにする", title: "キャラにする", reason: "先方の依頼で運営のキャラに切り替え", confirm: "キャラにする", done: "キャラにしました。" });
+    await expect(page.getByText("運営で入れたキャラです")).toBeVisible();
+    await expect(page.getByText("運営が代理で登録した人です")).toBeVisible();
+    expect(await markOf(proxied.id)).toEqual({ note: "先方の依頼で運営のキャラに切り替え", marked_by: adm.id });
+    expect((await auditOf(proxied.id)).map((a) => a.action)).toContain("user.character_mark");
+    await page.goto(`/admin/logs?q=${proxied.id}`);
     await expect(
-      page.getByText("代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。"),
+      page.getByText(`${adm.nickname}さんが代理登録の人をキャラにしました（メモ: 先方の依頼で運営のキャラに切り替え）`, { exact: true }),
     ).toBeVisible();
+
+    // 代理登録の一覧でも、キャラにした人だと分かる
+    await page.goto(`/admin/proxy?q=${encodeURIComponent(proxied.nickname)}`);
+    await expect(rowOf(page, proxied.nickname).getByText("キャラ", { exact: true })).toBeVisible();
   });
 });
 
