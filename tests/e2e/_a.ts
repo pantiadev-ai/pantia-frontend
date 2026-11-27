@@ -16,6 +16,14 @@ export { RULES };
 /** 名前に入れる乱数（16進。検索で外される記号を含まない） */
 export const tok = (bytes = 4): string => randomBytes(bytes).toString("hex");
 
+/** 入力の欄が動き出す（React の hydration が済む）まで待つ。
+    済む前に入れた値は React の状態に入らず、送ると空として扱われる（iPhone 12 mini の webkit で、読み込みの約0.9秒後まで。2026-11-28） */
+export async function untilHydrated(target: Locator): Promise<void> {
+  const el = await target.elementHandle();
+  await target.page().waitForFunction((node) => !!node && Object.keys(node).some((k) => k.startsWith("__reactProps")), el);
+  await el?.dispose();
+}
+
 /** 回数の上限の枠を、ほかの試験と分けるための IP（100.64.0.0/10 の中で乱数） */
 export function uniqueIp(): string {
   const b = randomBytes(3);

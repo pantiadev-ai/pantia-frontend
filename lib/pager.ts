@@ -7,7 +7,7 @@ export type PagerModel = {
   /** 表示している範囲（「全 N件中 from-to件表示」）。0件なら 0 */
   from: number;
   to: number;
-  /** 並べる番号（最大5つ）。far は今のページから2つ以上離れた番号で、スマホでは隠す */
+  /** 並べる番号（最大5つ）。far は今のページから2つ以上離れた番号で、768px 以下では隠す（520px 以下では今のページの番号だけになる。admin-extra.css） */
   nums: { n: number; far: boolean }[];
   /** 前・次に進めるか（最初・最後のページへの «» も同じ条件） */
   prev: boolean;
