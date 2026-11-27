@@ -215,6 +215,44 @@ test.describe("キャラ", () => {
     await page.goto(`/admin/proxy?q=${encodeURIComponent(proxied.nickname)}`);
     await expect(rowOf(page, proxied.nickname).getByText("キャラ", { exact: true })).toBeVisible();
   });
+
+  // 2026-11-27 に決めた: 強制退会したキャラは、一覧で既定で隠し、「退会済みも表示」で見る
+  test("退会したキャラは一覧に既定で出ず、IDで探しても出ない。「退会済みも表示」で絞り込むと「退会済み」の札つきで出る", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const gone = await freshUser("e-chr-wd", { role: "seller", nickname: `F退会キャラ${rid()}` });
+    const live = await freshUser("e-chr-live", { role: "seller", nickname: `F利用キャラ${rid()}` });
+    for (const u of [gone, live]) {
+      const { error } = await admin().rpc("admin_mark_character", { p_admin: adm.id, p_user: u.id, p_note: "E2E の退会の試験" });
+      expect(error).toBeNull();
+    }
+    // 画面の強制退会と同じ道（利用を停止 → admin_withdraw_user）。退会すると名前は「退会したユーザー」になるので、ID で探す
+    const pre = await admin().rpc("admin_set_user_status", { p_admin: adm.id, p_user: gone.id, p_status: "suspended", p_reason: "E2E 下ごしらえ" });
+    expect(pre.error).toBeNull();
+    const wd = await admin().rpc("admin_withdraw_user", { p_admin: adm.id, p_user: gone.id, p_reason: "E2E の退会の試験" });
+    expect(wd.error).toBeNull();
+    const goneRow = page.locator("tr", { has: page.locator(`a[href="/admin/users/${gone.id}"]`) });
+    const status = page.getByRole("combobox", { name: "退会済みの表示" });
+
+    // 既定は「退会済みを除く」。利用中のキャラは出る
+    await page.goto("/admin/characters");
+    await expect(status).toHaveValue("");
+    await expect(rowOf(page, live.nickname)).toHaveCount(1);
+    await expect(goneRow).toHaveCount(0);
+    await page.goto(`/admin/characters?q=${gone.id}`);
+    await expect(goneRow).toHaveCount(0);
+    await expect(page.getByText("条件に合うキャラはいません。退会したキャラは「退会済みも表示」で見られます。", { exact: true })).toBeVisible();
+
+    // 「退会済みも表示」で絞り込むと出て、「退会済み」の札が付く
+    await status.selectOption("all");
+    await page.getByRole("button", { name: "絞り込む", exact: true }).click();
+    await expect(page).toHaveURL(/[?&]status=all(&|$)/);
+    await expect(goneRow).toHaveCount(1);
+    await expect(goneRow.getByText("退会済み", { exact: true })).toBeVisible();
+    await expect(goneRow).toContainText("退会したユーザー");
+    // 利用中のキャラも、「退会済みも表示」のときに出る
+    await page.goto(`/admin/characters?status=all&q=${live.id}`);
+    await expect(rowOf(page, live.nickname)).toHaveCount(1);
+  });
 });
 
 test.describe("キャラを新しく作る", () => {
