@@ -506,6 +506,50 @@ test.describe("操作の記録・検索・ダッシュボード", () => {
     await expect(page.getByText("検索は ID（ユーザー詳細などに出ている英数字の列）で入れてください。")).toBeVisible();
   });
 
+  // 改修 ㉘（2026-11-27）: ページ送りに最初と最後のページへ飛ぶ «» を足した
+  test("ページ送りの「最後のページ」で最後へ飛び、そこでは「次のページ」「最後のページ」が押せない。「最初のページ」で1ページ目に戻る", async ({ page, context }) => {
+    // ほかの試験の記録で数が揺れないよう、決まった対象 ID の記録を120件（50件ずつで3ページ）入れて、その ID で絞る
+    const target = crypto.randomUUID();
+    await sql(`
+      insert into public.audit_logs (action, target_type, target_id, detail, created_at)
+      select 'e2e.pager', 'e2e', ${lit(target)}, '{}'::jsonb, now() - interval '400 days' - make_interval(secs => g)
+      from generate_series(1, 120) as g`);
+    try {
+      await asAdmin(context);
+      await page.goto(`/admin/logs?q=${target}`);
+      const nav = page.getByRole("navigation", { name: "ページ送り" });
+      const first = nav.getByRole("link", { name: "最初のページ" });
+      const prev = nav.getByRole("link", { name: "前のページ" });
+      const next = nav.getByRole("link", { name: "次のページ" });
+      const last = nav.getByRole("link", { name: "最後のページ" });
+      await expect(page.getByText("全 120件中 1-50件表示")).toBeVisible();
+      await expect(first).toHaveText("«");
+      await expect(last).toHaveText("»");
+      for (const l of [first, prev]) {
+        await expect(l).toHaveAttribute("aria-disabled", "true");
+        await expect(l).toHaveAttribute("tabindex", "-1");
+      }
+      await expect(last).toHaveAttribute("aria-disabled", "false");
+
+      await last.click();
+      await expect(page).toHaveURL(new RegExp(`/admin/logs\\?q=${target}&page=3$`));
+      await expect(page.getByText("全 120件中 101-120件表示")).toBeVisible();
+      await expect(nav.getByRole("link", { name: "3", exact: true })).toHaveAttribute("aria-current", "page");
+      for (const l of [next, last]) {
+        await expect(l).toHaveAttribute("aria-disabled", "true");
+        await expect(l).toHaveAttribute("tabindex", "-1");
+      }
+      await expect(first).toHaveAttribute("aria-disabled", "false");
+
+      await first.click();
+      await expect(page).toHaveURL(new RegExp(`/admin/logs\\?q=${target}$`));
+      await expect(page.getByText("全 120件中 1-50件表示")).toBeVisible();
+      await expect(nav.getByRole("link", { name: "1", exact: true })).toHaveAttribute("aria-current", "page");
+    } finally {
+      await sql(`delete from public.audit_logs where target_id = ${lit(target)}`);
+    }
+  });
+
   test("メールの控えではあて先を伏せて出し、本文は出さない", async ({ page, context }) => {
     const r = rid();
     const to = `dmask${r}@example.test`;
