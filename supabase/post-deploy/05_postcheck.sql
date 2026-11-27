@@ -263,4 +263,12 @@ select 29, 'メッセージの同意の関数が、見せた文の版を受け�
        when has_function_privilege('anon', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
        when not has_function_privilege('authenticated', 'public.agree_message_terms(integer)', 'EXECUTE') then 'NG'
        else 'OK' end, ''
+union all
+select 30, 'キャラにする関数が 0024 の形（代理登録の人はメモ必須・記録に from_proxy）。匿名と画面からは呼べない',
+  case when to_regprocedure('public.admin_mark_character(uuid,uuid,text)') is null then 'NG'
+       when (select prosrc from pg_proc where oid = to_regprocedure('public.admin_mark_character(uuid,uuid,text)')) not like '%from_proxy%' then 'NG'
+       when has_function_privilege('anon', 'public.admin_mark_character(uuid,uuid,text)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.admin_mark_character(uuid,uuid,text)', 'EXECUTE') then 'NG'
+       when not has_function_privilege('service_role', 'public.admin_mark_character(uuid,uuid,text)', 'EXECUTE') then 'NG'
+       else 'OK' end, ''
 order by no;
