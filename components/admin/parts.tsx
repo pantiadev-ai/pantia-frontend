@@ -4,6 +4,7 @@ import Form from "next/form";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { num } from "@/lib/format";
+import { pagerModel } from "@/lib/pager";
 import type { BadgeInfo } from "./badges";
 
 type Q = Record<string, string | number | null | undefined>;
@@ -93,45 +94,34 @@ export function FilterBar({
   );
 }
 
-/** 表の下の件数とページ送り */
+/** 表の下の件数とページ送り。«（最初）‹（前）番号 ›（次）»（最後）。スマホでは今から2つ以上離れた番号を隠す（admin-extra.css の .pg-btn.far） */
 export function Pager({ base, q, page, total, size = 20 }: { base: string; q: Q; page: number; total: number; size?: number }) {
-  const pages = Math.max(1, Math.ceil(total / size));
-  const from = total === 0 ? 0 : Math.min(total, (page - 1) * size + 1);
-  const to = Math.min(total, page * size);
-  const start = Math.max(1, Math.min(page - 2, pages - 4));
-  const nums: number[] = [];
-  for (let i = start; i <= Math.min(pages, start + 4); i++) nums.push(i);
-  const prev = page > 1;
-  const next = page < pages;
+  const { pages, from, to, nums, prev, next } = pagerModel(page, total, size);
+  const edge = (label: string, mark: string, target: number, on: boolean) => (
+    <Link className={`pg-btn${on ? "" : " disabled"}`} href={hrefOf(base, { ...q, page: target })} aria-label={label} aria-disabled={!on} tabIndex={on ? undefined : -1}>
+      {mark}
+    </Link>
+  );
   return (
     <div className="table-footer">
       <div className="tbl-count">
         全 {num(total)}件中 {from === 0 ? 0 : `${from}-${to}`}件表示
       </div>
       <nav className="pagination" aria-label="ページ送り">
-        <Link
-          className={`pg-btn${prev ? "" : " disabled"}`}
-          href={hrefOf(base, { ...q, page: Math.max(1, page - 1) })}
-          aria-label="前のページ"
-          aria-disabled={!prev}
-          tabIndex={prev ? undefined : -1}
-        >
-          ‹
-        </Link>
-        {nums.map((n) => (
-          <Link key={n} className={`pg-btn${n === page ? " active" : ""}`} href={hrefOf(base, { ...q, page: n })} aria-current={n === page ? "page" : undefined}>
+        {edge("最初のページ", "«", 1, prev)}
+        {edge("前のページ", "‹", Math.max(1, page - 1), prev)}
+        {nums.map(({ n, far }) => (
+          <Link
+            key={n}
+            className={`pg-btn${n === page ? " active" : ""}${far ? " far" : ""}`}
+            href={hrefOf(base, { ...q, page: n })}
+            aria-current={n === page ? "page" : undefined}
+          >
             {n}
           </Link>
         ))}
-        <Link
-          className={`pg-btn${next ? "" : " disabled"}`}
-          href={hrefOf(base, { ...q, page: Math.min(pages, page + 1) })}
-          aria-label="次のページ"
-          aria-disabled={!next}
-          tabIndex={next ? undefined : -1}
-        >
-          ›
-        </Link>
+        {edge("次のページ", "›", Math.min(pages, page + 1), next)}
+        {edge("最後のページ", "»", pages, next)}
       </nav>
     </div>
   );

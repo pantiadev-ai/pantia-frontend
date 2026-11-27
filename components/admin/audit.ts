@@ -117,6 +117,14 @@ export function describeAudit(row: AuditRow, who: string | null): AuditView {
       return v("🔗", "blue", "キャラ", `${by}キャラのパスワードを決めるリンクを作りました（${int(d.count) ?? 1}回目）`);
     case "user.character_password":
       return v("🎭", "green", "キャラ", "キャラのパスワードが決まりました");
+    case "user.character_mark": {
+      // detail は {note, from_proxy}（0024）。0017 のころの記録は from_proxy が無いので、ふつうの売手として読む
+      const note = str(d.note);
+      const memo = note ? `（メモ: ${note}）` : "";
+      return v("🎭", "blue", "キャラ", `${by}${d.from_proxy === true ? "代理登録の人" : "売手"}をキャラにしました${memo}`);
+    }
+    case "user.character_unmark":
+      return v("🎭", "yellow", "キャラ", `${by}キャラを外しました`);
     case "listing.publish":
       return v("📦", "pk", "出品", `${by}「${str(d.title)}」を出品しました`);
     case "listing.hidden":

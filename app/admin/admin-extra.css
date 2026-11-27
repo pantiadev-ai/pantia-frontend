@@ -753,6 +753,10 @@
   .pg-admin .kpi-num {
     font-size: 24px;
   }
+  /* ページ送り: «‹ と ›» を足したので、今から2つ以上離れた番号を隠して7つ（約260px）にする（lib/pager.ts の far） */
+  .pg-admin .pg-btn.far {
+    display: none;
+  }
 }
 
 /* メールの文面（/admin/settings/mail） */

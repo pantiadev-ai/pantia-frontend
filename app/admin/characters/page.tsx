@@ -1,6 +1,7 @@
 /* キャラ（運営で入れた売手）の一覧。キャラはここの「キャラを新しく作る」で作るか、ユーザーの詳細で印を付け外しする。
    ここから、キャラの名前で出品する画面（/admin/characters/<id>/new）と、そのキャラの出品の一覧へ移る。
-   取引（メッセージ・発送）と出品の編集は、運営がキャラでログインして行う（2026-11-18 に決めた）。 */
+   取引（メッセージ・発送）と出品の編集は、運営がキャラでログインして行う（2026-11-18 に決めた）。
+   強制退会したキャラは既定で隠し、「退会済みも表示」で見る（2026-11-27 に決めた。退会すると名前は「退会したユーザー」になる）。 */
 import type { Metadata } from "next";
 import Link from "next/link";
 import AdminShell from "@/components/admin/AdminShell";
@@ -8,7 +9,7 @@ import CharacterCreateForm from "@/components/admin/CharacterCreateForm";
 import CharacterLinkIssuer from "@/components/admin/CharacterLinkIssuer";
 import { characterBadge, kycBadge, userStatusBadge } from "@/components/admin/badges";
 import { Badge, Card, Empty, FilterBar, Initial, Pager } from "@/components/admin/parts";
-import { nicknamesOf, pageOf, param, rangeOf, requireAdminPage } from "@/lib/admin";
+import { nicknamesOf, pageOf, param, pick, rangeOf, requireAdminPage } from "@/lib/admin";
 import { dateJst, excerpt } from "@/lib/format";
 import { escapeLike, isUuid } from "@/lib/search";
 import { getSettings } from "@/lib/settings";
@@ -16,10 +17,14 @@ import { createServiceClient } from "@/lib/supabase/service";
 
 export const metadata: Metadata = { title: "キャラ" };
 
+const STATUSES = ["", "all"] as const;
+const WITHDRAWN_HINT = "退会したキャラは「退会済みも表示」で見られます。";
+
 export default async function AdminCharactersPage({ searchParams }: PageProps<"/admin/characters">) {
   await requireAdminPage();
   const sp = await searchParams;
   const q = param(sp, "q", 50);
+  const status = pick(param(sp, "status", 5), STATUSES, "");
   const page = pageOf(sp);
   const [from, to] = rangeOf(page);
 
@@ -29,6 +34,7 @@ export default async function AdminCharactersPage({ searchParams }: PageProps<"/
     .select("user_id, note, marked_by, marked_at, created_via, password_set_at, profile:profiles!character_accounts_user_id_fkey!inner(id, nickname, status, kyc_status)", {
       count: "exact",
     });
+  if (status !== "all") query = query.neq("profile.status", "withdrawn");
   if (q) query = isUuid(q) ? query.eq("user_id", q) : query.ilike("profile.nickname", `%${escapeLike(q)}%`);
 
   const [list, settings] = await Promise.all([query.order("marked_at", { ascending: false }).range(from, to), getSettings()]);
@@ -47,7 +53,7 @@ export default async function AdminCharactersPage({ searchParams }: PageProps<"/
         <ul className="adm-hint" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9, fontSize: 12 }}>
           <li>キャラは、運営のメールアドレスで登録した売手のアカウントです。</li>
           <li>キャラは「キャラを新しく作る」で作るか、ふつうに登録した売手をユーザーの詳細の「キャラにする」で印を付けます。</li>
-          <li>代理登録の人は本人のアカウントなので、キャラにできません。</li>
+          <li>代理登録で作ったアカウントも、ユーザーの詳細の「キャラにする」でキャラにできます（理由のメモが必須）。本人から頼まれて代理で登録した人には使いません。</li>
           <li>印を付けると、本人確認は省いて「確認済み」になります（アクティビティログに残ります）。</li>
           <li>ここから、キャラの名前で出品できます。管理者の名前は商品ページに出ません。</li>
           <li>メッセージ・発送・出品の編集は、キャラでログインして、ふつうの売手と同じ画面で行います。</li>
@@ -56,11 +62,28 @@ export default async function AdminCharactersPage({ searchParams }: PageProps<"/
       </Card>
 
       <div className="table-card">
-        <FilterBar action="/admin/characters" search={{ value: q, placeholder: "名前・ユーザーIDで検索" }} />
+        <FilterBar
+          action="/admin/characters"
+          search={{ value: q, placeholder: "名前・ユーザーIDで検索" }}
+          selects={[
+            {
+              name: "status",
+              label: "退会済みの表示",
+              value: status,
+              options: [
+                { value: "", label: "退会済みを除く" },
+                { value: "all", label: "退会済みも表示" },
+              ],
+            },
+          ]}
+        />
         {list.error ? (
           <Empty>一覧を読めませんでした。時間をおいて読み込み直してください。</Empty>
         ) : rows.length === 0 ? (
-          <Empty>{q ? "条件に合うキャラはいません。" : "まだキャラはいません。上の「キャラを新しく作る」で作るか、ユーザーの詳細の「キャラにする」で印を付けます。"}</Empty>
+          <Empty>
+            {q ? "条件に合うキャラはいません。" : "まだキャラはいません。上の「キャラを新しく作る」で作るか、ユーザーの詳細の「キャラにする」で印を付けます。"}
+            {status !== "all" && WITHDRAWN_HINT}
+          </Empty>
         ) : (
           <div className="adm-scroll">
             <table>
@@ -118,7 +141,7 @@ export default async function AdminCharactersPage({ searchParams }: PageProps<"/
             </table>
           </div>
         )}
-        <Pager base="/admin/characters" q={{ q }} page={page} total={list.count ?? 0} />
+        <Pager base="/admin/characters" q={{ q, status }} page={page} total={list.count ?? 0} />
       </div>
     </AdminShell>
   );

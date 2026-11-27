@@ -672,6 +672,68 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
   });
 
+  // 代理登録の人の「キャラにする」の窓は、注意の文が長い（2026-11-27 に足した）
+  test("代理登録の人の「キャラにする」の窓は、スマホで横にはみ出さず、理由の欄も窓の中に収まり、ボタンが44px以上ある", async ({ page, context }) => {
+    const adm = await asAdmin(context);
+    const nickname = `E2E代理窓${tok()}`.slice(0, 20);
+    const email = `e2e-proxy-mob-${Date.now().toString(36)}${tok()}@example.test`.toLowerCase();
+    const { data, error } = await admin().auth.admin.createUser({ email, email_confirm: true, user_metadata: { nickname, role: "seller", age: "25" } });
+    if (error || !data.user) throw new Error(`代理登録の人を作れませんでした: ${error?.message}`);
+    const reg = await admin().rpc("admin_proxy_register", { p_admin: adm.id, p_user: data.user.id, p_note: "E2E のスマホの試験" });
+    if (reg.error) throw new Error(`代理登録の印を付けられませんでした: ${reg.error.message}`);
+    await page.goto(`/admin/users/${data.user.id}`);
+    await page.getByRole("button", { name: "キャラにする", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
+    await expect(dialog).toContainText(/本人から頼まれて代理で登録した人には、\s*使わないでください。/);
+    // 本文は短く区切って行を分け、どの行も1行に収まる＝語の途中で割れない（2026-11-28 の点検で「アカウ／ント」「戻せ／ます。」と割れていた）
+    const pre = dialog.locator(".adm-pre").first();
+    const sentences = (await pre.textContent())!.split("\n").filter((s) => s.trim());
+    const lines = await pre.evaluate(linesOf, sentences);
+    const fit = await pre.evaluate((el) => `幅 ${el.clientWidth}px・字 ${getComputedStyle(el).fontSize}`);
+    sentences.forEach((s, i) => expect(lines[i], `「${s}」の行の数（${fit}）`).toBe(1));
+    const width = page.viewportSize()!.width;
+    const box = (await dialog.boundingBox())!;
+    expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "窓の右").toBeLessThanOrEqual(width + 1);
+    const input = (await dialog.getByLabel(/^キャラにする理由/).boundingBox())!;
+    expect(input.x + input.width, "理由の欄の右").toBeLessThanOrEqual(box.x + box.width + 1);
+    for (const name of ["やめる", "キャラにする"]) {
+      const h = await dialog.getByRole("button", { name, exact: true }).evaluate((el) => el.getBoundingClientRect().height);
+      expect(h, `「${name}」の高さ`).toBeGreaterThanOrEqual(44);
+    }
+    const o = await overflowOf(page);
+    expect(o.scrollWidth, `窓を開いた画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+    await dialog.getByRole("button", { name: "やめる", exact: true }).click();
+  });
+
+  // 改修 ㉘（2026-11-27）: «» を足すとボタンが9つ（32px）になり、375px を超える。スマホでは今のページから2つ以上離れた番号を隠す
+  test("ページ送りは、«» を足してもスマホで横にはみ出さず、離れた番号を隠して7つにする", async ({ page, context }) => {
+    // 決まった対象 ID の記録を260件（50件ずつで6ページ）入れて、その ID で絞った3ページ目を見る
+    const target = randomUUID();
+    await sql(`
+      insert into public.audit_logs (action, target_type, target_id, detail, created_at)
+      select 'e2e.pager', 'e2e', ${lit(target)}, '{}'::jsonb, now() - interval '400 days' - make_interval(secs => g)
+      from generate_series(1, 260) as g`);
+    try {
+      await asAdmin(context);
+      await page.goto(`/admin/logs?q=${target}&page=3`);
+      const nav = page.getByRole("navigation", { name: "ページ送り" });
+      await expect(nav.getByRole("link", { name: "3", exact: true })).toHaveAttribute("aria-current", "page");
+      // 1 と 5 は隠れ、« ‹ 2 3 4 › » の7つが見える
+      await expect(nav.getByRole("link", { name: "1", exact: true })).toBeHidden();
+      await expect(nav.getByRole("link", { name: "5", exact: true })).toBeHidden();
+      await expect(nav.locator(".pg-btn:visible")).toHaveCount(7);
+      const width = page.viewportSize()!.width;
+      const box = (await nav.boundingBox())!;
+      expect(box.x, "ページ送りの左").toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, "ページ送りの右").toBeLessThanOrEqual(width + 1);
+      const o = await overflowOf(page);
+      expect(o.scrollWidth, `ログの画面が横にはみ出している: ${o.culprits.join(" / ")}`).toBeLessThanOrEqual(o.innerWidth + 1);
+    } finally {
+      await sql(`delete from public.audit_logs where target_id = ${lit(target)}`);
+    }
+  });
+
   test("キャラの一覧の「キャラを新しく作る」の欄と、パスワードのリンクの窓は、スマホで横にはみ出さず、ボタンが44px以上ある", async ({ page, context }) => {
     const adm = await asAdmin(context);
     const name = `E2E窓${tok()}`.slice(0, 20);

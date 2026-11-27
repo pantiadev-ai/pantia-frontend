@@ -17,15 +17,15 @@ export type CharacterCandidate = {
   marked: boolean;
 };
 
-/** 「キャラにする」を出してよい相手か。DB の admin_mark_character と同じ条件
-   （利用中の売手・本人確認が未提出か済み・代理登録でない・管理者でも自分でもない・印がまだ無い）。
-   本人確認を出した人（審査中・却下）と代理登録の人は本物の売手なので、印を付けると書類なしで「確認済み」になってしまう */
+/** 「キャラにする」を出してよい相手か。DB の admin_mark_character（0024）と同じ条件
+   （利用中の売手・本人確認が未提出か済み・管理者でも自分でもない・印がまだ無い）。
+   本人確認を出した人（審査中・却下）は本物の売手なので、印を付けると書類なしで「確認済み」になってしまう。
+   代理登録の人も付けられる（2026-11-27 に決めた）。そのときは理由のメモが必須で、画面と DB の両方で確かめる */
 export function canMarkCharacter(c: CharacterCandidate): boolean {
   return (
     c.role === "seller" &&
     c.status === "active" &&
     (c.kycStatus === "unsubmitted" || c.kycStatus === "approved") &&
-    !c.isProxy &&
     !c.isAdmin &&
     !c.isSelf &&
     !c.marked
@@ -38,7 +38,6 @@ export function characterBlockReason(c: CharacterCandidate): string | null {
   if (c.marked || canMarkCharacter(c)) return null;
   if (c.isSelf) return "自分自身はキャラにできません。";
   if (c.isAdmin) return "管理者はキャラにできません。";
-  if (c.isProxy) return "代理登録の人は本人のアカウントなので、キャラにできません。キャラは「キャラ」の画面の「キャラを新しく作る」で作ってください。";
   if (c.role !== "seller") return "購入者はキャラにできません（キャラにできるのは売手だけです）。";
   if (c.status !== "active") return "利用を止めている人はキャラにできません。";
   return "本人確認を出した売手はキャラにできません。";

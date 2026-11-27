@@ -355,10 +355,10 @@ export async function decideRoleChange(requestId: string, approve: boolean, reas
    印を付けると本人確認は「済み」になる（DB の admin_mark_character が記録 kyc.character_skip を残す）。 */
 
 const NOT_MARKABLE =
-  "キャラにできるのは、利用中の売手（管理者・自分・代理登録の人・本人確認の審査中か却下の人を除く）で、まだキャラでない人だけです。画面を読み込み直してください。";
+  "キャラにできるのは、利用中の売手（管理者・自分・本人確認の審査中か却下の人を除く）で、まだキャラでない人だけです。画面を読み込み直してください。";
 const NOT_CHARACTER = "キャラの印が付いていません。画面を読み込み直してください。";
 
-/** 売手のアカウントに「キャラ」の印を付ける（メモは任意） */
+/** 売手のアカウントに「キャラ」の印を付ける（メモは任意。代理登録の人は必須で、空なら DB が bad_reason で断る） */
 export async function markCharacter(userId: string, note: string): Promise<ActionResult> {
   return runAction(async () => {
     const v = await begin();
@@ -367,6 +367,7 @@ export async function markCharacter(userId: string, note: string): Promise<Actio
     const { error } = await createServiceClient().rpc("admin_mark_character", { p_admin: v.id, p_user: id, p_note: memo });
     const code = error ? dbCode(error) : null;
     if (code === "bad_state" || code === "bad_request") throw new ActionError(NOT_MARKABLE);
+    if (code === "bad_reason") throw new ActionError("代理登録で作った人をキャラにするときは、メモ（キャラにする理由）を書いてください。");
     adminThrowDb(error);
     refresh();
     return { ok: true, message: "キャラにしました。" };
