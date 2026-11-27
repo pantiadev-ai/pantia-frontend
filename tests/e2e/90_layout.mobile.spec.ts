@@ -684,7 +684,13 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     await page.goto(`/admin/users/${data.user.id}`);
     await page.getByRole("button", { name: "キャラにする", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
-    await expect(dialog).toContainText("本人から頼まれて代理で登録した人には使わないでください");
+    await expect(dialog).toContainText(/本人から頼まれて代理で登録した人には、\s*使わないでください。/);
+    // 本文は短く区切って行を分け、どの行も1行に収まる＝語の途中で割れない（2026-11-28 の点検で「アカウ／ント」「戻せ／ます。」と割れていた）
+    const pre = dialog.locator(".adm-pre").first();
+    const sentences = (await pre.textContent())!.split("\n").filter((s) => s.trim());
+    const lines = await pre.evaluate(linesOf, sentences);
+    const fit = await pre.evaluate((el) => `幅 ${el.clientWidth}px・字 ${getComputedStyle(el).fontSize}`);
+    sentences.forEach((s, i) => expect(lines[i], `「${s}」の行の数（${fit}）`).toBe(1));
     const width = page.viewportSize()!.width;
     const box = (await dialog.boundingBox())!;
     expect(box.x, "窓の左").toBeGreaterThanOrEqual(0);

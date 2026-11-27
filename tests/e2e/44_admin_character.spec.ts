@@ -190,7 +190,8 @@ test.describe("キャラ", () => {
     await page.getByRole("button", { name: "キャラにする", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: /をキャラにする$/ });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("本人から頼まれて代理で登録した人には使わないでください");
+    await expect(dialog).toContainText(/本人から頼まれて代理で登録した人には、\s*使わないでください。/);
+    await expect(dialog).toContainText("本人のアカウントを運営が使ってしまいます。");
     await expect(dialog.getByText("キャラにする理由（必須）")).toBeVisible();
 
     // 理由が空なら押しても閉じず、印も付かない

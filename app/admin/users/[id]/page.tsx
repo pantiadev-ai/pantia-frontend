@@ -287,7 +287,8 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
                 reasonMax={500}
                 confirmLabel="警告を送る"
               />
-              {/* 代理登録の人は本人のアカウントのこともあるので、注意を出し、理由のメモを必須にする（2026-11-27。DB も 0024 で断る） */}
+              {/* 代理登録の人は本人のアカウントのこともあるので、注意を出し、理由のメモを必須にする（2026-11-27。DB も 0024 で断る）。
+                  文は iPhone mini の窓（約22字）でも語の途中で割れないよう、21字以内で行を分ける（e2e 90） */}
               {markable && candidate.isProxy && (
                 <ActionButton
                   op="character.mark"
@@ -296,7 +297,7 @@ export default async function AdminUserDetailPage({ params }: PageProps<"/admin/
                   className="approve"
                   title={`${san(name)}をキャラにする`}
                   body={
-                    "代理登録で作ったアカウントを、運営で入れたキャラに切り替えます。本人から頼まれて代理で登録した人には使わないでください（本人のアカウントを、運営がキャラとして使うことになります）。\n代理登録の記録は残り、「キャラを外す」で戻せます。"
+                    "代理登録の人を、運営のキャラにします。\n本人から頼まれて代理で登録した人には、\n使わないでください。\n本人のアカウントを運営が使ってしまいます。\n代理登録の記録は残ります。\n「キャラを外す」で戻せます。"
                   }
                   reason="required"
                   reasonLabel="キャラにする理由"
