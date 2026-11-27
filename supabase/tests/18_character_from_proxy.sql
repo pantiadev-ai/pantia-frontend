@@ -48,7 +48,9 @@ begin
     format('select public.admin_mark_character(%L, %L, %L)', adm, pb, '理由'), 'bad_state');
   perform pg_temp.ng('X04b 代理登録で止めた人は断る', null, 'service_role',
     format('select public.admin_mark_character(%L, %L, %L)', adm, ps, '理由'), 'bad_state');
-  perform pg_temp.eq('X04c 断ったあと印の行は無い', null, 'postgres', 'select count(*)::text from public.character_accounts', '0');
+  -- 断った人の行だけ数える（画面の試験が残したキャラがあっても揺れないように）
+  perform pg_temp.eq('X04c 断ったあと印の行は無い', null, 'postgres',
+    format('select count(*)::text from public.character_accounts where user_id in (%L, %L, %L, %L, %L)', p2, pend, rej, pb, ps), '0');
 
   -- 付ける ---------------------------------------------------------------------
   perform pg_temp.ok('X01 代理登録の売手に、メモつきで印を付けられる', null, 'service_role',
