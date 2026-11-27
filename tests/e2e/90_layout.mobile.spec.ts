@@ -5,7 +5,7 @@ import type { Locator, Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { admin, freshUser, lit, loginAs, seedListing, sql, type Cast } from "./_db";
 import { expect, test } from "./_fixtures";
-import { clippedItems, coverGaps, overflowOf, setListingStatus, tok } from "./_a";
+import { clippedItems, coverGaps, overflowOf, setListingStatus, tok, untilHydrated } from "./_a";
 import { seedBank } from "./_b";
 import { seedThread } from "./_c";
 import { asAdmin } from "./_d";
@@ -798,6 +798,7 @@ test.describe("選ぶ欄と有料オプションの行", () => {
     await page.goto("/admin/characters");
     // ハイフンがあるとそこで折り返せてしまうので、英数字だけの長いメールにする
     const email = `e2echaraconfirmverylongaddress${tok()}foriphonemini@example.test`;
+    await untilHydrated(page.getByLabel(/^メールアドレス/));
     await page.getByLabel(/^メールアドレス/).fill(email);
     await page.getByLabel(/^キャラの名前/).fill("E2E長いメール");
     await page.getByRole("button", { name: "キャラを作る", exact: true }).click();
@@ -987,6 +988,7 @@ test.describe("管理画面の表と保存ボタン", () => {
     await page.goto("/admin/characters");
     const save = page.getByRole("button", { name: "キャラを作る", exact: true });
     expect(await save.evaluate(contrastOf), "保存ボタン（.adm-save）の比").toBeGreaterThanOrEqual(4.5);
+    await untilHydrated(page.getByLabel(/^メールアドレス/));
     await page.getByLabel(/^メールアドレス/).fill(`e2e-contrast-${tok()}@example.test`.toLowerCase());
     await page.getByLabel(/^キャラの名前/).fill("E2E色の比");
     await save.click();
